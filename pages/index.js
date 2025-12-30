@@ -5,16 +5,10 @@ export default function Home() {
   const [chat, setChat] = useState([]);
   const [loading, setLoading] = useState(false);
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
   const askAI = async () => {
     if (!question.trim()) return;
-    if (!password.trim()) {
-      setError("Du måste ange lösenord.");
-      return;
-    }
 
-    setError("");
     setChat(prev => [...prev, { from: "user", text: question }]);
     setLoading(true);
 
@@ -26,20 +20,9 @@ export default function Home() {
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        setChat(prev => [
-          ...prev,
-          { from: "ai", text: data.answer || "Fel vid åtkomst." }
-        ]);
-      } else {
-        setChat(prev => [...prev, { from: "ai", text: data.answer }]);
-      }
-    } catch (err) {
-      setChat(prev => [
-        ...prev,
-        { from: "ai", text: "Kunde inte kontakta AI-servern." }
-      ]);
+      setChat(prev => [...prev, { from: "ai", text: data.answer }]);
+    } catch {
+      setChat(prev => [...prev, { from: "ai", text: "Ett fel uppstod. Försök igen." }]);
     }
 
     setQuestion("");
@@ -48,41 +31,60 @@ export default function Home() {
 
   return (
     <div style={styles.page}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>🍕 Pizzeria Santana – Intern AI</h1>
-        <p style={styles.subtitle}>
-          Endast för personal. Fråga om meny, rutiner och stängning.
-        </p>
+      <div style={styles.container}>
+        <header style={styles.header}>
+          <h1 style={styles.title}>Intern personalguide</h1>
+          <p style={styles.subtitle}>Pizzeria Santana</p>
+        </header>
+
+        <section style={styles.infoBox}>
+          <strong>Denna sida används internt av personal.</strong>
+          <p>
+            Här kan du snabbt få svar om meny, rutiner, allergener,
+            väntetider och stängning – utan att fråga kollegor eller chef.
+          </p>
+        </section>
+
+        <section style={styles.examples}>
+          <p><strong>Vanliga frågor:</strong></p>
+          <ul>
+            <li>Hur gör vi vid stängning?</li>
+            <li>Vad kostar extra ost?</li>
+            <li>Har vi glutenfri pizza?</li>
+            <li>Hur lång är väntetiden?</li>
+          </ul>
+        </section>
 
         <input
-          type="password"
           style={styles.input}
-          placeholder="Lösenord"
+          type="password"
+          placeholder="Personal-lösenord"
           value={password}
           onChange={e => setPassword(e.target.value)}
         />
 
-        {error && <p style={styles.error}>{error}</p>}
-
         <div style={styles.chat}>
           {chat.map((msg, i) => (
-            <div key={i} style={msg.from === "user" ? styles.user : styles.ai}>
+            <div
+              key={i}
+              style={msg.from === "user" ? styles.userMsg : styles.aiMsg}
+            >
               {msg.text}
             </div>
           ))}
-          {loading && <div style={styles.ai}>AI skriver…</div>}
+          {loading && <div style={styles.aiMsg}>Söker svar…</div>}
         </div>
 
         <input
           style={styles.input}
-          placeholder="Ex: Hur gör vi vid stängning?"
+          placeholder="Skriv din fråga här…"
           value={question}
           onChange={e => setQuestion(e.target.value)}
           onKeyDown={e => e.key === "Enter" && askAI()}
         />
 
         <button style={styles.button} onClick={askAI}>
-          Fråga AI:n
+          Hämta svar
         </button>
       </div>
     </div>
@@ -92,43 +94,63 @@ export default function Home() {
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "#f3f4f6",
+    background: "#eef2f7",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    padding: 20
+    padding: 16
   },
-  card: {
-    background: "#fff",
-    maxWidth: 420,
+  container: {
+    background: "#ffffff",
     width: "100%",
-    borderRadius: 12,
+    maxWidth: 500,
+    borderRadius: 10,
     padding: 20,
-    boxShadow: "0 10px 30px rgba(0,0,0,0.1)"
+    boxShadow: "0 8px 25px rgba(0,0,0,0.08)"
   },
-  title: { marginBottom: 5 },
-  subtitle: { color: "#555", marginBottom: 10 },
-  error: {
-    color: "red",
+  header: {
+    borderBottom: "1px solid #e5e7eb",
+    paddingBottom: 10,
+    marginBottom: 15
+  },
+  title: {
+    margin: 0,
+    fontSize: 22
+  },
+  subtitle: {
+    margin: 0,
+    color: "#555",
+    fontSize: 14
+  },
+  infoBox: {
+    background: "#f8fafc",
+    border: "1px solid #e5e7eb",
+    borderRadius: 6,
+    padding: 12,
     fontSize: 14,
-    marginBottom: 8
+    marginBottom: 12
+  },
+  examples: {
+    fontSize: 14,
+    marginBottom: 12
   },
   chat: {
-    border: "1px solid #ddd",
-    borderRadius: 8,
+    border: "1px solid #d1d5db",
+    borderRadius: 6,
     padding: 10,
-    height: 250,
+    height: 220,
     overflowY: "auto",
+    background: "#fafafa",
     marginBottom: 10
   },
-  user: {
+  userMsg: {
     background: "#e5e7eb",
     padding: 8,
     borderRadius: 6,
     marginBottom: 6
   },
-  ai: {
-    background: "#dbeafe",
+  aiMsg: {
+    background: "#e0f2fe",
     padding: 8,
     borderRadius: 6,
     marginBottom: 6
@@ -136,17 +158,17 @@ const styles = {
   input: {
     width: "100%",
     padding: 10,
-    fontSize: 16,
+    fontSize: 15,
     marginBottom: 10
   },
   button: {
     width: "100%",
     padding: 12,
     fontSize: 16,
-    background: "#2563eb",
-    color: "#fff",
+    background: "#1f2937",
+    color: "#ffffff",
     border: "none",
-    borderRadius: 8,
+    borderRadius: 6,
     cursor: "pointer"
   }
 };
