@@ -4,10 +4,17 @@ export default function Home() {
   const [question, setQuestion] = useState("");
   const [chat, setChat] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   const askAI = async () => {
     if (!question.trim()) return;
+    if (!password.trim()) {
+      setError("Du måste ange lösenord.");
+      return;
+    }
 
+    setError("");
     setChat(prev => [...prev, { from: "user", text: question }]);
     setLoading(true);
 
@@ -15,13 +22,24 @@ export default function Home() {
       const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question })
+        body: JSON.stringify({ question, password })
       });
 
       const data = await res.json();
-      setChat(prev => [...prev, { from: "ai", text: data.answer }]);
-    } catch {
-      setChat(prev => [...prev, { from: "ai", text: "Något gick fel." }]);
+
+      if (!res.ok) {
+        setChat(prev => [
+          ...prev,
+          { from: "ai", text: data.answer || "Fel vid åtkomst." }
+        ]);
+      } else {
+        setChat(prev => [...prev, { from: "ai", text: data.answer }]);
+      }
+    } catch (err) {
+      setChat(prev => [
+        ...prev,
+        { from: "ai", text: "Kunde inte kontakta AI-servern." }
+      ]);
     }
 
     setQuestion("");
@@ -33,8 +51,18 @@ export default function Home() {
       <div style={styles.card}>
         <h1 style={styles.title}>🍕 Pizzeria Santana – Intern AI</h1>
         <p style={styles.subtitle}>
-          Ställ frågor om meny, rutiner, allergener eller stängning.
+          Endast för personal. Fråga om meny, rutiner och stängning.
         </p>
+
+        <input
+          type="password"
+          style={styles.input}
+          placeholder="Lösenord"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+        />
+
+        {error && <p style={styles.error}>{error}</p>}
 
         <div style={styles.chat}>
           {chat.map((msg, i) => (
@@ -79,7 +107,12 @@ const styles = {
     boxShadow: "0 10px 30px rgba(0,0,0,0.1)"
   },
   title: { marginBottom: 5 },
-  subtitle: { color: "#555", marginBottom: 15 },
+  subtitle: { color: "#555", marginBottom: 10 },
+  error: {
+    color: "red",
+    fontSize: 14,
+    marginBottom: 8
+  },
   chat: {
     border: "1px solid #ddd",
     borderRadius: 8,
