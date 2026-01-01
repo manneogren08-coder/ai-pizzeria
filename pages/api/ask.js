@@ -87,9 +87,6 @@ ${pizzeriaSantana.routines}
 - Vid hög belastning: upp till 25 minuter
 
 === REGLER ===
-- Svara ENDAST baserat på informationen ovan
-- Hitta aldrig på information
-- Om svaret saknas, säg: "Jag är osäker – fråga personal eller ägare"
 - Tonen ska vara vänlig, rak och professionell
 `
   },
