@@ -22,7 +22,10 @@ export default function Home() {
       const data = await res.json();
       setChat(prev => [...prev, { from: "ai", text: data.answer }]);
     } catch {
-      setChat(prev => [...prev, { from: "ai", text: "Ett fel uppstod. Försök igen." }]);
+      setChat(prev => [
+        ...prev,
+        { from: "ai", text: "Ett fel uppstod. Försök igen." }
+      ]);
     }
 
     setQuestion("");
@@ -31,27 +34,21 @@ export default function Home() {
 
   return (
     <div style={styles.page}>
-      <div style={styles.container}>
+      <div style={styles.card}>
         <header style={styles.header}>
-          <h1 style={styles.title}>Intern personalguide</h1>
-          <p style={styles.subtitle}>Pizzeria Santana</p>
+          <h1 style={styles.title}>🍕 Intern AI-guide för personal</h1>
+          <p style={styles.subtitle}>
+            Snabba svar om rutiner, meny och allergener – alltid samma svar.
+          </p>
         </header>
 
-        <section style={styles.infoBox}>
-          <strong>Denna sida används internt av personal.</strong>
-          <p>
-            Här kan du snabbt få svar om meny, rutiner, allergener,
-            väntetider och stängning – utan att fråga kollegor eller chef.
-          </p>
-        </section>
-
-        <section style={styles.examples}>
-          <p><strong>Vanliga frågor:</strong></p>
+        <section style={styles.value}>
+          <p><strong>Vad kan denna AI hjälpa till med?</strong></p>
           <ul>
-            <li>Hur gör vi vid stängning?</li>
-            <li>Vad kostar extra ost?</li>
-            <li>Har vi glutenfri pizza?</li>
-            <li>Hur lång är väntetiden?</li>
+            <li>• Hur vi gör vid stängning</li>
+            <li>• Priser & tillval (extra ost, glutenfritt m.m.)</li>
+            <li>• Allergener & specialkost</li>
+            <li>• Väntetider & rutiner</li>
           </ul>
         </section>
 
@@ -69,23 +66,28 @@ export default function Home() {
               key={i}
               style={msg.from === "user" ? styles.userMsg : styles.aiMsg}
             >
+              {msg.from === "user" ? "Du: " : "AI: "}
               {msg.text}
             </div>
           ))}
-          {loading && <div style={styles.aiMsg}>Söker svar…</div>}
+          {loading && <div style={styles.aiMsg}>AI tänker…</div>}
         </div>
 
         <input
           style={styles.input}
-          placeholder="Skriv din fråga här…"
+          placeholder="Ex: Hur gör vi vid stängning?"
           value={question}
           onChange={e => setQuestion(e.target.value)}
           onKeyDown={e => e.key === "Enter" && askAI()}
         />
 
         <button style={styles.button} onClick={askAI}>
-          Hämta svar
+          Få svar
         </button>
+
+        <footer style={styles.footer}>
+          Endast för intern användning
+        </footer>
       </div>
     </div>
   );
@@ -94,51 +96,45 @@ export default function Home() {
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "#eef2f7",
+    background: "linear-gradient(135deg, #f1f5f9, #e2e8f0)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     padding: 16
   },
-  container: {
+  card: {
     background: "#ffffff",
     width: "100%",
-    maxWidth: 500,
-    borderRadius: 10,
-    padding: 20,
-    boxShadow: "0 8px 25px rgba(0,0,0,0.08)"
+    maxWidth: 520,
+    borderRadius: 14,
+    padding: 22,
+    boxShadow: "0 20px 40px rgba(0,0,0,0.12)"
   },
   header: {
-    borderBottom: "1px solid #e5e7eb",
-    paddingBottom: 10,
-    marginBottom: 15
+    marginBottom: 16
   },
   title: {
     margin: 0,
     fontSize: 22
   },
   subtitle: {
-    margin: 0,
+    marginTop: 6,
     color: "#555",
     fontSize: 14
   },
-  infoBox: {
+  value: {
     background: "#f8fafc",
     border: "1px solid #e5e7eb",
-    borderRadius: 6,
+    borderRadius: 8,
     padding: 12,
     fontSize: 14,
-    marginBottom: 12
-  },
-  examples: {
-    fontSize: 14,
-    marginBottom: 12
+    marginBottom: 14
   },
   chat: {
     border: "1px solid #d1d5db",
-    borderRadius: 6,
+    borderRadius: 8,
     padding: 10,
-    height: 220,
+    height: 240,
     overflowY: "auto",
     background: "#fafafa",
     marginBottom: 10
@@ -150,25 +146,33 @@ const styles = {
     marginBottom: 6
   },
   aiMsg: {
-    background: "#e0f2fe",
+    background: "#dbeafe",
     padding: 8,
     borderRadius: 6,
     marginBottom: 6
   },
   input: {
     width: "100%",
-    padding: 10,
+    padding: 11,
     fontSize: 15,
-    marginBottom: 10
+    marginBottom: 10,
+    borderRadius: 6,
+    border: "1px solid #d1d5db"
   },
   button: {
     width: "100%",
     padding: 12,
     fontSize: 16,
-    background: "#1f2937",
+    background: "#2563eb",
     color: "#ffffff",
     border: "none",
-    borderRadius: 6,
+    borderRadius: 8,
     cursor: "pointer"
+  },
+  footer: {
+    marginTop: 12,
+    fontSize: 12,
+    color: "#6b7280",
+    textAlign: "center"
   }
 };
