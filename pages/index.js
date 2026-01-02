@@ -91,7 +91,7 @@ export default function Home() {
         </button>
 
         <footer style={styles.footer}>
-          Endast för intern användning • Version 1.0
+          Endast för intern användning • Testversion
         </footer>
       </div>
     </div>
