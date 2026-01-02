@@ -99,6 +99,10 @@ ${pizzeria.closingRoutine}
 BETEENDERIKTLINJER:
 ${pizzeria.behaviorGuidelines}
 
+Situationer:
+${pizzeria.staffSituations}
+
+
 === SLUT PÅ DOKUMENTATION ===
 `
 },

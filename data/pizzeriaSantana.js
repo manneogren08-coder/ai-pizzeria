@@ -18,6 +18,40 @@ Lördag–Söndag: 12:00–23:00
 - Städ / Stängning
   `,
 
+  
+  staffSituations: `
+BERUSAD KUND:
+- Var lugn och respektfull
+- Servera INTE alkohol (om tillämpligt)
+- Säg vänligt att ni inte kan hjälpa vidare om kunden är för berusad
+- Vid hotfullt beteende: säg till ansvarig/ägare direkt
+
+MISSNÖJD KUND:
+- Lyssna lugnt och avbryt inte
+- Be om ursäkt även om felet inte är ditt
+- Erbjud lösning: ny pizza eller återbetalning (fråga ansvarig vid osäkerhet)
+- Bråka ALDRIG med kund
+
+KUND SOM BEHANDLAR PERSONAL DÅLIGT:
+- Förbli lugn och professionell
+- Sätt gräns: säg att ni vill hjälpa men inte accepterar dåligt beteende
+- Hämta ansvarig/ägare om det fortsätter
+
+FEL I BESTÄLLNING:
+- Be om ursäkt
+- Kontrollera vad som blev fel
+- Gör ny pizza så snabbt som möjligt
+
+STRESSIGA RUSCHER:
+- Fokusera på korrekthet före hastighet
+- Säg realistisk väntetid
+- Hjälp kollegor när möjligt
+
+OM DU ÄR OSÄKER:
+- Fråga ansvarig eller ägare
+- Gissa aldrig inför kund
+  `,
+
   menu: `
 PIZZOR
 - Vesuvio: tomatsås, ost, skinka – 95 kr
