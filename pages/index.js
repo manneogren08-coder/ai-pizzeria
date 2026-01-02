@@ -24,7 +24,7 @@ export default function Home() {
     } catch {
       setChat(prev => [
         ...prev,
-        { from: "ai", text: "Ett fel uppstod. Försök igen." }
+        { from: "ai", text: "Ett fel uppstod. Försök igen eller kontakta ansvarig." }
       ]);
     }
 
@@ -34,21 +34,27 @@ export default function Home() {
 
   return (
     <div style={styles.page}>
-      <div style={styles.card}>
+      <div style={styles.container}>
         <header style={styles.header}>
-          <h1 style={styles.title}>🍕 Intern AI-guide för personal</h1>
-          <p style={styles.subtitle}>
-            Snabba svar om rutiner, meny och allergener – alltid samma svar.
-          </p>
+          <h1 style={styles.title}>🍕 Intern Personal-AI</h1>
+          <p style={styles.subtitle}>Pizzeria Santana</p>
         </header>
 
-        <section style={styles.value}>
-          <p><strong>Vad kan denna AI hjälpa till med?</strong></p>
+        <section style={styles.info}>
+          <strong>Detta är ett internt verktyg för personal.</strong>
+          <p style={{ marginTop: 6 }}>
+            Få snabba och tydliga svar om hur vi jobbar – utan att störa kollegor
+            eller ringa chefen.
+          </p>
+        </section>
+
+        <section style={styles.examples}>
+          <p><strong>Exempel på frågor:</strong></p>
           <ul>
-            <li>• Hur vi gör vid stängning</li>
-            <li>• Priser & tillval (extra ost, glutenfritt m.m.)</li>
-            <li>• Allergener & specialkost</li>
-            <li>• Väntetider & rutiner</li>
+            <li>Hur gör vi vid stängning?</li>
+            <li>Vad säger jag om allergener?</li>
+            <li>Vad kostar extra ost?</li>
+            <li>Hur lång är väntetiden?</li>
           </ul>
         </section>
 
@@ -66,27 +72,26 @@ export default function Home() {
               key={i}
               style={msg.from === "user" ? styles.userMsg : styles.aiMsg}
             >
-              {msg.from === "user" ? "Du: " : "AI: "}
               {msg.text}
             </div>
           ))}
-          {loading && <div style={styles.aiMsg}>AI tänker…</div>}
+          {loading && <div style={styles.aiMsg}>Söker svar…</div>}
         </div>
 
         <input
           style={styles.input}
-          placeholder="Ex: Hur gör vi vid stängning?"
+          placeholder="Skriv din fråga här…"
           value={question}
           onChange={e => setQuestion(e.target.value)}
           onKeyDown={e => e.key === "Enter" && askAI()}
         />
 
         <button style={styles.button} onClick={askAI}>
-          Få svar
+          Hämta svar
         </button>
 
         <footer style={styles.footer}>
-          Endast för intern användning
+          Endast för intern användning • Version 1.0
         </footer>
       </div>
     </div>
@@ -96,37 +101,43 @@ export default function Home() {
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "linear-gradient(135deg, #f1f5f9, #e2e8f0)",
+    background: "linear-gradient(135deg, #eef2f7, #f8fafc)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     padding: 16
   },
-  card: {
+  container: {
     background: "#ffffff",
     width: "100%",
     maxWidth: 520,
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 22,
-    boxShadow: "0 20px 40px rgba(0,0,0,0.12)"
+    boxShadow: "0 12px 35px rgba(0,0,0,0.1)"
   },
   header: {
+    borderBottom: "1px solid #e5e7eb",
+    paddingBottom: 12,
     marginBottom: 16
   },
   title: {
     margin: 0,
-    fontSize: 22
+    fontSize: 24
   },
   subtitle: {
-    marginTop: 6,
+    margin: 0,
     color: "#555",
     fontSize: 14
   },
-  value: {
-    background: "#f8fafc",
+  info: {
+    background: "#f1f5f9",
     border: "1px solid #e5e7eb",
     borderRadius: 8,
     padding: 12,
+    fontSize: 14,
+    marginBottom: 14
+  },
+  examples: {
     fontSize: 14,
     marginBottom: 14
   },
@@ -153,7 +164,7 @@ const styles = {
   },
   input: {
     width: "100%",
-    padding: 11,
+    padding: 10,
     fontSize: 15,
     marginBottom: 10,
     borderRadius: 6,
@@ -163,7 +174,7 @@ const styles = {
     width: "100%",
     padding: 12,
     fontSize: 16,
-    background: "#2563eb",
+    background: "#1f2937",
     color: "#ffffff",
     border: "none",
     borderRadius: 8,
@@ -171,8 +182,8 @@ const styles = {
   },
   footer: {
     marginTop: 12,
+    textAlign: "center",
     fontSize: 12,
-    color: "#6b7280",
-    textAlign: "center"
+    color: "#777"
   }
 };
