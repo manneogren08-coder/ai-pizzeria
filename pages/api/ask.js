@@ -1,6 +1,18 @@
+const companyData =
+  company === "santana" ? pizzeriaSantana :
+  company === "dolores" ? donDolores :
+  null;
+
+if (!companyData) {
+  return res.status(400).json({ answer: "Okänt företag" });
+}
+
 import OpenAI from "openai";
 import pizzeria from "../../data/pizzeriaSantana";
 import pizzeriaSantana from "../../data/pizzeriaSantana";
+import pizzeriaSantana from "../../data/pizzeriaSantana";
+import donDolores from "../../data/donDolores";
+
 
 
 // Enkel in-memory rate limit
@@ -56,62 +68,37 @@ export default async function handler(req, res) {
       model: "gpt-4o-mini",
       messages: [
   {
-  role: "system",
-  content: `
-Du är en INTERN PERSONAL-AI för ${pizzeria.name}.
+    role: "system",
+    content: `
+Du är en intern AI-assistent för ${companyData.name}.
 
-VIKTIGT BETEENDE (MÅSTE FÖLJAS):
-- Du får ENDAST använda information som finns i datan nedan.
-- Du får INTE lägga till, anta eller förbättra information.
-- Du får INTE ge generella råd.
-- Du får INTE säga "jag vet inte", "jag är osäker" eller hänvisa till ägare om svaret finns i datan.
-- Om frågan matchar en sektion i datan, svara EXAKT enligt den sektionen.
-- Svara i punktform om listor finns.
-- Om informationen INTE finns i datan, svara exakt:
-  "Den informationen finns inte dokumenterad ännu."
+Du får ENDAST använda informationen nedan.
+Hitta aldrig på något själv.
+Om svaret inte finns: säg tydligt vad personalen ska göra enligt rutinerna.
 
-=== OFFICIELL PERSONALDOKUMENTATION ===
-
-NAMN:
-${pizzeria.name}
-
-BESKRIVNING:
-${pizzeria.description}
+=== FÖRETAGETS INFORMATION ===
 
 ÖPPETTIDER:
-${pizzeria.openingHours}
-
-ROLLER:
-${pizzeria.staffRoles}
+${companyData.openingHours}
 
 MENY:
-${pizzeria.menu}
+${companyData.menu}
 
 ALLERGENER:
-${pizzeria.allergens}
+${companyData.allergens}
 
 RUTINER:
-${pizzeria.routines}
+${companyData.routines}
 
-STÄNGNING:
-${pizzeria.closingRoutine}
-
-BETEENDERIKTLINJER:
-${pizzeria.behaviorGuidelines}
-
-Situationer:
-${pizzeria.staffSituations}
-
-
-=== SLUT PÅ DOKUMENTATION ===
+=== SLUT ===
 `
-},
-
+  },
   {
     role: "user",
     content: question
   }
-],
+]
+,
 
 
       max_tokens: 200
