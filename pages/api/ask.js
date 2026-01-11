@@ -8,8 +8,6 @@ if (!companyData) {
 }
 
 import OpenAI from "openai";
-import pizzeria from "../../data/pizzeriaSantana";
-import pizzeriaSantana from "../../data/pizzeriaSantana";
 import pizzeriaSantana from "../../data/pizzeriaSantana";
 import donDolores from "../../data/donDolores";
 
