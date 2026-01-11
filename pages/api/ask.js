@@ -1,24 +1,17 @@
-const companyData =
-  company === "santana" ? pizzeriaSantana :
-  company === "dolores" ? donDolores :
-  null;
-
-if (!companyData) {
-  return res.status(400).json({ answer: "Okänt företag" });
-}
-
 import OpenAI from "openai";
 import pizzeriaSantana from "../../data/pizzeriaSantana";
 import donDolores from "../../data/donDolores";
 
-
-
 // Enkel in-memory rate limit
 const rateLimitMap = new Map();
+const MAX_REQUESTS = 30;        // per minut
+const WINDOW_MS = 60 * 1000;
 
-// Inställningar för pizzeria
-const MAX_REQUESTS = 30;        // max 30 frågor
-const WINDOW_MS = 60 * 1000;    // per minut
+// 🔐 Koppling lösenord → företag
+const PASSWORD_MAP = {
+  santana123: pizzeriaSantana,
+  dolores123: donDolores
+};
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -27,12 +20,14 @@ export default async function handler(req, res) {
 
   const { question, password } = req.body;
 
-  // 🔐 Lösenordskontroll
-  if (password !== process.env.ACCESS_PASSWORD) {
-    return res.status(401).json({ answer: "Obehörig åtkomst." });
+  // 🔐 Identifiera företag via lösenord
+  const companyData = PASSWORD_MAP[password];
+
+  if (!companyData) {
+    return res.status(401).json({ answer: "Fel lösenord." });
   }
 
-  // 📍 Identifiera användare via IP
+  // 📍 IP-baserad rate limit
   const ip =
     req.headers["x-forwarded-for"]?.split(",")[0] ||
     req.socket.remoteAddress;
@@ -40,7 +35,6 @@ export default async function handler(req, res) {
   const now = Date.now();
   const userData = rateLimitMap.get(ip) || { count: 0, start: now };
 
-  // ⏱️ Reset om tidsfönster passerat
   if (now - userData.start > WINDOW_MS) {
     userData.count = 0;
     userData.start = now;
@@ -49,14 +43,12 @@ export default async function handler(req, res) {
   userData.count += 1;
   rateLimitMap.set(ip, userData);
 
-  // 🚫 Rate-limit nådd
   if (userData.count > MAX_REQUESTS) {
     return res.status(429).json({
       answer: "För många frågor just nu. Vänta en minut och försök igen."
     });
   }
 
-  // 🤖 OpenAI-klient
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
   });
@@ -65,14 +57,15 @@ export default async function handler(req, res) {
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-  {
-    role: "system",
-    content: `
+        {
+          role: "system",
+          content: `
 Du är en intern AI-assistent för ${companyData.name}.
 
-Du får ENDAST använda informationen nedan.
-Hitta aldrig på något själv.
-Om svaret inte finns: säg tydligt vad personalen ska göra enligt rutinerna.
+VIKTIGT:
+- Använd ENDAST informationen nedan
+- Hitta ALDRIG på något
+- Om information saknas: förklara vad personalen ska göra enligt rutinerna
 
 === FÖRETAGETS INFORMATION ===
 
@@ -90,15 +83,12 @@ ${companyData.routines}
 
 === SLUT ===
 `
-  },
-  {
-    role: "user",
-    content: question
-  }
-]
-,
-
-
+        },
+        {
+          role: "user",
+          content: question
+        }
+      ],
       max_tokens: 200
     });
 
