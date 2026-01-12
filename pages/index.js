@@ -14,8 +14,8 @@ export default function Home() {
       id: "santana",
       name: "Pizzeria Santana"
     },
-    dondolores123: {
-      id: "donDolores",
+    dolores123: {
+      id: "dolores",
       name: "Don Dolores"
     }
   };
@@ -31,30 +31,29 @@ export default function Home() {
   };
 
   const askAI = async () => {
-    if (!question.trim()) return;
+  if (!question.trim()) return;
 
-    setChat(prev => [...prev, { from: "user", text: question }]);
-    setLoading(true);
+  setChat(prev => [...prev, { from: "user", text: question }]);
+  setLoading(true);
 
-    try {
-      const res = await fetch("/api/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question,
-          company: company.id
-        })
-      });
+  try {
+    const res = await fetch("/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question, password }) // ✅ skicka med password här
+    });
 
-      const data = await res.json();
-      setChat(prev => [...prev, { from: "ai", text: data.answer }]);
-    } catch {
-      setChat(prev => [...prev, { from: "ai", text: "Ett fel uppstod." }]);
-    }
+    const data = await res.json();
+    setChat(prev => [...prev, { from: "ai", text: data.answer }]);
+  } catch (error) {
+    console.error(error);
+    setChat(prev => [...prev, { from: "ai", text: "Ett fel uppstod. Försök igen." }]);
+  }
 
-    setQuestion("");
-    setLoading(false);
-  };
+  setQuestion("");
+  setLoading(false);
+}; 
+
 
   // 🔒 LOGIN-SIDA
   if (!company) {

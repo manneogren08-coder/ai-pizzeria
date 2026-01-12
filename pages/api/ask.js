@@ -1,12 +1,8 @@
 import OpenAI from "openai";
-import pizzeriaSantana from "../../data/pizzeriaSantana";
-import donDolores from "../../data/donDolores";
+import { supabase } from "@/lib/supabase";
 
-// 🔐 Lösenord → företag
-const PASSWORD_MAP = {
-  santana123: pizzeriaSantana,
-  dolores123: donDolores
-};
+
+
 
 // ⏱️ Enkel in-memory rate limit (per IP)
 const rateLimitMap = new Map();
@@ -18,14 +14,25 @@ export default async function handler(req, res) {
     return res.status(405).json({ answer: "Endast POST-metod tillåten." });
   }
 
-  const { question, password } = req.body;
+  const { question, password } = req.body; 
+  console.log("PASSWORD FRÅN REQUEST:", `"${password}"`);
 
-  // 🔐 Kontrollera lösenord + företag
-  const companyData = PASSWORD_MAP[password];
+  console.log("📩 Inkommande fråga:", question);
+console.log("🔑 Inkommande lösenord:", password);
 
-  if (!companyData) {
-    return res.status(401).json({ answer: "Fel lösenord." });
-  }
+// 🔐 Hämta företag från databasen via lösenord
+const { data: companyData, error } = await supabase
+  .from("companies")
+  .select("*")
+  .eq("password", password)
+  .single();
+
+console.log("📦 companyData från DB:", companyData);
+
+if (error || !companyData) {
+  return res.status(401).json({ answer: "Fel lösenord." });
+}
+
 
   // 📍 Identifiera användare via IP
   const ip =
@@ -65,12 +72,15 @@ export default async function handler(req, res) {
           content: `
 Du är en INTERN AI-assistent för ${companyData.name}.
 
-VIKTIGA REGLER:
-- Använd ENDAST informationen nedan
-- Hitta ALDRIG på något
-- Om information saknas: säg vad personalen ska göra enligt rutiner (fråga ansvarig/chef)
-- Svara tydligt, kort och praktiskt
-- ALDRIG säga "jag vet inte"
+VIKTIGA REGLER (MÅSTE FÖLJAS):
+- Du ska ALLTID svara utifrån informationen nedan.
+- Om en fråga gäller rutiner (t.ex. stängning, öppning, kundhantering),
+  ska du ALLTID återge rutinerna ord för ord så tydligt som möjligt.
+- Du får INTE svara generellt.
+- Du får INTE säga "fråga chef", "fråga kollega" eller liknande
+  OM informationen finns nedan.
+- Endast om informationen HELT saknas får du säga:
+  "Detta finns inte dokumenterat. Kontakta ansvarig."
 
 === FÖRETAGETS INFORMATION ===
 
@@ -85,6 +95,20 @@ ${companyData.allergens}
 
 RUTINER:
 ${companyData.routines}
+
+STÄNGNINGSRUTINER:
+${companyData.closingRoutine}
+
+Beteenderiktlinjer:
+${companyData.behaviorGuidelines}
+
+Roller:
+${companyData.staffRoles}
+
+Personalsituationer:
+${companyData.staffSituations}
+
+
 
 === SLUT ===
 `
