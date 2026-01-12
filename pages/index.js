@@ -64,12 +64,14 @@ export default function Home() {
           <p>Skriv in ert personal-lösenord</p>
 
           <input
-            style={styles.input}
-            type="password"
-            placeholder="Lösenord"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-          />
+  style={styles.input}
+  type="password"
+  placeholder="Lösenord"
+  value={password}
+  onChange={e => setPassword(e.target.value)}
+  onKeyDown={e => e.key === "Enter" && login()} // ✅ ENTER LOGGAR IN
+/>
+
 
           {error && <p style={{ color: "red" }}>{error}</p>}
 
@@ -120,7 +122,7 @@ const styles = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    padding: 20
+    padding: 16
   },
   card: {
     background: "#fff",
@@ -128,7 +130,7 @@ const styles = {
     width: "100%",
     borderRadius: 12,
     padding: 20,
-    boxShadow: "0 10px 30px rgba(0,0,0,0.1)"
+    boxShadow: "0 10px 30px rgba(0,0,0,0.1)" 
   },
   chat: {
     border: "1px solid #ddd",
@@ -151,11 +153,15 @@ const styles = {
     marginBottom: 6
   },
   input: {
-    width: "100%",
-    padding: 10,
-    fontSize: 16,
-    marginBottom: 10
-  },
+  width: "100%",
+  padding: 10,
+  fontSize: 16,
+  marginBottom: 10,
+  boxSizing: "border-box",
+  borderRadius: 8,
+  border: "1px solid #d1d5db"
+},
+
   button: {
     width: "100%",
     padding: 12,
