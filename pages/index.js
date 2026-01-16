@@ -9,26 +9,30 @@ export default function Home() {
   const [error, setError] = useState("");
 
   // 🔐 Test-lösenord (ENKELT & TYDLIGT)
-  const PASSWORDS = {
-    santana123: {
-      id: "santana",
-      name: "Pizzeria Santana"
-    },
-    dolores123: {
-      id: "dolores",
-      name: "Don Dolores"
-    }
-  };
+  const login = async () => {
+  setError("");
 
-  const login = () => {
-    const match = PASSWORDS[password];
-    if (!match) {
-      setError("Fel lösenord");
-      return;
-    }
-    setCompany(match);
-    setError("");
-  };
+  const res = await fetch("/api/ask", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      password,
+      question: "__login_test__"
+    })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    setError("Fel lösenord");
+    return;
+  }
+
+  setCompany({
+    name: data.company?.name || "Företag"
+  });
+};
+
 
   const askAI = async () => {
   if (!question.trim()) return;
