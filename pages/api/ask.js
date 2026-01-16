@@ -57,6 +57,7 @@ if (error || !companyData) {
       answer: "För många frågor just nu. Vänta en minut och försök igen."
     });
   }
+  
 
   // 🤖 OpenAI-klient
   const openai = new OpenAI({
@@ -122,8 +123,12 @@ ${companyData.staffSituations}
     });
 
     return res.status(200).json({
-      answer: response.choices[0].message.content
-    });
+  answer: response.choices[0].message.content,
+  company: {
+    name: companyData.name
+  }
+});
+
   } catch (error) {
     console.error("OpenAI-fel:", error);
     return res.status(500).json({
