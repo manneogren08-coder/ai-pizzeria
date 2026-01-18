@@ -1,20 +1,37 @@
-const companies = {
-  "santana123": {
-    id: "santana"
-  },
-  "dolores123": {
-    id: "dolores"
-  }
-};
+import { createClient } from "@supabase/supabase-js";
 
-export default function handler(req, res) {
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Only POST allowed" });
+  }
+
   const { password } = req.body;
 
-  const company = companies[password];
+  if (!password) {
+    return res.status(400).json({ error: "Missing password" });
+  }
 
-  if (!company) {
+  const { data, error } = await supabase
+    .from("companies")
+    .select("id, name")
+    .eq("password", password)
+    .eq("active", true)
+    .single();
+
+  if (error || !data) {
     return res.status(401).json({ error: "Fel lösenord" });
   }
 
-  res.status(200).json({ companyId: company.id });
+  return res.status(200).json({
+    company: {
+      id: data.id,
+      name: data.name
+    }
+  });
 }
+

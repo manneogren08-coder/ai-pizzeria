@@ -5,59 +5,71 @@ export default function Home() {
   const [company, setCompany] = useState(null);
   const [question, setQuestion] = useState("");
   const [chat, setChat] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // används för login + fråga
   const [error, setError] = useState("");
 
-  // 🔐 Test-lösenord (ENKELT & TYDLIGT)
+  // ✅ SNABB LOGIN (ingen OpenAI)
   const login = async () => {
-  setError("");
+    if (!password.trim()) {
+      setError("Skriv in lösenord");
+      return;
+    }
 
-  const res = await fetch("/api/ask", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      password,
-      question: "__login_test__"
-    })
-  });
+    setError("");
+    setLoading(true);
 
-  const data = await res.json();
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
+      });
 
-  if (!res.ok) {
-    setError("Fel lösenord");
-    return;
-  }
+      const data = await res.json();
 
-  setCompany({
-    name: data.company?.name || "Företag"
-  });
-};
+      if (!res.ok) {
+        setError("Fel lösenord");
+        setLoading(false);
+        return;
+      }
 
+      // Förväntat svar från /api/login:
+      // { company: { id: 1, name: "Pizza Haus" } }
+      setCompany(data.company);
+    } catch (err) {
+      setError("Ett fel uppstod. Försök igen.");
+    }
 
+    setLoading(false);
+  };
+
+  // ✅ Fråga AI (fortfarande /api/ask)
   const askAI = async () => {
-  if (!question.trim()) return;
+    if (!question.trim() || loading) return;
 
-  setChat(prev => [...prev, { from: "user", text: question }]);
-  setLoading(true);
+    setChat(prev => [...prev, { from: "user", text: question }]);
+    setLoading(true);
 
-  try {
-    const res = await fetch("/api/ask", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, password }) // ✅ skicka med password här
-    });
+    try {
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, password }) // password används för att hitta rätt företag
+      });
 
-    const data = await res.json();
-    setChat(prev => [...prev, { from: "ai", text: data.answer }]);
-  } catch (error) {
-    console.error(error);
-    setChat(prev => [...prev, { from: "ai", text: "Ett fel uppstod. Försök igen." }]);
-  }
+      const data = await res.json();
+      setChat(prev => [...prev, { from: "ai", text: data.answer }]);
+    } catch (error) {
+      console.error(error);
+      setChat(prev => [
+        ...prev,
+        { from: "ai", text: "Ett fel uppstod. Försök igen." }
+      ]);
+    }
 
-  setQuestion("");
-  setLoading(false);
-}; 
-
+    setQuestion("");
+    setLoading(false);
+  };
 
   // 🔒 LOGIN-SIDA
   if (!company) {
@@ -68,19 +80,27 @@ export default function Home() {
           <p>Skriv in ert personal-lösenord</p>
 
           <input
-  style={styles.input}
-  type="password"
-  placeholder="Lösenord"
-  value={password}
-  onChange={e => setPassword(e.target.value)}
-  onKeyDown={e => e.key === "Enter" && login()} // ✅ ENTER LOGGAR IN
-/>
-
+            style={styles.input}
+            type="password"
+            placeholder="Lösenord"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && !loading && login()}
+            disabled={loading}
+          />
 
           {error && <p style={{ color: "red" }}>{error}</p>}
 
-          <button style={styles.button} onClick={login}>
-            Logga in
+          <button
+            style={{
+              ...styles.button,
+              opacity: loading ? 0.7 : 1,
+              cursor: loading ? "not-allowed" : "pointer"
+            }}
+            onClick={login}
+            disabled={loading}
+          >
+            {loading ? "Loggar in..." : "Logga in"}
           </button>
         </div>
       </div>
@@ -109,10 +129,19 @@ export default function Home() {
           value={question}
           onChange={e => setQuestion(e.target.value)}
           onKeyDown={e => e.key === "Enter" && askAI()}
+          disabled={loading}
         />
 
-        <button style={styles.button} onClick={askAI}>
-          Fråga AI
+        <button
+          style={{
+            ...styles.button,
+            opacity: loading ? 0.7 : 1,
+            cursor: loading ? "not-allowed" : "pointer"
+          }}
+          onClick={askAI}
+          disabled={loading}
+        >
+          {loading ? "Skickar..." : "Fråga AI"}
         </button>
       </div>
     </div>
@@ -134,7 +163,7 @@ const styles = {
     width: "100%",
     borderRadius: 12,
     padding: 20,
-    boxShadow: "0 10px 30px rgba(0,0,0,0.1)" 
+    boxShadow: "0 10px 30px rgba(0,0,0,0.1)"
   },
   chat: {
     border: "1px solid #ddd",
@@ -157,23 +186,22 @@ const styles = {
     marginBottom: 6
   },
   input: {
-  width: "100%",
-  padding: 10,
-  fontSize: 16,
-  marginBottom: 10,
-  boxSizing: "border-box",
-  borderRadius: 8,
-  border: "1px solid #d1d5db"
-},
-
+    width: "100%",
+    padding: 10,
+    fontSize: 16,
+    marginBottom: 10,
+    boxSizing: "border-box",
+    borderRadius: 8,
+    border: "1px solid #d1d5db"
+  },
   button: {
     width: "100%",
     padding: 12,
+    minHeight: 48,
     fontSize: 16,
     background: "#2563eb",
     color: "#fff",
     border: "none",
-    borderRadius: 8,
-    cursor: "pointer"
+    borderRadius: 8
   }
 };
