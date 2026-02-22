@@ -177,12 +177,14 @@ const styles = {
     alignItems: "center"
   },
   loginCard: {
-    background: "#ffffff",
-    padding: 32,
-    borderRadius: 16,
-    width: 360,
-    boxShadow: "0 20px 50px rgba(0,0,0,0.08)"
-  },
+  background: "#ffffff",
+  padding: 20,
+  borderRadius: 16,
+  width: "100%",
+  maxWidth: 360,
+  boxSizing: "border-box",
+  boxShadow: "0 20px 50px rgba(0,0,0,0.08)"
+},
   appContainer: {
     display: "flex",
     flexDirection: "column",
