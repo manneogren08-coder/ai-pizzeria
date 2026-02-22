@@ -1,4 +1,7 @@
+"use client";
+
 import { useState } from "react";
+
 
 export default function Demo() {
   const [password, setPassword] = useState("");
@@ -7,11 +10,18 @@ export default function Demo() {
   const [chat, setChat] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  // Vi sparar den password som faktiskt loggade in (så du kan rensa input om du vill)
   const [authPassword, setAuthPassword] = useState("");
 
-  // ✅ SNABB DEMO-LOGIN (ingen OpenAI)
+  // ✅ Alltid synliga "snabbfrågor" när man är inloggad
+  const EXAMPLE_QUESTIONS = [
+    "När öppnar vi på söndag?",
+    "Vilka allergener finns i Margherita?",
+    "Vad är stängningsrutinen steg för steg?",
+    "Vad gör vi om en gäst klagar på maten?",
+    "Vad gör jag om kassan inte stämmer?",
+    "Hur hanterar vi sjukfrånvaro samma dag?"
+  ];
+
   const login = async () => {
     if (!password.trim()) {
       setError("Skriv in demo-lösenord");
@@ -36,7 +46,7 @@ export default function Demo() {
         return;
       }
 
-      // 🔒 Viktigt: tillåt BARA DEMO-kontot på /demo
+      // 🔒 Tillåt BARA DEMO-kontot
       if (!data.company || String(data.company.name).toUpperCase() !== "DEMO") {
         setError("Fel demo-lösenord");
         setLoading(false);
@@ -44,8 +54,6 @@ export default function Demo() {
       }
 
       setAuthPassword(password);
-
-      // Visa alltid rubriken DEMO (du kan också använda data.company.name)
       setCompany({ name: "DEMO" });
     } catch (err) {
       setError("Ett fel uppstod. Försök igen.");
@@ -54,11 +62,12 @@ export default function Demo() {
     setLoading(false);
   };
 
-  // ✅ Fråga AI (använder authPassword så demo-data används)
-  const askAI = async () => {
-    if (!question.trim() || loading) return;
+  // ✅ En enda funktion som kan skicka valfri text (chips eller input)
+  const askAI = async (text) => {
+    const q = (text ?? question).trim();
+    if (!q || loading) return;
 
-    setChat(prev => [...prev, { from: "user", text: question }]);
+    setChat((prev) => [...prev, { from: "user", text: q }]);
     setLoading(true);
 
     try {
@@ -66,16 +75,16 @@ export default function Demo() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          question,
+          question: q,
           password: authPassword
         })
       });
 
       const data = await res.json();
-      setChat(prev => [...prev, { from: "ai", text: data.answer }]);
+      setChat((prev) => [...prev, { from: "ai", text: data.answer }]);
     } catch (error) {
       console.error(error);
-      setChat(prev => [
+      setChat((prev) => [
         ...prev,
         { from: "ai", text: "Ett fel uppstod. Försök igen." }
       ]);
@@ -85,12 +94,12 @@ export default function Demo() {
     setLoading(false);
   };
 
-  // 🔒 DEMO LOGIN-SIDA
+  // 🔒 LOGIN-SIDA
   if (!company) {
     return (
       <div style={styles.page}>
         <div style={styles.card}>
-          <h2>DEMO</h2>
+          <h2 style={{ marginTop: 0 }}>DEMO</h2>
           <p>Skriv in demo-lösenord</p>
 
           <input
@@ -98,12 +107,12 @@ export default function Demo() {
             type="password"
             placeholder="Demo-lösenord"
             value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && !loading && login()}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !loading && login()}
             disabled={loading}
           />
 
-          {error && <p style={{ color: "red" }}>{error}</p>}
+          {error && <p style={{ color: "red", marginTop: 0 }}>{error}</p>}
 
           <button
             style={{
@@ -125,8 +134,37 @@ export default function Demo() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <h1>DEMO</h1>
-        <p>Exempel på intern AI-guide för restaurangpersonal</p>
+        <h1 style={{ marginTop: 0 }}>DEMO</h1>
+        <p style={{ marginTop: 0 }}>
+          Exempel på intern AI-guide för restaurangpersonal
+        </p>
+
+        {/* ✅ "Bevis"-rad så du vet att rätt fil renderas */}
+        <div style={styles.proof}>
+          OM DU SER DETTA: du kör den uppdaterade demo.js (chips ska synas under).
+        </div>
+
+        {/* ✅ Snabbknappar (syns alltid här) */}
+        <div style={styles.chipsWrap}>
+          {EXAMPLE_QUESTIONS.map((text) => (
+            <button
+              key={text}
+              type="button"
+              style={{
+                ...styles.chip,
+                opacity: loading ? 0.7 : 1,
+                cursor: loading ? "not-allowed" : "pointer"
+              }}
+              disabled={loading}
+              onClick={() => {
+                setQuestion(text); // fyll input så man ser vad som skickas
+                askAI(text);       // skicka direkt
+              }}
+            >
+              {text}
+            </button>
+          ))}
+        </div>
 
         <div style={styles.chat}>
           {chat.map((msg, i) => (
@@ -141,8 +179,8 @@ export default function Demo() {
           style={styles.input}
           placeholder="Ställ en fråga…"
           value={question}
-          onChange={e => setQuestion(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && askAI()}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && askAI()}
           disabled={loading}
         />
 
@@ -152,11 +190,23 @@ export default function Demo() {
             opacity: loading ? 0.7 : 1,
             cursor: loading ? "not-allowed" : "pointer"
           }}
-          onClick={askAI}
+          onClick={() => askAI()}
           disabled={loading}
         >
           {loading ? "Skickar..." : "Fråga AI"}
         </button>
+
+        {/* Bonus: liten reset för demo */}
+        {chat.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setChat([])}
+            style={styles.secondaryButton}
+            disabled={loading}
+          >
+            Rensa chatten
+          </button>
+        )}
       </div>
     </div>
   );
@@ -173,11 +223,34 @@ const styles = {
   },
   card: {
     background: "#fff",
-    maxWidth: 420,
+    maxWidth: 520,
     width: "100%",
     borderRadius: 12,
     padding: 20,
     boxShadow: "0 10px 30px rgba(0,0,0,0.1)"
+  },
+  proof: {
+    border: "2px solid #ef4444",
+    background: "#fff7ed",
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 13,
+    marginBottom: 12
+  },
+  chipsWrap: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    marginBottom: 12
+  },
+  chip: {
+    padding: "8px 12px",
+    borderRadius: 999,
+    border: "1px solid #d1d5db",
+    background: "#fff",
+    fontSize: 13,
+    lineHeight: 1.2,
+    textAlign: "left"
   },
   chat: {
     border: "1px solid #ddd",
@@ -217,5 +290,17 @@ const styles = {
     color: "#fff",
     border: "none",
     borderRadius: 8
+  },
+  secondaryButton: {
+    marginTop: 10,
+    width: "100%",
+    padding: 12,
+    minHeight: 48,
+    fontSize: 16,
+    background: "#111827",
+    color: "#fff",
+    border: "none",
+    borderRadius: 8,
+    opacity: 0.9
   }
 };

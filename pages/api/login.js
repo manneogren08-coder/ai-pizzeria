@@ -17,11 +17,15 @@ export default async function handler(req, res) {
   }
 
   const { data, error } = await supabase
-    .from("companies")
-    .select("id, name")
-    .eq("password", password)
-    .eq("active", true)
-    .single();
+  .from("companies")
+  .select("id, name")
+  .eq("password", password)
+  .eq("active", true)
+  .maybeSingle();
+
+console.log("req.body:", req.body);
+console.log("req.body.password:", req.body.password);
+
 
   if (error || !data) {
     return res.status(401).json({ error: "Fel lösenord" });
