@@ -178,7 +178,7 @@ const styles = {
   },
   loginCard: {
   background: "#ffffff",
-  padding: 20,
+  padding: 32,
   borderRadius: 16,
   width: "100%",
   maxWidth: 360,
