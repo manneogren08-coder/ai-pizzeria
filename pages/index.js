@@ -46,7 +46,7 @@ export default function Home() {
       <div style={styles.loginPage}>
         <div style={styles.loginCard}>
           <div style={{ marginBottom: 28 }}>
-            <h1 style={styles.title}>AI Pizzerian</h1>
+            <h1 style={styles.title}>AI Assistent</h1>
             <p style={styles.subtitle}>
               Intern AI-assistent för restauranger
             </p>
