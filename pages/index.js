@@ -52,17 +52,24 @@ export default function Home() {
             </p>
           </div>
 
-          <input
-            type="password"
-            placeholder="Ange företagslösenord"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={styles.input}
-          />
+          <form
+  onSubmit={(e) => {
+    e.preventDefault();
+    handleLogin();
+  }}
+>
+  <input
+    type="password"
+    placeholder="Ange företagslösenord"
+    value={password}
+    onChange={(e) => setPassword(e.target.value)}
+    style={styles.input}
+  />
 
-          <button onClick={handleLogin} style={styles.primaryButton}>
-            Logga in
-          </button>
+  <button type="submit" style={styles.primaryButton}>
+    Logga in
+  </button>
+</form>
         </div>
       </div>
     );
@@ -95,11 +102,17 @@ export default function Home() {
 
       <div style={styles.inputArea}>
         <input
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Skriv ditt meddelande..."
-          style={styles.chatInput}
-        />
+  value={message}
+  onChange={(e) => setMessage(e.target.value)}
+  onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      sendMessage();
+    }
+  }}
+  placeholder="Skriv ditt meddelande..."
+  style={styles.chatInput}
+/>
         <button onClick={sendMessage} style={styles.sendButton}>
           Skicka
         </button>
