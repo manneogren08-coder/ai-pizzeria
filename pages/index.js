@@ -1,90 +1,128 @@
 import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
 
 export default function Home() {
   const [password, setPassword] = useState("");
   const [company, setCompany] = useState(null);
-  const [message, setMessage] = useState("");
+  const [question, setQuestion] = useState("");
   const [chat, setChat] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  async function handleLogin() {
-    const { data, error } = await supabase
-      .from("companies")
-      .select("*")
-      .eq("password", password)
-      .single();
-
-    if (data) {
-      setCompany(data);
-    } else {
-      alert("Fel lösenord");
+  const login = async () => {
+    if (!password.trim()) {
+      setError("Skriv in lösenord");
+      return;
     }
-  }
 
-  function sendMessage() {
-    if (!message.trim()) return;
+    setError("");
+    setLoading(true);
 
-    setChat([...chat, { role: "user", text: message }]);
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
+      });
 
-    setTimeout(() => {
-      setChat((prev) => [
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError("Fel lösenord");
+        setLoading(false);
+        return;
+      }
+
+      setCompany(data.company);
+    } catch (err) {
+      setError("Ett fel uppstod. Försök igen.");
+    }
+
+    setLoading(false);
+  };
+
+  const askAI = async () => {
+    if (!question.trim() || loading) return;
+
+    const userMessage = question;
+
+    setChat(prev => [...prev, { from: "user", text: userMessage }]);
+    setQuestion("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: userMessage, password })
+      });
+
+      const data = await res.json();
+
+      setChat(prev => [...prev, { from: "ai", text: data.answer }]);
+    } catch (error) {
+      setChat(prev => [
         ...prev,
-        { role: "ai", text: "Detta är ett AI-svar (koppla OpenAI här)." },
+        { from: "ai", text: "Ett fel uppstod. Försök igen." }
       ]);
-    }, 600);
+    }
 
-    setMessage("");
-  }
+    setLoading(false);
+  };
 
+  // 🔐 LOGIN PAGE
   if (!company) {
     return (
       <div style={styles.loginPage}>
         <div style={styles.loginCard}>
-          <div style={{ marginBottom: 28 }}>
-            <h1 style={styles.title}>AI Assistent</h1>
-            <p style={styles.subtitle}>
-              Intern AI-assistent för restauranger
-            </p>
-          </div>
 
-          <form
-  onSubmit={(e) => {
-    e.preventDefault();
-    handleLogin();
-  }}
->
-  <input
-    type="password"
-    placeholder="Ange företagslösenord"
-    value={password}
-    onChange={(e) => setPassword(e.target.value)}
-    style={styles.input}
-  />
+          
 
-  <button type="submit" style={styles.primaryButton}>
-    Logga in
-  </button>
-</form>
+          <h2 style={{ marginBottom: 6 }}>Intern personalguide</h2>
+          <p style={styles.subtitle}>
+            Logga in med ert personal-lösenord
+          </p>
+
+          <input
+            style={styles.input}
+            type="password"
+            placeholder="Lösenord"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && !loading && login()}
+            disabled={loading}
+          />
+
+          {error && <p style={styles.error}>{error}</p>}
+
+          <button
+            style={styles.primaryButton}
+            onClick={login}
+            disabled={loading}
+          >
+            {loading ? "Loggar in..." : "Logga in"}
+          </button>
+
         </div>
       </div>
     );
   }
 
+  // 💬 APP
   return (
     <div style={styles.appContainer}>
       <header style={styles.header}>
         <div>
-          <strong>{company.name}</strong>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>
-            AI-assistent aktiv
-          </div>
+          <h2 style={{ margin: 0 }}>{company.name}</h2>
+          <span style={styles.headerSub}>AI Personalguide</span>
         </div>
-        <button onClick={() => setCompany(null)} style={styles.logoutButton}>
+
+        <button
+          style={styles.logoutButton}
+          onClick={() => {
+            setCompany(null);
+            setChat([]);
+          }}
+        >
           Logga ut
         </button>
       </header>
@@ -93,27 +131,38 @@ export default function Home() {
         {chat.map((msg, i) => (
           <div
             key={i}
-            style={msg.role === "user" ? styles.userBubble : styles.aiBubble}
+            style={
+              msg.from === "user"
+                ? styles.userBubble
+                : styles.aiBubble
+            }
           >
             {msg.text}
           </div>
         ))}
+
+        {loading && (
+          <div style={styles.aiBubble}>
+            AI skriver...
+          </div>
+        )}
       </div>
 
       <div style={styles.inputArea}>
         <input
-  value={message}
-  onChange={(e) => setMessage(e.target.value)}
-  onKeyDown={(e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      sendMessage();
-    }
-  }}
-  placeholder="Skriv ditt meddelande..."
-  style={styles.chatInput}
-/>
-        <button onClick={sendMessage} style={styles.sendButton}>
+          style={styles.chatInput}
+          placeholder="Ställ en fråga till personalguiden..."
+          value={question}
+          onChange={e => setQuestion(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && askAI()}
+          disabled={loading}
+        />
+
+        <button
+          style={styles.sendButton}
+          onClick={askAI}
+          disabled={loading}
+        >
           Skicka
         </button>
       </div>
@@ -128,43 +177,49 @@ const styles = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 20
   },
 
   loginCard: {
+
     background: "#ffffff",
     padding: 40,
     borderRadius: 20,
     width: "100%",
     maxWidth: 400,
-    boxSizing: "border-box",
     boxShadow: "0 30px 80px rgba(0,0,0,0.08)",
     textAlign: "center",
+    boxSizing: "border-box"
   },
 
-  title: {
-    fontSize: 30,
-    fontWeight: 700,
-    letterSpacing: -0.5,
-    marginBottom: 6,
-    color: "#111827",
+  logoBox: {
+    width: 70,
+    height: 70,
+    borderRadius: 20,
+    background: "#2563eb",
+    color: "#fff",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    fontSize: 32,
+    margin: "0 auto 20px auto"
   },
 
   subtitle: {
-    fontSize: 14,
+    marginBottom: 24,
     color: "#6b7280",
-    margin: 0,
+    fontSize: 14
   },
 
   input: {
     width: "100%",
     padding: 14,
     fontSize: 16,
-    marginBottom: 14,
     borderRadius: 12,
     border: "1px solid #d1d5db",
-    outline: "none",
+    marginBottom: 16,
     boxSizing: "border-box",
+    outline: "none"
   },
 
   primaryButton: {
@@ -176,23 +231,34 @@ const styles = {
     border: "none",
     borderRadius: 12,
     cursor: "pointer",
-    fontWeight: 600,
+    fontWeight: 600
+  },
+
+  error: {
+    color: "#dc2626",
+    marginBottom: 12,
+    fontSize: 14
   },
 
   appContainer: {
     display: "flex",
     flexDirection: "column",
     height: "100vh",
-    background: "#f3f4f6",
+    background: "#f3f4f6"
   },
 
   header: {
-    padding: "16px 24px",
+    padding: "18px 28px",
     background: "#111827",
     color: "#fff",
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "center"
+  },
+
+  headerSub: {
+    fontSize: 13,
+    color: "#9ca3af"
   },
 
   logoutButton: {
@@ -201,7 +267,7 @@ const styles = {
     color: "#fff",
     padding: "8px 14px",
     borderRadius: 8,
-    cursor: "pointer",
+    cursor: "pointer"
   },
 
   chatArea: {
@@ -210,50 +276,51 @@ const styles = {
     padding: 24,
     display: "flex",
     flexDirection: "column",
-    gap: 12,
+    gap: 14
   },
 
   userBubble: {
     alignSelf: "flex-end",
     background: "#2563eb",
     color: "#fff",
-    padding: 12,
-    borderRadius: 12,
-    maxWidth: "70%",
+    padding: 14,
+    borderRadius: 16,
+    maxWidth: "70%"
   },
 
   aiBubble: {
     alignSelf: "flex-start",
     background: "#ffffff",
-    padding: 12,
-    borderRadius: 12,
+    padding: 14,
+    borderRadius: 16,
     maxWidth: "70%",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.05)"
   },
 
   inputArea: {
     display: "flex",
-    padding: 16,
+    padding: 18,
     borderTop: "1px solid #e5e7eb",
-    background: "#ffffff",
+    background: "#ffffff"
   },
 
   chatInput: {
     flex: 1,
-    padding: 12,
+    padding: 14,
     fontSize: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     border: "1px solid #d1d5db",
     marginRight: 12,
-    boxSizing: "border-box",
+    boxSizing: "border-box"
   },
 
   sendButton: {
     background: "#2563eb",
     color: "#fff",
     border: "none",
-    padding: "0 20px",
-    borderRadius: 10,
+    padding: "0 24px",
+    borderRadius: 12,
     cursor: "pointer",
-  },
+    fontWeight: 600
+  }
 };
