@@ -69,13 +69,16 @@ export default function Home() {
     setLoading(false);
   };
 
-  // 🔒 LOGIN
+  // 🔐 LOGIN PAGE
   if (!company) {
     return (
       <div style={styles.loginPage}>
         <div style={styles.loginCard}>
-          <h2 style={{ marginBottom: 8 }}>Intern personalguide</h2>
-          <p style={{ marginBottom: 20, color: "#6b7280" }}>
+
+          <div style={styles.logoBox}>🍕</div>
+
+          <h2 style={{ marginBottom: 6 }}>Intern personalguide</h2>
+          <p style={styles.subtitle}>
             Logga in med ert personal-lösenord
           </p>
 
@@ -89,7 +92,7 @@ export default function Home() {
             disabled={loading}
           />
 
-          {error && <p style={{ color: "#dc2626" }}>{error}</p>}
+          {error && <p style={styles.error}>{error}</p>}
 
           <button
             style={styles.primaryButton}
@@ -98,20 +101,19 @@ export default function Home() {
           >
             {loading ? "Loggar in..." : "Logga in"}
           </button>
+
         </div>
       </div>
     );
   }
 
-  // ✅ APP-LAYOUT
+  // 💬 APP
   return (
     <div style={styles.appContainer}>
       <header style={styles.header}>
         <div>
           <h2 style={{ margin: 0 }}>{company.name}</h2>
-          <span style={{ fontSize: 14, color: "#9ca3af" }}>
-            Intern AI-guide
-          </span>
+          <span style={styles.headerSub}>AI Personalguide</span>
         </div>
 
         <button
@@ -171,34 +173,93 @@ export default function Home() {
 const styles = {
   loginPage: {
     minHeight: "100vh",
-    background: "#f9fafb",
+    background: "linear-gradient(135deg, #eef2ff, #f8fafc)",
     display: "flex",
     justifyContent: "center",
-    alignItems: "center"
+    alignItems: "center",
+    padding: 20
   },
+
   loginCard: {
-  background: "#ffffff",
-  padding: 32,
-  borderRadius: 16,
-  width: "100%",
-  maxWidth: 360,
-  boxSizing: "border-box",
-  boxShadow: "0 20px 50px rgba(0,0,0,0.08)"
-},
+    background: "#ffffff",
+    padding: 40,
+    borderRadius: 20,
+    width: "100%",
+    maxWidth: 400,
+    boxShadow: "0 30px 80px rgba(0,0,0,0.08)",
+    textAlign: "center",
+    boxSizing: "border-box"
+  },
+
+  logoBox: {
+    width: 70,
+    height: 70,
+    borderRadius: 20,
+    background: "#2563eb",
+    color: "#fff",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    fontSize: 32,
+    margin: "0 auto 20px auto"
+  },
+
+  subtitle: {
+    marginBottom: 24,
+    color: "#6b7280",
+    fontSize: 14
+  },
+
+  input: {
+    width: "100%",
+    padding: 14,
+    fontSize: 16,
+    borderRadius: 12,
+    border: "1px solid #d1d5db",
+    marginBottom: 16,
+    boxSizing: "border-box",
+    outline: "none"
+  },
+
+  primaryButton: {
+    width: "100%",
+    padding: 14,
+    fontSize: 16,
+    background: "#2563eb",
+    color: "#fff",
+    border: "none",
+    borderRadius: 12,
+    cursor: "pointer",
+    fontWeight: 600
+  },
+
+  error: {
+    color: "#dc2626",
+    marginBottom: 12,
+    fontSize: 14
+  },
+
   appContainer: {
     display: "flex",
     flexDirection: "column",
     height: "100vh",
     background: "#f3f4f6"
   },
+
   header: {
-    padding: "16px 24px",
+    padding: "18px 28px",
     background: "#111827",
     color: "#fff",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center"
   },
+
+  headerSub: {
+    fontSize: 13,
+    color: "#9ca3af"
+  },
+
   logoutButton: {
     background: "#374151",
     border: "none",
@@ -207,68 +268,58 @@ const styles = {
     borderRadius: 8,
     cursor: "pointer"
   },
+
   chatArea: {
     flex: 1,
     overflowY: "auto",
     padding: 24,
     display: "flex",
     flexDirection: "column",
-    gap: 12
+    gap: 14
   },
+
   userBubble: {
     alignSelf: "flex-end",
     background: "#2563eb",
     color: "#fff",
-    padding: 12,
-    borderRadius: 12,
+    padding: 14,
+    borderRadius: 16,
     maxWidth: "70%"
   },
+
   aiBubble: {
     alignSelf: "flex-start",
     background: "#ffffff",
-    padding: 12,
-    borderRadius: 12,
+    padding: 14,
+    borderRadius: 16,
     maxWidth: "70%",
     boxShadow: "0 4px 12px rgba(0,0,0,0.05)"
   },
+
   inputArea: {
     display: "flex",
-    padding: 16,
+    padding: 18,
     borderTop: "1px solid #e5e7eb",
     background: "#ffffff"
   },
+
   chatInput: {
     flex: 1,
-    padding: 12,
+    padding: 14,
     fontSize: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     border: "1px solid #d1d5db",
-    marginRight: 12
+    marginRight: 12,
+    boxSizing: "border-box"
   },
+
   sendButton: {
     background: "#2563eb",
     color: "#fff",
     border: "none",
-    padding: "0 20px",
-    borderRadius: 10,
-    cursor: "pointer"
-  },
-  input: {
-    width: "100%",
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 12,
-    borderRadius: 10,
-    border: "1px solid #d1d5db"
-  },
-  primaryButton: {
-    width: "100%",
-    padding: 12,
-    fontSize: 16,
-    background: "#2563eb",
-    color: "#fff",
-    border: "none",
-    borderRadius: 10,
-    cursor: "pointer"
+    padding: "0 24px",
+    borderRadius: 12,
+    cursor: "pointer",
+    fontWeight: 600
   }
 };
