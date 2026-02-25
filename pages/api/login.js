@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import jwt from 'jsonwebtoken';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -17,25 +18,28 @@ export default async function handler(req, res) {
   }
 
   const { data, error } = await supabase
-  .from("companies")
-  .select("id, name")
-  .eq("password", password)
-  .eq("active", true)
-  .maybeSingle();
-
-console.log("req.body:", req.body);
-console.log("req.body.password:", req.body.password);
-
+    .from("companies")
+    .select("id, name")
+    .eq("password", password)
+    .eq("active", true)
+    .maybeSingle();
 
   if (error || !data) {
     return res.status(401).json({ error: "Fel lösenord" });
   }
 
+  // LÄGG TILL: Skapa token
+  const token = jwt.sign(
+    { companyId: data.id },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+
   return res.status(200).json({
+    token: token,  // LÄGG TILL
     company: {
       id: data.id,
       name: data.name
     }
   });
 }
-

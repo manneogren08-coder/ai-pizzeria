@@ -1,73 +1,78 @@
 import { useState } from "react";
 
 export default function Home() {
-  const [password, setPassword] = useState("");
-  const [company, setCompany] = useState(null);
+  const [token, setToken] = useState("");  // LÄGG TILL DENNA
+const [password, setPassword] = useState("");
+const [company, setCompany] = useState(null);
   const [question, setQuestion] = useState("");
   const [chat, setChat] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const login = async () => {
-    if (!password.trim()) {
-      setError("Skriv in lösenord");
+  if (!password.trim()) {
+    setError("Skriv in lösenord");
+    return;
+  }
+
+  setError("");
+  setLoading(true);
+
+  try {
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError("Fel lösenord");
+      setLoading(false);
       return;
     }
 
-    setError("");
-    setLoading(true);
+    setToken(data.token);      // LÄGG TILL DENNA
+    setCompany(data.company);
+  } catch (err) {
+    setError("Ett fel uppstod. Försök igen.");
+  }
 
-    try {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError("Fel lösenord");
-        setLoading(false);
-        return;
-      }
-
-      setCompany(data.company);
-    } catch (err) {
-      setError("Ett fel uppstod. Försök igen.");
-    }
-
-    setLoading(false);
-  };
+  setLoading(false);
+};
 
   const askAI = async () => {
-    if (!question.trim() || loading) return;
+  if (!question.trim() || loading) return;
 
-    const userMessage = question;
+  const userMessage = question;
 
-    setChat(prev => [...prev, { from: "user", text: userMessage }]);
-    setQuestion("");
-    setLoading(true);
+  setChat(prev => [...prev, { from: "user", text: userMessage }]);
+  setQuestion("");
+  setLoading(true);
 
-    try {
-      const res = await fetch("/api/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: userMessage, password })
-      });
+  try {
+    const res = await fetch("/api/ask", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`  // LÄGG TILL DENNA
+      },
+      body: JSON.stringify({ question: userMessage })  // TA BORT password
+    });
 
-      const data = await res.json();
+    const data = await res.json();
 
-      setChat(prev => [...prev, { from: "ai", text: data.answer }]);
-    } catch (error) {
-      setChat(prev => [
-        ...prev,
-        { from: "ai", text: "Ett fel uppstod. Försök igen." }
-      ]);
-    }
+    setChat(prev => [...prev, { from: "ai", text: data.answer }]);
+  } catch (error) {
+    setChat(prev => [
+      ...prev,
+      { from: "ai", text: "Ett fel uppstod. Försök igen." }
+    ]);
+  }
 
-    setLoading(false);
-  };
+  setLoading(false);
+};
 
   // 🔐 LOGIN PAGE
   if (!company) {
@@ -119,9 +124,10 @@ export default function Home() {
         <button
           style={styles.logoutButton}
           onClick={() => {
-            setCompany(null);
-            setChat([]);
-          }}
+  setCompany(null);
+  setToken("");  // LÄGG TILL DENNA
+  setChat([]);
+}}
         >
           Logga ut
         </button>
