@@ -10,7 +10,7 @@ const supabase = createClient(
 // Simple rate limiting: track attempts by IP
 const loginAttempts = {};
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
-const MAX_ATTEMPTS = 5;
+const MAX_ATTEMPTS = 50; // Higher for development, reduce to 5 in production
 
 function getClientIP(req) {
   return req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || 'unknown';
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
     // Hämta alla aktiva företag
     const { data: companies, error } = await supabase
       .from("companies")
-      .select("id, name, password_hash")
+      .select("id, name, password_hash, is_admin, active, query_count")
       .eq("active", true);
 
     console.log("Aktiva företag:", companies);
@@ -97,7 +97,10 @@ export default async function handler(req, res) {
       token,
       company: {
         id: data.id,
-        name: data.name
+        name: data.name,
+        is_admin: data.is_admin || false,
+        active: data.active !== undefined ? data.active : true,
+        query_count: data.query_count || 0
       }
     });
   } catch (err) {

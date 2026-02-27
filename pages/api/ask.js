@@ -103,6 +103,15 @@ Besvara alla frågor som om du sitter på plats i restaurangen. Var kortfattad, 
       ],
       max_tokens: 200
     });
+
+    // 📊 Increment query count (non-blocking, utan await)
+    supabase
+      .from("companies")
+      .update({ query_count: (companyData.query_count || 0) + 1 })
+      .eq("id", companyId)
+      .then(() => console.log("Query count updated"))
+      .catch(err => console.error("Failed to update query count:", err.message));
+
     return res.status(200).json({
       answer: response.choices[0].message.content,
       company: { name: companyData.name }
