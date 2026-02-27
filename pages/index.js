@@ -1,13 +1,21 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 export default function Home() {
-  const [token, setToken] = useState("");  // LÄGG TILL DENNA
-const [password, setPassword] = useState("");
-const [company, setCompany] = useState(null);
+  const [token, setToken] = useState(""); // LÄGG TILL DENNA
+  const [password, setPassword] = useState("");
+  const [company, setCompany] = useState(null);
   const [question, setQuestion] = useState("");
   const [chat, setChat] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const chatAreaRef = useRef(null);
+
+  // scroll when chat updates
+  useEffect(() => {
+    if (chatAreaRef.current) {
+      chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight;
+    }
+  }, [chat, loading]);
 
   const login = async () => {
   if (!password.trim()) {
@@ -43,7 +51,7 @@ const [company, setCompany] = useState(null);
 };
 
   const askAI = async () => {
-  if (!question.trim() || loading) return;
+    if (!question.trim() || loading) return;
 
   const userMessage = question;
 
@@ -78,7 +86,7 @@ const [company, setCompany] = useState(null);
   if (!company) {
     return (
       <div style={styles.loginPage}>
-        <div style={styles.loginCard}>
+        <div style={styles.loginCard} className="loginCard">
 
           
 
@@ -89,6 +97,7 @@ const [company, setCompany] = useState(null);
 
           <input
             style={styles.input}
+            className="chatInput"
             type="password"
             placeholder="Lösenord"
             value={password}
@@ -101,6 +110,7 @@ const [company, setCompany] = useState(null);
 
           <button
             style={styles.primaryButton}
+            className="primaryButton"
             onClick={login}
             disabled={loading}
           >
@@ -115,6 +125,31 @@ const [company, setCompany] = useState(null);
   // 💬 APP
   return (
     <div style={styles.appContainer}>
+      <style jsx>{`
+        .loginCard:hover { transform: translateY(-3px); }
+        .primaryButton:hover { background: #1e40af; }
+        .sendButton:hover { background: #1e40af; }
+        .chatInput:focus { border-color: #2563eb; }
+
+        .typing { display: flex; gap: 4px; }
+        .typing .dot {
+          width: 8px; height: 8px;
+          background: #2563eb;
+          border-radius: 50%;
+          animation: blink 1s infinite alternate;
+        }
+        .typing .dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes blink {
+          from { opacity: 0.3; }
+          to { opacity: 1; }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
       <header style={styles.header}>
         <div>
           <h2 style={{ margin: 0 }}>{company.name}</h2>
@@ -148,8 +183,10 @@ const [company, setCompany] = useState(null);
         ))}
 
         {loading && (
-          <div style={styles.aiBubble}>
-            AI skriver...
+          <div style={styles.aiBubble} className="typing">
+            <span className="dot" />
+            <span className="dot" />
+            <span className="dot" />
           </div>
         )}
       </div>
@@ -157,15 +194,18 @@ const [company, setCompany] = useState(null);
       <div style={styles.inputArea}>
         <input
           style={styles.chatInput}
+          className="chatInput"
           placeholder="Ställ en fråga till personalguiden..."
           value={question}
           onChange={e => setQuestion(e.target.value)}
           onKeyDown={e => e.key === "Enter" && askAI()}
           disabled={loading}
+          autoComplete="off"
         />
 
         <button
           style={styles.sendButton}
+          className="sendButton"
           onClick={askAI}
           disabled={loading}
         >
@@ -187,7 +227,6 @@ const styles = {
   },
 
   loginCard: {
-
     background: "#ffffff",
     padding: 40,
     borderRadius: 20,
@@ -195,7 +234,8 @@ const styles = {
     maxWidth: 400,
     boxShadow: "0 30px 80px rgba(0,0,0,0.08)",
     textAlign: "center",
-    boxSizing: "border-box"
+    boxSizing: "border-box",
+    transition: "transform 0.2s",
   },
 
   logoBox: {
@@ -225,7 +265,8 @@ const styles = {
     border: "1px solid #d1d5db",
     marginBottom: 16,
     boxSizing: "border-box",
-    outline: "none"
+    outline: "none",
+    transition: "border-color 0.2s"
   },
 
   primaryButton: {
@@ -237,7 +278,8 @@ const styles = {
     border: "none",
     borderRadius: 12,
     cursor: "pointer",
-    fontWeight: 600
+    fontWeight: 600,
+    transition: "background 0.2s, transform 0.1s"
   },
 
   error: {
@@ -291,7 +333,8 @@ const styles = {
     color: "#fff",
     padding: 14,
     borderRadius: 16,
-    maxWidth: "70%"
+    maxWidth: "70%",
+    animation: "fadeIn 0.2s"
   },
 
   aiBubble: {
@@ -300,7 +343,8 @@ const styles = {
     padding: 14,
     borderRadius: 16,
     maxWidth: "70%",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.05)"
+    boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+    animation: "fadeIn 0.2s"
   },
 
   inputArea: {

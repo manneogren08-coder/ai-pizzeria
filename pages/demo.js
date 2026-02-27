@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 
 export default function Demo() {
@@ -11,6 +11,13 @@ export default function Demo() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const chatRef = useRef(null);
+
+  useEffect(() => {
+    if (chatRef.current) {
+      chatRef.current.scrollTop = chatRef.current.scrollHeight;
+    }
+  }, [chat, loading]);
 
   // ✅ Alltid synliga "snabbfrågor" när man är inloggad
   const EXAMPLE_QUESTIONS = [
@@ -104,6 +111,7 @@ export default function Demo() {
 
           <input
             style={styles.input}
+            className="demoInput"
             type="password"
             placeholder="Demo-lösenord"
             value={password}
@@ -120,6 +128,7 @@ export default function Demo() {
               opacity: loading ? 0.7 : 1,
               cursor: loading ? "not-allowed" : "pointer"
             }}
+            className="primaryButton"
             onClick={login}
             disabled={loading}
           >
@@ -133,6 +142,15 @@ export default function Demo() {
   // ✅ INLOGGAD DEMO-SIDA
   return (
     <div style={styles.page}>
+      <style jsx>{`
+        .primaryButton:hover, .sendButton:hover { background: #1e40af; }
+        .chatInput:focus, .demoInput:focus { border-color: #2563eb; }
+        .typing { display: flex; gap: 4px; }
+        .typing .dot { width: 8px; height: 8px; background: #2563eb; border-radius: 50%; animation: blink 1s infinite alternate; }
+        .typing .dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes blink { from { opacity: 0.3; } to { opacity: 1; } }
+      `}</style>
       <div style={styles.card}>
         <h1 style={{ marginTop: 0 }}>DEMO</h1>
         <p style={{ marginTop: 0 }}>
@@ -166,17 +184,24 @@ export default function Demo() {
           ))}
         </div>
 
-        <div style={styles.chat}>
+        <div style={styles.chat} ref={chatRef}>
           {chat.map((msg, i) => (
             <div key={i} style={msg.from === "user" ? styles.user : styles.ai}>
               {msg.text}
             </div>
           ))}
-          {loading && <div style={styles.ai}>AI skriver…</div>}
+          {loading && (
+            <div style={styles.ai} className="typing">
+              <span className="dot" />
+              <span className="dot" />
+              <span className="dot" />
+            </div>
+          )}
         </div>
 
         <input
           style={styles.input}
+          className="chatInput"
           placeholder="Ställ en fråga…"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
@@ -190,6 +215,7 @@ export default function Demo() {
             opacity: loading ? 0.7 : 1,
             cursor: loading ? "not-allowed" : "pointer"
           }}
+          className="sendButton"
           onClick={() => askAI()}
           disabled={loading}
         >
