@@ -27,9 +27,10 @@ export default async function handler(req, res) {
     const { data: companyData, error } = await supabase
       .from("companies")
       .select("*")
-      .eq("id", companyId) // ÄNDRA: använd companyId istället för password
+      .eq("id", companyId)
       .single();
 
+    console.log("companyData from supabase:", companyData, "error:", error);
     if (error || !companyData) {
       return res.status(401).json({ answer: "Ogiltig token." });
     }
@@ -58,22 +59,50 @@ export default async function handler(req, res) {
       apiKey: process.env.OPENAI_API_KEY
     });
 
+    // assemble the system prompt from all text columns returned by Supabase
+    const ignore = new Set(["id", "name", "password", "active"]);
+    let companyInfoText = Object.entries(companyData)
+      .filter(([k, v]) => typeof v === "string" && v.trim() && !ignore.has(k))
+      .map(([k, v]) => `${k}:
+${v.trim()}`)
+      .join("\n\n");
+
+    // fallback to static files if the database has no usable data
+    if (!companyInfoText) {
+      try {
+        const pizzeriaSantana = await import("@/data/pizzeriaSantana");
+        const donDolores = await import("@/data/donDolores");
+        const localMap = {
+          "Pizzeria Santana": pizzeriaSantana.default,
+          "Don Dolores": donDolores.default
+        };
+        const local = localMap[companyData.name];
+        if (local) {
+          companyInfoText = JSON.stringify(local, null, 2);
+        }
+      } catch (_) {
+        // ignore import failures
+      }
+    }
+
+    const systemPrompt = `Du är en INTERN AI-assistent för ${companyData.name}.
+
+Följande information gäller för företaget och ska användas i svaren:
+${companyInfoText}
+
+Besvara alla frågor som om du sitter på plats i restaurangen. Var kortfattad, ge precisa instruktioner och använd talspråk.
+`;
+
+    console.log("systemPrompt used for OpenAI call:\n", systemPrompt);
+
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        {
-          role: "system",
-          content: `Du är en INTERN AI-assistent för ${companyData.name}.`
-            // ... resten av din system-prompt
-        },
-        {
-          role: "user",
-          content: question
-        }
+        { role: "system", content: systemPrompt },
+        { role: "user", content: question }
       ],
       max_tokens: 200
     });
-
     return res.status(200).json({
       answer: response.choices[0].message.content,
       company: { name: companyData.name }
