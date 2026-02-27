@@ -131,7 +131,7 @@ export default function Home() {
         .sendButton:hover { background: #1e40af; }
         .chatInput:focus { border-color: #2563eb; }
 
-        .typing { display: flex; gap: 4px; }
+        .typing { display: flex; gap: 4px; align-items: center; }
         .typing .dot {
           width: 8px; height: 8px;
           background: #2563eb;
@@ -140,6 +140,10 @@ export default function Home() {
         }
         .typing .dot:nth-child(2) { animation-delay: 0.2s; }
         .typing .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @media (max-width: 768px) {
+          .typing { display: flex; gap: 4px; }
+        }
 
         @keyframes blink {
           from { opacity: 0.3; }
