@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 
 export default function Home() {
-  const [token, setToken] = useState(""); // LÄGG TILL DENNA
+  const [token, setToken] = useState("");
   const [password, setPassword] = useState("");
   const [company, setCompany] = useState(null);
   const [question, setQuestion] = useState("");
@@ -9,6 +9,16 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const chatAreaRef = useRef(null);
+
+  // Restore token from localStorage on mount
+  useEffect(() => {
+    const savedToken = localStorage.getItem("token");
+    const savedCompany = localStorage.getItem("company");
+    if (savedToken && savedCompany) {
+      setToken(savedToken);
+      setCompany(JSON.parse(savedCompany));
+    }
+  }, []);
 
   // scroll when chat updates
   useEffect(() => {
@@ -41,8 +51,10 @@ export default function Home() {
       return;
     }
 
-    setToken(data.token);      // LÄGG TILL DENNA
+    setToken(data.token);      
     setCompany(data.company);
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("company", JSON.stringify(data.company));
   } catch (err) {
     setError("Ett fel uppstod. Försök igen.");
   }
@@ -163,10 +175,12 @@ export default function Home() {
         <button
           style={styles.logoutButton}
           onClick={() => {
-  setCompany(null);
-  setToken("");  // LÄGG TILL DENNA
-  setChat([]);
-}}
+            setCompany(null);
+            setToken("");
+            setChat([]);
+            localStorage.removeItem("token");
+            localStorage.removeItem("company");
+          }}
         >
           Logga ut
         </button>

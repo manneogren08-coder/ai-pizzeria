@@ -7,9 +7,42 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+// Simple rate limiting: track attempts by IP
+const loginAttempts = {};
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
+const MAX_ATTEMPTS = 5;
+
+function getClientIP(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+}
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  if (!loginAttempts[ip]) {
+    loginAttempts[ip] = { count: 0, resetTime: now + RATE_LIMIT_WINDOW };
+  }
+
+  const attempt = loginAttempts[ip];
+  
+  if (now > attempt.resetTime) {
+    attempt.count = 0;
+    attempt.resetTime = now + RATE_LIMIT_WINDOW;
+  }
+
+  attempt.count++;
+  return attempt.count > MAX_ATTEMPTS;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST allowed" });
+  }
+
+  const clientIP = getClientIP(req);
+  
+  // Rate limiting check
+  if (checkRateLimit(clientIP)) {
+    return res.status(429).json({ error: "För många inloggningsförsök. Försök igen senare." });
   }
 
   try {
