@@ -160,7 +160,8 @@ const updatePassword = async () => {
     const data = await res.json();
 
     if (!res.ok) {
-      setAdminMessage("❌ " + (data.error || "Fel vid uppdatering"));
+      const errorText = data.details ? `${data.error || "Fel vid uppdatering"} (${data.details})` : (data.error || "Fel vid uppdatering");
+      setAdminMessage("❌ " + errorText);
       setAdminLoading(false);
       return;
     }

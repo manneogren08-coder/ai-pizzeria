@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     // Get company details
     const { data: company, error } = await supabase
       .from("companies")
-      .select("support_email, opening_hours, closure_info, menu, allergens, routines, opening_routine, closing_routine, behavior_guidelines, staff_roles, staff_situations, query_count, active")
+      .select("*")
       .eq("id", companyId)
       .single();
 
@@ -37,9 +37,23 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Företag hittas inte" });
     }
 
-    return res.status(200).json({ 
-      details: company
-    });
+    const details = {
+      support_email: company.support_email || "",
+      opening_hours: company.opening_hours || "",
+      closure_info: company.closure_info || "",
+      menu: company.menu || "",
+      allergens: company.allergens || "",
+      routines: company.routines || "",
+      opening_routine: company.opening_routine || "",
+      closing_routine: company.closing_routine || "",
+      behavior_guidelines: company.behavior_guidelines || "",
+      staff_roles: company.staff_roles || "",
+      staff_situations: company.staff_situations || "",
+      query_count: company.query_count || 0,
+      active: !!company.active
+    };
+
+    return res.status(200).json({ details });
 
   } catch (err) {
     if (err.name === "JsonWebTokenError") {
