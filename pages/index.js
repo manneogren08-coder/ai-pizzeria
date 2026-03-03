@@ -23,6 +23,7 @@ export default function Home() {
     menu: "",
     allergens: "",
     routines: "",
+    opening_routine: "",
     closing_routine: "",
     behavior_guidelines: "",
     staff_roles: "",
@@ -354,6 +355,7 @@ const handleAdminClick = () => {
 
         @media (max-width: 768px) {
           .typing { display: flex; gap: 4px; }
+          .adminTabsBar { padding: 12px 12px !important; gap: 6px !important; }
         }
 
         @keyframes blink {
@@ -445,12 +447,13 @@ const handleAdminClick = () => {
         <>
           <div style={styles.adminPanel}>
             {/* Admin Tabs */}
-            <div style={styles.adminTabs}>
+            <div style={styles.adminTabs} className="adminTabsBar">
               <button
                 style={{
                   ...styles.adminTab,
                   ...(adminTab === "info" ? styles.adminTabActive : {})
                 }}
+                className="adminTabButton"
                 onClick={() => setAdminTab("info")}
               >
                 📋 Företagsinfo
@@ -460,6 +463,7 @@ const handleAdminClick = () => {
                   ...styles.adminTab,
                   ...(adminTab === "menu" ? styles.adminTabActive : {})
                 }}
+                className="adminTabButton"
                 onClick={() => setAdminTab("menu")}
               >
                 🍕 Meny & Allergener
@@ -469,6 +473,7 @@ const handleAdminClick = () => {
                   ...styles.adminTab,
                   ...(adminTab === "routines" ? styles.adminTabActive : {})
                 }}
+                className="adminTabButton"
                 onClick={() => setAdminTab("routines")}
               >
                 📝 Rutiner & Regler
@@ -478,6 +483,7 @@ const handleAdminClick = () => {
                   ...styles.adminTab,
                   ...(adminTab === "security" ? styles.adminTabActive : {})
                 }}
+                className="adminTabButton"
                 onClick={() => setAdminTab("security")}
               >
                 🔐 Säkerhet
@@ -487,6 +493,7 @@ const handleAdminClick = () => {
                   ...styles.adminTab,
                   ...(adminTab === "stats" ? styles.adminTabActive : {})
                 }}
+                className="adminTabButton"
                 onClick={() => setAdminTab("stats")}
               >
                 📊 Statistik
@@ -588,15 +595,23 @@ const handleAdminClick = () => {
                   
                   <label style={styles.label}>Arbetsrutiner</label>
                   <textarea
-                    style={{...styles.input, minHeight: 100}}
+                    style={{...styles.input, minHeight: 80}}
                     placeholder="Dagliga rutiner, arbetsuppgifter..."
                     value={companyDetails.routines || ""}
                     onChange={e => setCompanyDetails({...companyDetails, routines: e.target.value})}
                   />
 
+                  <label style={styles.label}>Öppningsrutiner</label>
+                  <textarea
+                    style={{...styles.input, minHeight: 80}}
+                    placeholder="Checklistor för öppning..."
+                    value={companyDetails.opening_routine || ""}
+                    onChange={e => setCompanyDetails({...companyDetails, opening_routine: e.target.value})}
+                  />
+
                   <label style={styles.label}>Stängningsrutiner</label>
                   <textarea
-                    style={{...styles.input, minHeight: 100}}
+                    style={{...styles.input, minHeight: 80}}
                     placeholder="Checklistor för stängning..."
                     value={companyDetails.closing_routine || ""}
                     onChange={e => setCompanyDetails({...companyDetails, closing_routine: e.target.value})}
@@ -604,7 +619,7 @@ const handleAdminClick = () => {
 
                   <label style={styles.label}>Beteenderegler</label>
                   <textarea
-                    style={{...styles.input, minHeight: 100}}
+                    style={{...styles.input, minHeight: 80}}
                     placeholder="Regler för personal..."
                     value={companyDetails.behavior_guidelines || ""}
                     onChange={e => setCompanyDetails({...companyDetails, behavior_guidelines: e.target.value})}
@@ -612,7 +627,7 @@ const handleAdminClick = () => {
 
                   <label style={styles.label}>Personalroller</label>
                   <textarea
-                    style={{...styles.input, minHeight: 100}}
+                    style={{...styles.input, minHeight: 80}}
                     placeholder="Olika roller och ansvar..."
                     value={companyDetails.staff_roles || ""}
                     onChange={e => setCompanyDetails({...companyDetails, staff_roles: e.target.value})}
@@ -620,7 +635,7 @@ const handleAdminClick = () => {
 
                   <label style={styles.label}>Personalsituationer</label>
                   <textarea
-                    style={{...styles.input, minHeight: 100}}
+                    style={{...styles.input, minHeight: 80}}
                     placeholder="Hantera olika situationer..."
                     value={companyDetails.staff_situations || ""}
                     onChange={e => setCompanyDetails({...companyDetails, staff_situations: e.target.value})}
@@ -854,7 +869,8 @@ const styles = {
   appContainer: {
     display: "flex",
     flexDirection: "column",
-    height: "100vh",
+    height: "100dvh",
+    minHeight: "100vh",
     background: "#f3f4f6"
   },
 
@@ -939,6 +955,7 @@ const styles = {
 
   adminPanel: {
     flex: 1,
+    minHeight: 0,
     display: "flex",
     flexDirection: "column",
     background: "#f3f4f6",
@@ -958,7 +975,8 @@ const styles = {
   },
 
   adminTab: {
-    padding: "8px 16px",
+    padding: "12px 16px",
+    minHeight: 44,
     border: "none",
     background: "transparent",
     color: "#6b7280",
@@ -977,11 +995,15 @@ const styles = {
 
   adminContent: {
     flex: 1,
-    padding: 32,
+    minHeight: 0,
+    padding: 24,
     maxWidth: 800,
     margin: "0 auto",
     width: "100%",
-    boxSizing: "border-box"
+    boxSizing: "border-box",
+    overflowY: "auto",
+    WebkitOverflowScrolling: "touch",
+    paddingBottom: 40
   },
 
   label: {

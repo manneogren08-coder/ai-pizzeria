@@ -4,13 +4,13 @@ import { useState, useRef, useEffect } from "react";
 
 
 export default function Demo() {
+  const [token, setToken] = useState("");
   const [password, setPassword] = useState("");
   const [company, setCompany] = useState(null);
   const [question, setQuestion] = useState("");
   const [chat, setChat] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [authPassword, setAuthPassword] = useState("");
   const chatRef = useRef(null);
 
   useEffect(() => {
@@ -60,7 +60,7 @@ export default function Demo() {
         return;
       }
 
-      setAuthPassword(password);
+      setToken(data.token);
       setCompany({ name: "DEMO" });
     } catch (err) {
       setError("Ett fel uppstod. Försök igen.");
@@ -80,10 +80,12 @@ export default function Demo() {
     try {
       const res = await fetch("/api/ask", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
-          question: q,
-          password: authPassword
+          question: q
         })
       });
 

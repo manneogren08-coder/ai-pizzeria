@@ -54,6 +54,7 @@ export default async function handler(req, res) {
         menu: details.menu,
         allergens: details.allergens,
         routines: details.routines,
+        opening_routine: details.opening_routine,
         closing_routine: details.closing_routine,
         behavior_guidelines: details.behavior_guidelines,
         staff_roles: details.staff_roles,

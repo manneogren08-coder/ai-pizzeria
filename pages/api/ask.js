@@ -59,31 +59,39 @@ export default async function handler(req, res) {
       apiKey: process.env.OPENAI_API_KEY
     });
 
-    // assemble the system prompt from all text columns returned by Supabase
-    const ignore = new Set(["id", "name", "password", "active"]);
-    let companyInfoText = Object.entries(companyData)
-      .filter(([k, v]) => typeof v === "string" && v.trim() && !ignore.has(k))
-      .map(([k, v]) => `${k}:
-${v.trim()}`)
-      .join("\n\n");
+    const editableFields = [
+      "support_email",
+      "opening_hours",
+      "closure_info",
+      "menu",
+      "allergens",
+      "routines",
+      "opening_routine",
+      "closing_routine",
+      "behavior_guidelines",
+      "staff_roles",
+      "staff_situations"
+    ];
 
-    // fallback to static files if the database has no usable data
-    if (!companyInfoText) {
-      try {
-        const pizzeriaSantana = await import("@/data/pizzeriaSantana");
-        const donDolores = await import("@/data/donDolores");
-        const localMap = {
-          "Pizzeria Santana": pizzeriaSantana.default,
-          "Don Dolores": donDolores.default
-        };
-        const local = localMap[companyData.name];
-        if (local) {
-          companyInfoText = JSON.stringify(local, null, 2);
-        }
-      } catch (_) {
-        // ignore import failures
-      }
-    }
+    const swedishLabels = {
+      support_email: "Support-email",
+      opening_hours: "Öppettider",
+      closure_info: "Stängningsinfo",
+      menu: "Meny",
+      allergens: "Allergener",
+      routines: "Rutiner",
+      opening_routine: "Öppningsrutin",
+      closing_routine: "Stängningsrutin",
+      behavior_guidelines: "Beteenderiktlinjer",
+      staff_roles: "Personalroller",
+      staff_situations: "Personalsituationer"
+    };
+
+    const companyInfoText = editableFields
+      .map((field) => ({ field, value: companyData[field] }))
+      .filter(({ value }) => typeof value === "string" && value.trim())
+      .map(({ field, value }) => `${swedishLabels[field]}:\n${value.trim()}`)
+      .join("\n\n");
 
     const systemPrompt = `Du är en INTERN AI-assistent för ${companyData.name}.
 
@@ -91,6 +99,7 @@ Följande information gäller för företaget och ska användas i svaren:
 ${companyInfoText}
 
 Besvara alla frågor som om du sitter på plats i restaurangen. Var kortfattad, ge precisa instruktioner och använd talspråk.
+Om information saknas i underlaget ovan, säg tydligt att uppgiften saknas istället för att gissa.
 `;
 
     console.log("systemPrompt used for OpenAI call:\n", systemPrompt);

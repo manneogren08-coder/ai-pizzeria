@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     // Get company details
     const { data: company, error } = await supabase
       .from("companies")
-      .select("support_email, opening_hours, closure_info, menu, allergens, routines, closing_routine, behavior_guidelines, staff_roles, staff_situations, query_count, active")
+      .select("support_email, opening_hours, closure_info, menu, allergens, routines, opening_routine, closing_routine, behavior_guidelines, staff_roles, staff_situations, query_count, active")
       .eq("id", companyId)
       .single();
 
