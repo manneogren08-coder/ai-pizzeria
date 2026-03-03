@@ -361,7 +361,9 @@ const verifyAdminPassword = async () => {
     const data = await res.json();
 
     if (!res.ok) {
-      setAdminPasswordError("❌ Fel admin-lösenord");
+      const errorText = data.details ? `${data.error || "Fel vid verifiering"} (${data.details})` : (data.error || "Fel vid verifiering");
+      setAdminPasswordError("❌ " + errorText);
+      showToast(errorText, "error");
       setAdminLoading(false);
       return;
     }
@@ -372,6 +374,7 @@ const verifyAdminPassword = async () => {
     setAdminPassword("");
   } catch (err) {
     setAdminPasswordError("❌ Ett fel uppstod");
+    showToast("Ett fel uppstod", "error");
   }
 
   setAdminLoading(false);
