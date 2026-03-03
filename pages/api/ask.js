@@ -2,6 +2,20 @@ import OpenAI from "openai";
 import { supabase } from "@/lib/supabase";
 import jwt from 'jsonwebtoken';
 
+const OPENING_ROUTINE_SECTION_REGEX = /\[OPENING_ROUTINE\]([\s\S]*?)\[\/OPENING_ROUTINE\]/i;
+
+function extractEmbeddedOpeningRoutine(routinesText) {
+  if (typeof routinesText !== "string") {
+    return { cleanedRoutines: "", openingRoutine: "" };
+  }
+
+  const match = routinesText.match(OPENING_ROUTINE_SECTION_REGEX);
+  const openingRoutine = match?.[1]?.trim() || "";
+  const cleanedRoutines = routinesText.replace(OPENING_ROUTINE_SECTION_REGEX, "").trim();
+
+  return { cleanedRoutines, openingRoutine };
+}
+
 // ⏱️ Enkel in-memory rate limit (per IP)
 const rateLimitMap = new Map();
 const MAX_REQUESTS = 30;           // 30 frågor
@@ -34,6 +48,13 @@ export default async function handler(req, res) {
     if (error || !companyData) {
       return res.status(401).json({ answer: "Ogiltig token." });
     }
+
+    const { cleanedRoutines, openingRoutine } = extractEmbeddedOpeningRoutine(companyData.routines || "");
+    const normalizedCompanyData = {
+      ...companyData,
+      routines: cleanedRoutines,
+      opening_routine: companyData.opening_routine || openingRoutine
+    };
 
     // 📍 Rate limiting (samma som innan)
     const ip = req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
@@ -88,7 +109,7 @@ export default async function handler(req, res) {
     };
 
     const companyInfoText = editableFields
-      .map((field) => ({ field, value: companyData[field] }))
+      .map((field) => ({ field, value: normalizedCompanyData[field] }))
       .filter(({ value }) => typeof value === "string" && value.trim())
       .map(({ field, value }) => `${swedishLabels[field]}:\n${value.trim()}`)
       .join("\n\n");
@@ -110,7 +131,7 @@ Om information saknas i underlaget ovan, säg tydligt att uppgiften saknas istä
         { role: "system", content: systemPrompt },
         { role: "user", content: question }
       ],
-      max_tokens: 200
+      max_tokens: 700
     });
 
     // 📊 Increment query count (non-blocking, utan await)

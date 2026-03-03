@@ -1,10 +1,31 @@
-import { createClient } from "@supabase/supabase-js";
 import jwt from 'jsonwebtoken';
+import { getSupabaseAdminClient } from "../../../lib/supabase.js";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+const OPENING_ROUTINE_START = "[OPENING_ROUTINE]";
+const OPENING_ROUTINE_END = "[/OPENING_ROUTINE]";
+
+function stripOpeningRoutineSection(text) {
+  if (typeof text !== "string") return "";
+  const pattern = new RegExp(`${OPENING_ROUTINE_START}[\\s\\S]*?${OPENING_ROUTINE_END}`, "g");
+  return text.replace(pattern, "").trim();
+}
+
+function withEmbeddedOpeningRoutine(routinesText, openingRoutineText) {
+  const baseRoutines = stripOpeningRoutineSection(routinesText);
+  const openingRoutine = typeof openingRoutineText === "string" ? openingRoutineText.trim() : "";
+
+  if (!openingRoutine) {
+    return baseRoutines;
+  }
+
+  return [
+    baseRoutines,
+    `${OPENING_ROUTINE_START}\n${openingRoutine}\n${OPENING_ROUTINE_END}`
+  ]
+    .filter(Boolean)
+    .join("\n\n")
+    .trim();
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -12,6 +33,12 @@ export default async function handler(req, res) {
   }
 
   try {
+    const supabase = getSupabaseAdminClient();
+
+    if (!supabase) {
+      return res.status(500).json({ error: "Servern saknar SUPABASE_SERVICE_ROLE_KEY" });
+    }
+
     const token = req.headers.authorization?.replace("Bearer ", "");
     
     if (!token) {
@@ -50,7 +77,7 @@ export default async function handler(req, res) {
       closure_info: details.closure_info ?? "",
       menu: details.menu ?? "",
       allergens: details.allergens ?? "",
-      routines: details.routines ?? "",
+      routines: stripOpeningRoutineSection(details.routines ?? ""),
       opening_routine: details.opening_routine ?? "",
       closing_routine: details.closing_routine ?? "",
       behavior_guidelines: details.behavior_guidelines ?? "",
@@ -75,10 +102,10 @@ export default async function handler(req, res) {
 
       updateError = error;
 
+      const errorMessage = error.message || "";
       const missingColumnMatch =
-        error.code === "42703"
-          ? (error.message || "").match(/column\s+"?([a-zA-Z0-9_]+)"?\s+does not exist/i)
-          : null;
+        errorMessage.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+does not exist/i) ||
+        errorMessage.match(/Could not find the '([a-zA-Z0-9_]+)' column of '[^']+' in the schema cache/i);
 
       if (!missingColumnMatch) {
         break;
@@ -87,6 +114,13 @@ export default async function handler(req, res) {
       const missingColumn = missingColumnMatch[1];
       if (!Object.prototype.hasOwnProperty.call(payloadToTry, missingColumn)) {
         break;
+      }
+
+      if (missingColumn === "opening_routine") {
+        payloadToTry.routines = withEmbeddedOpeningRoutine(
+          payloadToTry.routines,
+          payloadToTry.opening_routine
+        );
       }
 
       removedColumns.push(missingColumn);
@@ -108,10 +142,13 @@ export default async function handler(req, res) {
     });
 
   } catch (err) {
-    if (err.name === "JsonWebTokenError") {
-      return res.status(401).json({ error: "Ogiltig token" });
+    if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
+      return res.status(401).json({ error: "Din session har gått ut. Logga in igen." });
     }
     console.error("Error:", err);
-    return res.status(500).json({ error: "Serverfel" });
+    return res.status(500).json({
+      error: "Serverfel",
+      details: err?.message || "Okänt serverfel"
+    });
   }
 }

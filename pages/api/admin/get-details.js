@@ -1,10 +1,19 @@
-import { createClient } from "@supabase/supabase-js";
 import jwt from 'jsonwebtoken';
+import { getSupabaseAdminClient } from "../../../lib/supabase.js";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+const OPENING_ROUTINE_SECTION_REGEX = /\[OPENING_ROUTINE\]([\s\S]*?)\[\/OPENING_ROUTINE\]/i;
+
+function extractEmbeddedOpeningRoutine(routinesText) {
+  if (typeof routinesText !== "string") {
+    return { cleanedRoutines: "", openingRoutine: "" };
+  }
+
+  const match = routinesText.match(OPENING_ROUTINE_SECTION_REGEX);
+  const openingRoutine = match?.[1]?.trim() || "";
+  const cleanedRoutines = routinesText.replace(OPENING_ROUTINE_SECTION_REGEX, "").trim();
+
+  return { cleanedRoutines, openingRoutine };
+}
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -12,6 +21,12 @@ export default async function handler(req, res) {
   }
 
   try {
+    const supabase = getSupabaseAdminClient();
+
+    if (!supabase) {
+      return res.status(500).json({ error: "Servern saknar SUPABASE_SERVICE_ROLE_KEY" });
+    }
+
     const token = req.headers.authorization?.replace("Bearer ", "");
     
     if (!token) {
@@ -37,14 +52,16 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Företag hittas inte" });
     }
 
+    const { cleanedRoutines, openingRoutine } = extractEmbeddedOpeningRoutine(company.routines || "");
+
     const details = {
       support_email: company.support_email || "",
       opening_hours: company.opening_hours || "",
       closure_info: company.closure_info || "",
       menu: company.menu || "",
       allergens: company.allergens || "",
-      routines: company.routines || "",
-      opening_routine: company.opening_routine || "",
+      routines: cleanedRoutines,
+      opening_routine: company.opening_routine || openingRoutine,
       closing_routine: company.closing_routine || "",
       behavior_guidelines: company.behavior_guidelines || "",
       staff_roles: company.staff_roles || "",
@@ -56,8 +73,8 @@ export default async function handler(req, res) {
     return res.status(200).json({ details });
 
   } catch (err) {
-    if (err.name === "JsonWebTokenError") {
-      return res.status(401).json({ error: "Ogiltig token" });
+    if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
+      return res.status(401).json({ error: "Din session har gått ut. Logga in igen." });
     }
     console.error("Error:", err);
     return res.status(500).json({ error: "Serverfel" });

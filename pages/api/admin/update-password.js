@@ -1,11 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+import { getSupabaseAdminClient } from "../../../lib/supabase.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -13,6 +8,12 @@ export default async function handler(req, res) {
   }
 
   try {
+    const supabase = getSupabaseAdminClient();
+
+    if (!supabase) {
+      return res.status(500).json({ error: "Servern saknar SUPABASE_SERVICE_ROLE_KEY" });
+    }
+
     const token = req.headers.authorization?.replace("Bearer ", "");
     
     if (!token) {
@@ -65,8 +66,8 @@ export default async function handler(req, res) {
     });
 
   } catch (err) {
-    if (err.name === "JsonWebTokenError") {
-      return res.status(401).json({ error: "Ogiltig token" });
+    if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
+      return res.status(401).json({ error: "Din session har gått ut. Logga in igen." });
     }
     console.error("Error:", err);
     return res.status(500).json({ error: "Serverfel" });

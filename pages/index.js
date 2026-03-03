@@ -1,6 +1,28 @@
 import { useState, useRef, useEffect } from "react";
 
 export default function Home() {
+  const emptyDetails = {
+    support_email: "",
+    opening_hours: "",
+    closure_info: "",
+    menu: "",
+    allergens: "",
+    routines: "",
+    opening_routine: "",
+    closing_routine: "",
+    behavior_guidelines: "",
+    staff_roles: "",
+    staff_situations: ""
+  };
+
+  const tabFieldMap = {
+    info: ["support_email", "opening_hours", "closure_info"],
+    menu: ["menu", "allergens"],
+    routines: ["routines", "opening_routine", "closing_routine", "behavior_guidelines", "staff_roles", "staff_situations"]
+  };
+
+  const quickQuestions = ["Visa hela menyn", "Vilka allergener finns?", "Vad är öppettiderna?", "Vad är öppningsrutinen?"];
+
   const [token, setToken] = useState("");
   const [password, setPassword] = useState("");
   const [company, setCompany] = useState(null);
@@ -16,20 +38,72 @@ export default function Home() {
   const [newPassword, setNewPassword] = useState("");
   const [adminMessage, setAdminMessage] = useState("");
   const [adminLoading, setAdminLoading] = useState(false);
-  const [companyDetails, setCompanyDetails] = useState({
-    support_email: "",
-    opening_hours: "",
-    closure_info: "",
-    menu: "",
-    allergens: "",
-    routines: "",
-    opening_routine: "",
-    closing_routine: "",
-    behavior_guidelines: "",
-    staff_roles: "",
-    staff_situations: ""
-  });
+  const [companyDetails, setCompanyDetails] = useState(emptyDetails);
+  const [savedCompanyDetails, setSavedCompanyDetails] = useState(emptyDetails);
+  const [lastSavedAt, setLastSavedAt] = useState(null);
+  const [toast, setToast] = useState({ text: "", type: "success", visible: false });
   const chatAreaRef = useRef(null);
+  const toastTimerRef = useRef(null);
+
+  const showToast = (text, type = "success") => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+
+    setToast({ text, type, visible: true });
+    toastTimerRef.current = setTimeout(() => {
+      setToast(prev => ({ ...prev, visible: false }));
+    }, 2600);
+  };
+
+  const isTabDirty = (tab) => {
+    const fields = tabFieldMap[tab] || [];
+    return fields.some(field => (companyDetails[field] || "") !== (savedCompanyDetails[field] || ""));
+  };
+
+  const resetCurrentTab = () => {
+    const fields = tabFieldMap[adminTab] || [];
+    if (fields.length === 0) {
+      return;
+    }
+
+    const nextDetails = { ...companyDetails };
+    fields.forEach((field) => {
+      nextDetails[field] = savedCompanyDetails[field] || "";
+    });
+    setCompanyDetails(nextDetails);
+    showToast("Ändringar återställda", "info");
+  };
+
+  const formatAiAnswer = (answer) => {
+    if (typeof answer !== "string") return "";
+    const trimmed = answer.trim();
+    if (trimmed.length < 520 || trimmed.includes("\n\n") || trimmed.includes("**")) {
+      return trimmed;
+    }
+
+    const lower = trimmed.toLowerCase();
+    if (!/(meny|allergen|rutin|öppettid|kontakt)/i.test(lower)) {
+      return trimmed;
+    }
+
+    const chunks = trimmed.match(/[^.!?]+[.!?]+/g) || [trimmed];
+    if (chunks.length < 6) {
+      return trimmed;
+    }
+
+    const sectionSize = Math.ceil(chunks.length / 3);
+    const sections = [
+      { title: "Meny", body: chunks.slice(0, sectionSize) },
+      { title: "Rutiner", body: chunks.slice(sectionSize, sectionSize * 2) },
+      { title: "Kontakt", body: chunks.slice(sectionSize * 2) }
+    ];
+
+    return sections
+      .filter(section => section.body.length)
+      .map(section => `${section.title}:\n${section.body.join(" ").trim()}`)
+      .join("\n\n");
+  };
 
   // Restore token from localStorage on mount
   useEffect(() => {
@@ -58,6 +132,7 @@ export default function Home() {
       const data = await res.json();
       if (res.ok && data.details) {
         setCompanyDetails(data.details);
+        setSavedCompanyDetails(data.details);
       }
     } catch (err) {
       console.error("Failed to fetch details:", err);
@@ -70,6 +145,14 @@ export default function Home() {
       chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight;
     }
   }, [chat, loading]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   const login = async () => {
   if (!password.trim()) {
@@ -106,10 +189,9 @@ export default function Home() {
   setLoading(false);
 };
 
-  const askAI = async () => {
-    if (!question.trim() || loading) return;
-
-  const userMessage = question;
+  const askAI = async (presetQuestion) => {
+    const userMessage = (presetQuestion || question).trim();
+    if (!userMessage || loading) return;
 
   setChat(prev => [...prev, { from: "user", text: userMessage }]);
   setQuestion("");
@@ -127,7 +209,7 @@ export default function Home() {
 
     const data = await res.json();
 
-    setChat(prev => [...prev, { from: "ai", text: data.answer }]);
+    setChat(prev => [...prev, { from: "ai", text: formatAiAnswer(data.answer) }]);
   } catch (error) {
     setChat(prev => [
       ...prev,
@@ -140,7 +222,7 @@ export default function Home() {
 
 const updatePassword = async () => {
   if (!newPassword.trim()) {
-    setAdminMessage("Skriv in ett nytt lösenord");
+    showToast("Skriv in ett nytt lösenord", "error");
     return;
   }
 
@@ -162,15 +244,18 @@ const updatePassword = async () => {
     if (!res.ok) {
       const errorText = data.details ? `${data.error || "Fel vid uppdatering"} (${data.details})` : (data.error || "Fel vid uppdatering");
       setAdminMessage("❌ " + errorText);
+      showToast(errorText, "error");
       setAdminLoading(false);
       return;
     }
 
     setAdminMessage("✅ Lösenord uppdaterat!");
+    showToast("Lösenord uppdaterat", "success");
     setNewPassword("");
     setTimeout(() => setAdminMessage(""), 3000);
   } catch (err) {
     setAdminMessage("❌ Ett fel uppstod");
+    showToast("Ett fel uppstod", "error");
   }
 
   setAdminLoading(false);
@@ -193,15 +278,21 @@ const updateCompanyDetails = async () => {
     const data = await res.json();
 
     if (!res.ok) {
-      setAdminMessage("❌ " + (data.error || "Fel vid uppdatering"));
+      const errorText = data.details ? `${data.error || "Fel vid uppdatering"} (${data.details})` : (data.error || "Fel vid uppdatering");
+      setAdminMessage("❌ " + errorText);
+      showToast(errorText, "error");
       setAdminLoading(false);
       return;
     }
 
     setAdminMessage("✅ Uppgifter uppdaterade!");
+    setSavedCompanyDetails(companyDetails);
+    setLastSavedAt(new Date());
+    showToast("Ändringar sparade", "success");
     setTimeout(() => setAdminMessage(""), 3000);
   } catch (err) {
     setAdminMessage("❌ Ett fel uppstod");
+    showToast("Ett fel uppstod", "error");
   }
 
   setAdminLoading(false);
@@ -227,6 +318,7 @@ const toggleCompanyStatus = async () => {
 
     if (!res.ok) {
       setAdminMessage("❌ " + (data.error || "Fel vid statusändring"));
+      showToast(data.error || "Fel vid statusändring", "error");
       setAdminLoading(false);
       return;
     }
@@ -237,9 +329,11 @@ const toggleCompanyStatus = async () => {
     localStorage.setItem("company", JSON.stringify(updatedCompany));
     
     setAdminMessage(`✅ Företaget är nu ${!company.active ? 'aktiverat' : 'deaktiverat'}`);
+    showToast(`Företaget är nu ${!company.active ? 'aktiverat' : 'deaktiverat'}`, "success");
     setTimeout(() => setAdminMessage(""), 3000);
   } catch (err) {
     setAdminMessage("❌ Ett fel uppstod");
+    showToast("Ett fel uppstod", "error");
   }
 
   setAdminLoading(false);
@@ -343,6 +437,22 @@ const handleAdminClick = () => {
         .primaryButton:hover { background: #1e40af; }
         .sendButton:hover { background: #1e40af; }
         .chatInput:focus { border-color: #2563eb; }
+        input:focus, textarea:focus {
+          border-color: #2563eb;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+        .adminSectionCard {
+          background: #fff;
+          border-radius: 14px;
+          padding: 18px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .adminSectionCard:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+        }
+        .quickActionButton:hover { background: #e0ebff; }
 
         .typing { display: flex; gap: 4px; align-items: center; }
         .typing .dot {
@@ -357,6 +467,7 @@ const handleAdminClick = () => {
         @media (max-width: 768px) {
           .typing { display: flex; gap: 4px; }
           .adminTabsBar { padding: 12px 12px !important; gap: 6px !important; }
+          .quickActionWrap { padding: 8px 12px !important; }
         }
 
         @keyframes blink {
@@ -368,6 +479,17 @@ const handleAdminClick = () => {
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
+      {toast.visible && (
+        <div
+          style={{
+            ...styles.toast,
+            ...(toast.type === "error" ? styles.toastError : {}),
+            ...(toast.type === "info" ? styles.toastInfo : {})
+          }}
+        >
+          {toast.text}
+        </div>
+      )}
       <header style={styles.header}>
         <div>
           <h2 style={{ margin: 0 }}>{company.name}</h2>
@@ -458,6 +580,7 @@ const handleAdminClick = () => {
                 onClick={() => setAdminTab("info")}
               >
                 📋 Företagsinfo
+                {isTabDirty("info") && <span style={styles.tabDirtyDot}>●</span>}
               </button>
               <button
                 style={{
@@ -468,6 +591,7 @@ const handleAdminClick = () => {
                 onClick={() => setAdminTab("menu")}
               >
                 🍕 Meny & Allergener
+                {isTabDirty("menu") && <span style={styles.tabDirtyDot}>●</span>}
               </button>
               <button
                 style={{
@@ -478,6 +602,7 @@ const handleAdminClick = () => {
                 onClick={() => setAdminTab("routines")}
               >
                 📝 Rutiner & Regler
+                {isTabDirty("routines") && <span style={styles.tabDirtyDot}>●</span>}
               </button>
               <button
                 style={{
@@ -503,15 +628,21 @@ const handleAdminClick = () => {
 
             {/* Admin Content */}
             <div style={styles.adminContent}>
+              {lastSavedAt && (
+                <p style={styles.lastSavedText}>
+                  Senast uppdaterad: {lastSavedAt.toLocaleString("sv-SE")}
+                </p>
+              )}
               {adminTab === "info" && (
-                <div>
+                <div className="adminSectionCard">
                   <h3 style={{ marginTop: 0 }}>Företagsinformation</h3>
+                  <p style={styles.helperText}>Exempel: supportmail, öppettider och eventuell stängningsinfo.</p>
                   
                   <label style={styles.label}>Support E-post</label>
                   <input
                     style={styles.input}
                     type="email"
-                    placeholder="support@exempel.se"
+                    placeholder="t.ex. support@restaurang.se"
                     value={companyDetails.support_email || ""}
                     onChange={e => setCompanyDetails({...companyDetails, support_email: e.target.value})}
                   />
@@ -519,7 +650,7 @@ const handleAdminClick = () => {
                   <label style={styles.label}>Öppettider</label>
                   <textarea
                     style={{...styles.input, minHeight: 80}}
-                    placeholder="Mån-Fre: 10:00-22:00, Lör-Sön: 12:00-23:00"
+                    placeholder="t.ex. Mån-Fre 10-22"
                     value={companyDetails.opening_hours || ""}
                     onChange={e => setCompanyDetails({...companyDetails, opening_hours: e.target.value})}
                   />
@@ -527,38 +658,39 @@ const handleAdminClick = () => {
                   <label style={styles.label}>Stängningsinformation</label>
                   <textarea
                     style={{...styles.input, minHeight: 60}}
-                    placeholder="Stängt 24-26 dec och 1 jan"
+                    placeholder="t.ex. Stängt röda dagar"
                     value={companyDetails.closure_info || ""}
                     onChange={e => setCompanyDetails({...companyDetails, closure_info: e.target.value})}
                   />
 
-                  {adminMessage && (
-                    <p style={{
-                      ...styles.adminMessage,
-                      color: adminMessage.includes("✅") ? "#059669" : "#dc2626"
-                    }}>
-                      {adminMessage}
-                    </p>
-                  )}
-
-                  <button
-                    style={styles.primaryButton}
-                    onClick={updateCompanyDetails}
-                    disabled={adminLoading}
-                  >
-                    {adminLoading ? "Sparar..." : "Spara ändringar"}
-                  </button>
+                  <div style={styles.adminActionBar}>
+                    <button
+                      style={{ ...styles.secondaryButton, flex: 1 }}
+                      onClick={resetCurrentTab}
+                      disabled={!isTabDirty("info") || adminLoading}
+                    >
+                      Återställ
+                    </button>
+                    <button
+                      style={{ ...styles.primaryButton, flex: 1, width: "auto" }}
+                      onClick={updateCompanyDetails}
+                      disabled={!isTabDirty("info") || adminLoading}
+                    >
+                      {adminLoading ? "Sparar..." : "Spara ändringar"}
+                    </button>
+                  </div>
                 </div>
               )}
 
               {adminTab === "menu" && (
-                <div>
+                <div className="adminSectionCard">
                   <h3 style={{ marginTop: 0 }}>Meny & Allergener</h3>
+                  <p style={styles.helperText}>Exempel: kategori + rätt + pris + kort beskrivning.</p>
                   
                   <label style={styles.label}>Meny</label>
                   <textarea
                     style={{...styles.input, minHeight: 120}}
-                    placeholder="Lista alla rätter, ingredienser, etc..."
+                    placeholder="t.ex. Förrätt: Toast Skagen - 145 kr"
                     value={companyDetails.menu || ""}
                     onChange={e => setCompanyDetails({...companyDetails, menu: e.target.value})}
                   />
@@ -566,38 +698,39 @@ const handleAdminClick = () => {
                   <label style={styles.label}>Allergener</label>
                   <textarea
                     style={{...styles.input, minHeight: 100}}
-                    placeholder="Information om allergener i era rätter..."
+                    placeholder="t.ex. Innehåller gluten, mjölk, nötter"
                     value={companyDetails.allergens || ""}
                     onChange={e => setCompanyDetails({...companyDetails, allergens: e.target.value})}
                   />
 
-                  {adminMessage && (
-                    <p style={{
-                      ...styles.adminMessage,
-                      color: adminMessage.includes("✅") ? "#059669" : "#dc2626"
-                    }}>
-                      {adminMessage}
-                    </p>
-                  )}
-
-                  <button
-                    style={styles.primaryButton}
-                    onClick={updateCompanyDetails}
-                    disabled={adminLoading}
-                  >
-                    {adminLoading ? "Sparar..." : "Spara ändringar"}
-                  </button>
+                  <div style={styles.adminActionBar}>
+                    <button
+                      style={{ ...styles.secondaryButton, flex: 1 }}
+                      onClick={resetCurrentTab}
+                      disabled={!isTabDirty("menu") || adminLoading}
+                    >
+                      Återställ
+                    </button>
+                    <button
+                      style={{ ...styles.primaryButton, flex: 1, width: "auto" }}
+                      onClick={updateCompanyDetails}
+                      disabled={!isTabDirty("menu") || adminLoading}
+                    >
+                      {adminLoading ? "Sparar..." : "Spara ändringar"}
+                    </button>
+                  </div>
                 </div>
               )}
 
               {adminTab === "routines" && (
-                <div>
+                <div className="adminSectionCard">
                   <h3 style={{ marginTop: 0 }}>Rutiner & Regler</h3>
+                  <p style={styles.helperText}>Exempel: korta punktlistor för öppning, stängning och personalsituationer.</p>
                   
                   <label style={styles.label}>Arbetsrutiner</label>
                   <textarea
                     style={{...styles.input, minHeight: 80}}
-                    placeholder="Dagliga rutiner, arbetsuppgifter..."
+                    placeholder="t.ex. Starta kassan, fyll på stationer"
                     value={companyDetails.routines || ""}
                     onChange={e => setCompanyDetails({...companyDetails, routines: e.target.value})}
                   />
@@ -605,7 +738,7 @@ const handleAdminClick = () => {
                   <label style={styles.label}>Öppningsrutiner</label>
                   <textarea
                     style={{...styles.input, minHeight: 80}}
-                    placeholder="Checklistor för öppning..."
+                    placeholder="t.ex. Ugn 250°, deg ut 30 min innan"
                     value={companyDetails.opening_routine || ""}
                     onChange={e => setCompanyDetails({...companyDetails, opening_routine: e.target.value})}
                   />
@@ -613,7 +746,7 @@ const handleAdminClick = () => {
                   <label style={styles.label}>Stängningsrutiner</label>
                   <textarea
                     style={{...styles.input, minHeight: 80}}
-                    placeholder="Checklistor för stängning..."
+                    placeholder="t.ex. Stäng kassan, rengör alla ytor"
                     value={companyDetails.closing_routine || ""}
                     onChange={e => setCompanyDetails({...companyDetails, closing_routine: e.target.value})}
                   />
@@ -621,7 +754,7 @@ const handleAdminClick = () => {
                   <label style={styles.label}>Beteenderegler</label>
                   <textarea
                     style={{...styles.input, minHeight: 80}}
-                    placeholder="Regler för personal..."
+                    placeholder="t.ex. Mobil endast på rast"
                     value={companyDetails.behavior_guidelines || ""}
                     onChange={e => setCompanyDetails({...companyDetails, behavior_guidelines: e.target.value})}
                   />
@@ -629,7 +762,7 @@ const handleAdminClick = () => {
                   <label style={styles.label}>Personalroller</label>
                   <textarea
                     style={{...styles.input, minHeight: 80}}
-                    placeholder="Olika roller och ansvar..."
+                    placeholder="t.ex. Kassa, kök, servering"
                     value={companyDetails.staff_roles || ""}
                     onChange={e => setCompanyDetails({...companyDetails, staff_roles: e.target.value})}
                   />
@@ -637,33 +770,34 @@ const handleAdminClick = () => {
                   <label style={styles.label}>Personalsituationer</label>
                   <textarea
                     style={{...styles.input, minHeight: 80}}
-                    placeholder="Hantera olika situationer..."
+                    placeholder="t.ex. Sen kollega, allergifråga, stress"
                     value={companyDetails.staff_situations || ""}
                     onChange={e => setCompanyDetails({...companyDetails, staff_situations: e.target.value})}
                   />
 
-                  {adminMessage && (
-                    <p style={{
-                      ...styles.adminMessage,
-                      color: adminMessage.includes("✅") ? "#059669" : "#dc2626"
-                    }}>
-                      {adminMessage}
-                    </p>
-                  )}
-
-                  <button
-                    style={styles.primaryButton}
-                    onClick={updateCompanyDetails}
-                    disabled={adminLoading}
-                  >
-                    {adminLoading ? "Sparar..." : "Spara ändringar"}
-                  </button>
+                  <div style={styles.adminActionBar}>
+                    <button
+                      style={{ ...styles.secondaryButton, flex: 1 }}
+                      onClick={resetCurrentTab}
+                      disabled={!isTabDirty("routines") || adminLoading}
+                    >
+                      Återställ
+                    </button>
+                    <button
+                      style={{ ...styles.primaryButton, flex: 1, width: "auto" }}
+                      onClick={updateCompanyDetails}
+                      disabled={!isTabDirty("routines") || adminLoading}
+                    >
+                      {adminLoading ? "Sparar..." : "Spara ändringar"}
+                    </button>
+                  </div>
                 </div>
               )}
 
               {adminTab === "security" && (
-                <div>
+                <div className="adminSectionCard">
                   <h3 style={{ marginTop: 0 }}>Säkerhet & Åtkomst</h3>
+                  <p style={styles.helperText}>Hantera åtkomst och byt lösenord vid behov.</p>
                   
                   <div style={{ background: "#f3f4f6", padding: 16, borderRadius: 8, marginBottom: 20 }}>
                     <p style={{ margin: 0, fontSize: 14 }}>
@@ -713,7 +847,7 @@ const handleAdminClick = () => {
               )}
 
               {adminTab === "stats" && (
-                <div>
+                <div className="adminSectionCard">
                   <h3 style={{ marginTop: 0 }}>Statistik</h3>
                   
                   <button
@@ -766,6 +900,20 @@ const handleAdminClick = () => {
                 <span className="dot" />
               </div>
             )}
+          </div>
+
+          <div style={styles.quickActions} className="quickActionWrap">
+            {quickQuestions.map((quickQuestion) => (
+              <button
+                key={quickQuestion}
+                style={styles.quickActionButton}
+                className="quickActionButton"
+                onClick={() => askAI(quickQuestion)}
+                disabled={loading}
+              >
+                {quickQuestion}
+              </button>
+            ))}
           </div>
 
           <div style={styles.inputArea}>
@@ -923,8 +1071,28 @@ const styles = {
     padding: 14,
     borderRadius: 16,
     maxWidth: "70%",
+    whiteSpace: "pre-wrap",
     boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
     animation: "fadeIn 0.2s"
+  },
+
+  quickActions: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+    padding: "8px 18px 0 18px",
+    background: "#ffffff"
+  },
+
+  quickActionButton: {
+    border: "1px solid #dbeafe",
+    background: "#eff6ff",
+    color: "#1e3a8a",
+    borderRadius: 999,
+    padding: "7px 12px",
+    fontSize: 13,
+    cursor: "pointer",
+    fontWeight: 500
   },
 
   inputArea: {
@@ -989,6 +1157,12 @@ const styles = {
     transition: "all 0.2s"
   },
 
+  tabDirtyDot: {
+    marginLeft: 8,
+    fontSize: 10,
+    verticalAlign: "middle"
+  },
+
   adminTabActive: {
     background: "#2563eb",
     color: "#fff"
@@ -1014,6 +1188,43 @@ const styles = {
     color: "#374151",
     marginBottom: 8,
     marginTop: 16
+  },
+
+  helperText: {
+    color: "#6b7280",
+    fontSize: 13,
+    marginTop: -4,
+    marginBottom: 12
+  },
+
+  lastSavedText: {
+    margin: "0 0 12px 2px",
+    color: "#4b5563",
+    fontSize: 13,
+    fontWeight: 500
+  },
+
+  adminActionBar: {
+    position: "sticky",
+    bottom: 0,
+    zIndex: 3,
+    display: "flex",
+    gap: 10,
+    paddingTop: 12,
+    paddingBottom: 6,
+    background: "linear-gradient(180deg, rgba(255,255,255,0), #fff 28%)"
+  },
+
+  secondaryButton: {
+    width: "auto",
+    padding: 14,
+    fontSize: 16,
+    background: "#e5e7eb",
+    color: "#111827",
+    border: "none",
+    borderRadius: 12,
+    cursor: "pointer",
+    fontWeight: 600
   },
 
   adminMessage: {
@@ -1065,5 +1276,28 @@ const styles = {
     maxWidth: 400,
     width: "90%",
     boxShadow: "0 20px 60px rgba(0,0,0,0.3)"
+  },
+
+  toast: {
+    position: "fixed",
+    top: 18,
+    right: 18,
+    zIndex: 2000,
+    background: "#059669",
+    color: "#fff",
+    padding: "11px 14px",
+    borderRadius: 10,
+    fontWeight: 600,
+    fontSize: 14,
+    boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+    maxWidth: 360
+  },
+
+  toastError: {
+    background: "#dc2626"
+  },
+
+  toastInfo: {
+    background: "#374151"
   }
 };
