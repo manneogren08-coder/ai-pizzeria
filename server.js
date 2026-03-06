@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const OpenAI = require('openai');
+const path = require('path');
 
 const app = express();
 const port = 3000;

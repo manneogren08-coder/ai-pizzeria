@@ -58,22 +58,15 @@ export default async function handler(req, res) {
       .select("id, name, password_hash, is_admin, active, query_count")
       .eq("active", true);
 
-    console.log("Aktiva företag:", companies);
-
     if (error || !companies || companies.length === 0) {
-      console.log("Inga företag hittades eller fel:", error);
       return res.status(401).json({ error: "Fel lösenord" });
     }
 
     // Testa lösenordet mot alla aktiva företag
     let matchedCompany = null;
     for (const company of companies) {
-      if (!company.password_hash) {
-        console.log(`${company.name} saknar password_hash`);
-        continue;
-      }
+      if (!company.password_hash) continue;
       const match = await bcrypt.compare(password, company.password_hash);
-      console.log(`Testar ${company.name}: ${match ? "MATCH" : "fel"}`);
       if (match) {
         matchedCompany = company;
         break;

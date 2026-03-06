@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { getSupabaseAdminClient } from "../../../lib/supabase.js";
 
 const OPENING_ROUTINE_SECTION_REGEX = /\[OPENING_ROUTINE\]([\s\S]*?)\[\/OPENING_ROUTINE\]/i;
+const RECIPES_SECTION_REGEX = /\[RECIPES\]([\s\S]*?)\[\/RECIPES\]/i;
 
 function extractEmbeddedOpeningRoutine(routinesText) {
   if (typeof routinesText !== "string") {
@@ -13,6 +14,18 @@ function extractEmbeddedOpeningRoutine(routinesText) {
   const cleanedRoutines = routinesText.replace(OPENING_ROUTINE_SECTION_REGEX, "").trim();
 
   return { cleanedRoutines, openingRoutine };
+}
+
+function extractEmbeddedRecipes(menuText) {
+  if (typeof menuText !== "string") {
+    return { cleanedMenu: "", recipes: "" };
+  }
+
+  const match = menuText.match(RECIPES_SECTION_REGEX);
+  const recipes = match?.[1]?.trim() || "";
+  const cleanedMenu = menuText.replace(RECIPES_SECTION_REGEX, "").trim();
+
+  return { cleanedMenu, recipes };
 }
 
 export default async function handler(req, res) {
@@ -53,12 +66,14 @@ export default async function handler(req, res) {
     }
 
     const { cleanedRoutines, openingRoutine } = extractEmbeddedOpeningRoutine(company.routines || "");
+    const { cleanedMenu, recipes } = extractEmbeddedRecipes(company.menu || "");
 
     const details = {
       support_email: company.support_email || "",
       opening_hours: company.opening_hours || "",
       closure_info: company.closure_info || "",
-      menu: company.menu || "",
+      menu: cleanedMenu,
+      recipes: company.recipes || recipes,
       allergens: company.allergens || "",
       routines: cleanedRoutines,
       opening_routine: company.opening_routine || openingRoutine,

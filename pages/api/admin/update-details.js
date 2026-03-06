@@ -3,11 +3,36 @@ import { getSupabaseAdminClient } from "../../../lib/supabase.js";
 
 const OPENING_ROUTINE_START = "[OPENING_ROUTINE]";
 const OPENING_ROUTINE_END = "[/OPENING_ROUTINE]";
+const RECIPES_START = "[RECIPES]";
+const RECIPES_END = "[/RECIPES]";
 
 function stripOpeningRoutineSection(text) {
   if (typeof text !== "string") return "";
   const pattern = new RegExp(`${OPENING_ROUTINE_START}[\\s\\S]*?${OPENING_ROUTINE_END}`, "g");
   return text.replace(pattern, "").trim();
+}
+
+function stripRecipesSection(text) {
+  if (typeof text !== "string") return "";
+  const pattern = new RegExp(`${RECIPES_START}[\\s\\S]*?${RECIPES_END}`, "g");
+  return text.replace(pattern, "").trim();
+}
+
+function withEmbeddedRecipes(menuText, recipesText) {
+  const baseMenu = stripRecipesSection(menuText);
+  const recipes = typeof recipesText === "string" ? recipesText.trim() : "";
+
+  if (!recipes) {
+    return baseMenu;
+  }
+
+  return [
+    baseMenu,
+    `${RECIPES_START}\n${recipes}\n${RECIPES_END}`
+  ]
+    .filter(Boolean)
+    .join("\n\n")
+    .trim();
 }
 
 function withEmbeddedOpeningRoutine(routinesText, openingRoutineText) {
@@ -75,7 +100,8 @@ export default async function handler(req, res) {
       support_email: details.support_email ?? "",
       opening_hours: details.opening_hours ?? "",
       closure_info: details.closure_info ?? "",
-      menu: details.menu ?? "",
+      menu: stripRecipesSection(details.menu ?? ""),
+      recipes: details.recipes ?? "",
       allergens: details.allergens ?? "",
       routines: stripOpeningRoutineSection(details.routines ?? ""),
       opening_routine: details.opening_routine ?? "",
@@ -120,6 +146,13 @@ export default async function handler(req, res) {
         payloadToTry.routines = withEmbeddedOpeningRoutine(
           payloadToTry.routines,
           payloadToTry.opening_routine
+        );
+      }
+
+      if (missingColumn === "recipes") {
+        payloadToTry.menu = withEmbeddedRecipes(
+          payloadToTry.menu,
+          payloadToTry.recipes
         );
       }
 

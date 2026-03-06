@@ -20,7 +20,7 @@ async function setupPasswords() {
     const hashed = await bcrypt.hash(plainPassword, 10);
     console.log(`Hashat lösenord för ${name}: ${hashed.substring(0, 20)}...`);
     
-    const { data, error, count } = await supabase
+    const { data, error } = await supabase
       .from("companies")
       .update({ password_hash: hashed })
       .eq("name", name)

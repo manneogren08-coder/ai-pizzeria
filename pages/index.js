@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 export default function Home() {
   const emptyDetails = {
@@ -6,6 +6,7 @@ export default function Home() {
     opening_hours: "",
     closure_info: "",
     menu: "",
+    recipes: "",
     allergens: "",
     routines: "",
     opening_routine: "",
@@ -17,15 +18,21 @@ export default function Home() {
 
   const tabFieldMap = {
     info: ["support_email", "opening_hours", "closure_info"],
-    menu: ["menu", "allergens"],
+    menu: ["menu", "recipes", "allergens"],
     routines: ["routines", "opening_routine", "closing_routine", "behavior_guidelines", "staff_roles", "staff_situations"]
   };
 
-  const quickQuestions = ["Visa hela menyn", "Vilka allergener finns?", "Vad är öppettiderna?", "Vad är öppningsrutinen?"];
+  const quickQuestions = [
+    { key: "menu", label: "Visa hela menyn", prompt: "Visa hela menyn inklusive priser och eventuella tillval." },
+    { key: "allergens", label: "Vilka allergener finns?", prompt: "Lista alla allergener i menyn och nämn vilka alternativ som finns." },
+    { key: "opening_hours", label: "Vad är öppettiderna?", prompt: "Vad är öppettiderna idag och i veckan?" },
+    { key: "opening_routine", label: "Vad är öppningsrutinen?", prompt: "Beskriv öppningsrutinen steg för steg." }
+  ];
 
   const [token, setToken] = useState("");
   const [password, setPassword] = useState("");
   const [company, setCompany] = useState(null);
+  const [isRestoringSession, setIsRestoringSession] = useState(true);
   const [question, setQuestion] = useState("");
   const [chat, setChat] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -44,6 +51,31 @@ export default function Home() {
   const [toast, setToast] = useState({ text: "", type: "success", visible: false });
   const chatAreaRef = useRef(null);
   const toastTimerRef = useRef(null);
+
+  const logout = useCallback(() => {
+    setCompany(null);
+    setToken("");
+    setChat([]);
+    localStorage.removeItem("token");
+    localStorage.removeItem("company");
+  }, []);
+
+  const isJwtExpired = (jwtToken) => {
+    if (!jwtToken || typeof jwtToken !== "string") {
+      return true;
+    }
+
+    try {
+      const parts = jwtToken.split(".");
+      if (parts.length !== 3) return true;
+
+      const payload = JSON.parse(atob(parts[1]));
+      if (!payload?.exp) return true;
+      return payload.exp * 1000 <= Date.now();
+    } catch {
+      return true;
+    }
+  };
 
   const showToast = (text, type = "success") => {
     if (toastTimerRef.current) {
@@ -105,24 +137,7 @@ export default function Home() {
       .join("\n\n");
   };
 
-  // Restore token from localStorage on mount
-  useEffect(() => {
-    const savedToken = localStorage.getItem("token");
-    const savedCompany = localStorage.getItem("company");
-    if (savedToken && savedCompany) {
-      setToken(savedToken);
-      setCompany(JSON.parse(savedCompany));
-    }
-  }, []);
-
-  // Load company details when admin panel opens
-  useEffect(() => {
-    if (showAdmin && company && token) {
-      fetchCompanyDetails();
-    }
-  }, [showAdmin, company, token]);
-
-  const fetchCompanyDetails = async () => {
+  const fetchCompanyDetails = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/get-details", {
         headers: {
@@ -137,7 +152,30 @@ export default function Home() {
     } catch (err) {
       console.error("Failed to fetch details:", err);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    const savedToken = localStorage.getItem("token");
+    const savedCompany = localStorage.getItem("company");
+
+    if (!savedToken || !savedCompany || isJwtExpired(savedToken)) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("company");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsRestoringSession(false);
+      return;
+    }
+
+    try {
+      setToken(savedToken);
+      setCompany(JSON.parse(savedCompany));
+    } catch {
+      localStorage.removeItem("token");
+      localStorage.removeItem("company");
+    }
+
+    setIsRestoringSession(false);
+  }, []);
 
   // scroll when chat updates
   useEffect(() => {
@@ -182,16 +220,24 @@ export default function Home() {
     setCompany(data.company);
     localStorage.setItem("token", data.token);
     localStorage.setItem("company", JSON.stringify(data.company));
-  } catch (err) {
+  } catch {
     setError("Ett fel uppstod. Försök igen.");
   }
 
   setLoading(false);
 };
 
-  const askAI = async (presetQuestion) => {
-    const userMessage = (presetQuestion || question).trim();
+  const askAI = async (presetQuestion, options = {}) => {
+    const messageSource = typeof presetQuestion === "string" ? presetQuestion : question;
+    const userMessage = messageSource.trim();
     if (!userMessage || loading) return;
+    const activeToken = token || localStorage.getItem("token") || "";
+
+    if (!activeToken) {
+      showToast("Session saknas. Logga in igen.", "info");
+      logout();
+      return;
+    }
 
   setChat(prev => [...prev, { from: "user", text: userMessage }]);
   setQuestion("");
@@ -202,15 +248,35 @@ export default function Home() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`  // LÄGG TILL DENNA
+        "Authorization": `Bearer ${activeToken}`
       },
-      body: JSON.stringify({ question: userMessage })  // TA BORT password
+      body: JSON.stringify({ question: userMessage, quickActionKey: options.quickActionKey || null })
     });
 
     const data = await res.json();
 
-    setChat(prev => [...prev, { from: "ai", text: formatAiAnswer(data.answer) }]);
-  } catch (error) {
+    if (res.status === 401 && /ogiltig token|ingen token|session/i.test(data?.answer || "")) {
+      logout();
+      showToast("Sessionen har gått ut. Logga in igen.", "info");
+      setLoading(false);
+      return;
+    }
+
+    if (!res.ok) {
+      setChat(prev => [...prev, { from: "ai", text: data?.answer || "Ett fel uppstod. Försök igen." }]);
+      setLoading(false);
+      return;
+    }
+
+    setChat(prev => [
+      ...prev,
+      {
+        from: "ai",
+        text: formatAiAnswer(data.answer),
+        menuItems: Array.isArray(data?.menuItems) ? data.menuItems : []
+      }
+    ]);
+  } catch {
     setChat(prev => [
       ...prev,
       { from: "ai", text: "Ett fel uppstod. Försök igen." }
@@ -253,7 +319,7 @@ const updatePassword = async () => {
     showToast("Lösenord uppdaterat", "success");
     setNewPassword("");
     setTimeout(() => setAdminMessage(""), 3000);
-  } catch (err) {
+  } catch {
     setAdminMessage("❌ Ett fel uppstod");
     showToast("Ett fel uppstod", "error");
   }
@@ -290,7 +356,7 @@ const updateCompanyDetails = async () => {
     setLastSavedAt(new Date());
     showToast("Ändringar sparade", "success");
     setTimeout(() => setAdminMessage(""), 3000);
-  } catch (err) {
+  } catch {
     setAdminMessage("❌ Ett fel uppstod");
     showToast("Ett fel uppstod", "error");
   }
@@ -331,7 +397,7 @@ const toggleCompanyStatus = async () => {
     setAdminMessage(`✅ Företaget är nu ${!company.active ? 'aktiverat' : 'deaktiverat'}`);
     showToast(`Företaget är nu ${!company.active ? 'aktiverat' : 'deaktiverat'}`, "success");
     setTimeout(() => setAdminMessage(""), 3000);
-  } catch (err) {
+  } catch {
     setAdminMessage("❌ Ett fel uppstod");
     showToast("Ett fel uppstod", "error");
   }
@@ -371,8 +437,9 @@ const verifyAdminPassword = async () => {
     // Success! Open admin panel
     setAdminPasswordPrompt(false);
     setShowAdmin(true);
+    fetchCompanyDetails();
     setAdminPassword("");
-  } catch (err) {
+  } catch {
     setAdminPasswordError("❌ Ett fel uppstod");
     showToast("Ett fel uppstod", "error");
   }
@@ -391,6 +458,17 @@ const handleAdminClick = () => {
     setAdminPassword("");
   }
 };
+
+  if (isRestoringSession) {
+    return (
+      <div style={styles.loginPage}>
+        <div style={styles.loginCard}>
+          <h2 style={{ marginBottom: 8 }}>Laddar session...</h2>
+          <p style={styles.subtitle}>Ett ögonblick, vi hämtar din inloggning.</p>
+        </div>
+      </div>
+    );
+  }
 
   // 🔐 LOGIN PAGE
   if (!company) {
@@ -455,7 +533,11 @@ const handleAdminClick = () => {
           transform: translateY(-1px);
           box-shadow: 0 6px 18px rgba(0,0,0,0.08);
         }
-        .quickActionButton:hover { background: #e0ebff; }
+        .quickActionButton:hover {
+          background: #e0ebff;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 10px rgba(30, 64, 175, 0.18);
+        }
 
         .typing { display: flex; gap: 4px; align-items: center; }
         .typing .dot {
@@ -470,7 +552,7 @@ const handleAdminClick = () => {
         @media (max-width: 768px) {
           .typing { display: flex; gap: 4px; }
           .adminTabsBar { padding: 12px 12px !important; gap: 6px !important; }
-          .quickActionWrap { padding: 8px 12px !important; }
+          .quickActionWrap { padding: 10px 12px 14px 12px !important; }
         }
 
         @keyframes blink {
@@ -513,13 +595,7 @@ const handleAdminClick = () => {
           )}
           <button
             style={styles.logoutButton}
-            onClick={() => {
-              setCompany(null);
-              setToken("");
-              setChat([]);
-              localStorage.removeItem("token");
-              localStorage.removeItem("company");
-            }}
+            onClick={logout}
           >
             Logga ut
           </button>
@@ -706,6 +782,14 @@ const handleAdminClick = () => {
                     onChange={e => setCompanyDetails({...companyDetails, allergens: e.target.value})}
                   />
 
+                  <label style={styles.label}>Recept</label>
+                  <textarea
+                    style={{...styles.input, minHeight: 140}}
+                    placeholder="t.ex. Margherita:\n1. Deg 250 g\n2. Tomatsås 80 g\n3. Mozzarella 90 g\n4. Grädda 3-4 min"
+                    value={companyDetails.recipes || ""}
+                    onChange={e => setCompanyDetails({...companyDetails, recipes: e.target.value})}
+                  />
+
                   <div style={styles.adminActionBar}>
                     <button
                       style={{ ...styles.secondaryButton, flex: 1 }}
@@ -882,7 +966,14 @@ const handleAdminClick = () => {
         </>
       ) : (
         <>
-          <div style={styles.chatArea}>
+          <div style={styles.chatArea} ref={chatAreaRef}>
+            {chat.length === 0 && !loading && (
+              <div style={styles.emptyStateCard}>
+                <div style={styles.emptyStateTitle}>Hej 👋</div>
+                <div style={styles.emptyStateText}>Välj en snabbfråga nedan eller skriv en egen fråga till personalguiden.</div>
+              </div>
+            )}
+
             {chat.map((msg, i) => (
               <div
                 key={i}
@@ -893,6 +984,24 @@ const handleAdminClick = () => {
                 }
               >
                 {msg.text}
+                {msg.from === "ai" && Array.isArray(msg.menuItems) && msg.menuItems.length > 0 && (
+                  <div style={styles.menuItemsWrap}>
+                    <div style={styles.menuItemsTitle}>Tryck på en rätt för recept</div>
+                    <div style={styles.menuItemsGrid}>
+                      {msg.menuItems.map((menuItem) => (
+                        <button
+                          key={`${i}-${menuItem}`}
+                          style={styles.menuItemButton}
+                          className="quickActionButton"
+                          onClick={() => askAI(`Vad är receptet för ${menuItem}?`) }
+                          disabled={loading}
+                        >
+                          {menuItem}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
 
@@ -908,13 +1017,13 @@ const handleAdminClick = () => {
           <div style={styles.quickActions} className="quickActionWrap">
             {quickQuestions.map((quickQuestion) => (
               <button
-                key={quickQuestion}
+                key={quickQuestion.key}
                 style={styles.quickActionButton}
                 className="quickActionButton"
-                onClick={() => askAI(quickQuestion)}
+                onClick={() => askAI(quickQuestion.prompt, { quickActionKey: quickQuestion.key })}
                 disabled={loading}
               >
-                {quickQuestion}
+                {quickQuestion.label}
               </button>
             ))}
           </div>
@@ -934,7 +1043,7 @@ const handleAdminClick = () => {
             <button
               style={styles.sendButton}
               className="sendButton"
-              onClick={askAI}
+              onClick={() => askAI()}
               disabled={loading}
             >
               Skicka
@@ -963,6 +1072,7 @@ const styles = {
     width: "100%",
     maxWidth: 400,
     boxShadow: "0 30px 80px rgba(0,0,0,0.08)",
+    border: "1px solid #e5e7eb",
     textAlign: "center",
     boxSizing: "border-box",
     transition: "transform 0.2s",
@@ -1028,7 +1138,7 @@ const styles = {
 
   header: {
     padding: "18px 28px",
-    background: "#111827",
+    background: "linear-gradient(90deg, #111827, #1f2937)",
     color: "#fff",
     display: "flex",
     justifyContent: "space-between",
@@ -1055,7 +1165,31 @@ const styles = {
     padding: 24,
     display: "flex",
     flexDirection: "column",
-    gap: 14
+    gap: 14,
+    background: "linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%)"
+  },
+
+  emptyStateCard: {
+    alignSelf: "center",
+    background: "#ffffff",
+    border: "1px solid #e5e7eb",
+    borderRadius: 14,
+    padding: "14px 16px",
+    maxWidth: 520,
+    width: "100%",
+    boxShadow: "0 3px 10px rgba(0,0,0,0.04)"
+  },
+
+  emptyStateTitle: {
+    fontWeight: 700,
+    color: "#111827",
+    marginBottom: 4
+  },
+
+  emptyStateText: {
+    color: "#4b5563",
+    fontSize: 14,
+    lineHeight: 1.5
   },
 
   userBubble: {
@@ -1063,8 +1197,9 @@ const styles = {
     background: "#2563eb",
     color: "#fff",
     padding: 14,
-    borderRadius: 16,
+    borderRadius: "16px 16px 6px 16px",
     maxWidth: "70%",
+    boxShadow: "0 6px 16px rgba(37,99,235,0.28)",
     animation: "fadeIn 0.2s"
   },
 
@@ -1072,19 +1207,52 @@ const styles = {
     alignSelf: "flex-start",
     background: "#ffffff",
     padding: 14,
-    borderRadius: 16,
+    borderRadius: "16px 16px 16px 6px",
     maxWidth: "70%",
     whiteSpace: "pre-wrap",
     boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
     animation: "fadeIn 0.2s"
   },
 
+  menuItemsWrap: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTop: "1px dashed #d1d5db"
+  },
+
+  menuItemsTitle: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#4b5563",
+    marginBottom: 8
+  },
+
+  menuItemsGrid: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 6
+  },
+
+  menuItemButton: {
+    border: "1px solid #dbeafe",
+    background: "#eff6ff",
+    color: "#1e3a8a",
+    borderRadius: 999,
+    padding: "7px 12px",
+    fontSize: 12,
+    cursor: "pointer",
+    fontWeight: 600,
+    transition: "transform 0.15s, box-shadow 0.2s, background 0.2s"
+  },
+
   quickActions: {
     display: "flex",
     flexWrap: "wrap",
     gap: 8,
-    padding: "8px 18px 0 18px",
-    background: "#ffffff"
+    padding: "12px 18px 16px 18px",
+    background: "#ffffff",
+    borderTop: "1px solid #e5e7eb",
+    borderBottom: "1px solid #f3f4f6"
   },
 
   quickActionButton: {
@@ -1092,17 +1260,19 @@ const styles = {
     background: "#eff6ff",
     color: "#1e3a8a",
     borderRadius: 999,
-    padding: "7px 12px",
+    padding: "9px 14px",
     fontSize: 13,
     cursor: "pointer",
-    fontWeight: 500
+    fontWeight: 600,
+    transition: "transform 0.15s, box-shadow 0.2s, background 0.2s",
+    boxShadow: "0 1px 4px rgba(37,99,235,0.16)"
   },
 
   inputArea: {
     display: "flex",
-    padding: 18,
-    borderTop: "1px solid #e5e7eb",
-    background: "#ffffff"
+    padding: "12px 18px 18px 18px",
+    background: "#ffffff",
+    boxShadow: "0 -6px 18px rgba(17,24,39,0.04)"
   },
 
   chatInput: {

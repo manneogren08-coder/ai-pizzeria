@@ -62,7 +62,7 @@ export default function Demo() {
 
       setToken(data.token);
       setCompany({ name: "DEMO" });
-    } catch (err) {
+    } catch {
       setError("Ett fel uppstod. Försök igen.");
     }
 
