@@ -1,6 +1,114 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/router";
+
+const ADMIN_TABS = ["info", "menu", "routines", "prep", "security", "stats"];
+
+function getTodayDateString() {
+  const now = new Date();
+  const offsetDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return offsetDate.toISOString().slice(0, 10);
+}
+
+function getSingleQueryParam(value) {
+  if (Array.isArray(value)) {
+    return value[0] || "";
+  }
+  return typeof value === "string" ? value : "";
+}
+
+function isValidAdminTab(tab) {
+  return ADMIN_TABS.includes(tab);
+}
+
+function getPriorityMeta(priority) {
+  const normalized = String(priority || "medium").toLowerCase();
+  if (normalized === "high") {
+    return { key: "high", label: "Hog", style: styles.prepPriorityHigh };
+  }
+  if (normalized === "low") {
+    return { key: "low", label: "Lag", style: styles.prepPriorityLow };
+  }
+  return { key: "medium", label: "Medel", style: styles.prepPriorityMedium };
+}
+
+function dueTimeSortValue(dueTime) {
+  const value = String(dueTime || "").trim();
+  if (!value) return Number.MAX_SAFE_INTEGER;
+  const [hours, minutes] = value.split(":").map((part) => Number(part));
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  return hours * 60 + minutes;
+}
+
+function normalizeTemplatePriority(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["high", "hog", "hög", "h"].includes(normalized)) return "high";
+  if (["low", "lag", "låg", "l"].includes(normalized)) return "low";
+  return "medium";
+}
+
+function normalizeTemplateDueTime(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const match = text.match(/^(\d{1,2})(?::(\d{2}))?$/);
+  if (!match) return "";
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2] || "0");
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return "";
+  }
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function emptyPrepTemplateRow() {
+  return {
+    title: "",
+    priority: "medium",
+    station: "",
+    due_time: ""
+  };
+}
+
+function parsePrepTemplateText(templateText) {
+  const lines = String(templateText || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^[-*•]\s*/, ""));
+
+  const rows = lines
+    .map((line) => {
+      const parts = line.split("|").map((part) => part.trim());
+      return {
+        title: parts[0] || "",
+        priority: normalizeTemplatePriority(parts[1]),
+        station: String(parts[2] || "").trim(),
+        due_time: normalizeTemplateDueTime(parts[3])
+      };
+    })
+    .filter((row) => row.title);
+
+  return rows.length > 0 ? rows : [emptyPrepTemplateRow()];
+}
+
+function serializePrepTemplateRows(rows) {
+  return (Array.isArray(rows) ? rows : [])
+    .map((row) => ({
+      title: String(row?.title || "").trim(),
+      priority: normalizeTemplatePriority(row?.priority),
+      station: String(row?.station || "").trim(),
+      due_time: normalizeTemplateDueTime(row?.due_time)
+    }))
+    .filter((row) => row.title)
+    .map((row) => [row.title, row.priority, row.station, row.due_time].join(" | "))
+    .join("\n");
+}
 
 export default function Home() {
+  const router = useRouter();
   const emptyDetails = {
     support_email: "",
     opening_hours: "",
@@ -30,7 +138,11 @@ export default function Home() {
   ];
 
   const [token, setToken] = useState("");
+  const [loginMode, setLoginMode] = useState("company");
   const [password, setPassword] = useState("");
+  const [employeeEmail, setEmployeeEmail] = useState("");
+  const [employeeName, setEmployeeName] = useState("");
+  const [employeeCode, setEmployeeCode] = useState("");
   const [company, setCompany] = useState(null);
   const [isRestoringSession, setIsRestoringSession] = useState(true);
   const [question, setQuestion] = useState("");
@@ -38,6 +150,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showPrep, setShowPrep] = useState(false);
   const [adminTab, setAdminTab] = useState("info");
   const [adminPassword, setAdminPassword] = useState("");
   const [adminPasswordError, setAdminPasswordError] = useState("");
@@ -49,8 +162,40 @@ export default function Home() {
   const [savedCompanyDetails, setSavedCompanyDetails] = useState(emptyDetails);
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [toast, setToast] = useState({ text: "", type: "success", visible: false });
+  const [prepDate, setPrepDate] = useState(getTodayDateString());
+  const [prepTasks, setPrepTasks] = useState([]);
+  const [prepLoading, setPrepLoading] = useState(false);
+  const [prepError, setPrepError] = useState("");
+  const [prepTemplateRows, setPrepTemplateRows] = useState([emptyPrepTemplateRow()]);
+  const [savedPrepTemplateRows, setSavedPrepTemplateRows] = useState([emptyPrepTemplateRow()]);
+  const [prepTemplateLoading, setPrepTemplateLoading] = useState(false);
+  const [prepOnlyOpen, setPrepOnlyOpen] = useState(false);
+  const [prepStationFilter, setPrepStationFilter] = useState("all");
   const chatAreaRef = useRef(null);
   const toastTimerRef = useRef(null);
+  const skipNextAdminRoutePromptRef = useRef(false);
+
+  const syncAdminRoute = useCallback((nextShowAdmin, nextTab = "info") => {
+    if (!router.isReady) return;
+
+    const nextQuery = { ...router.query };
+    if (nextShowAdmin) {
+      nextQuery.view = "admin";
+      nextQuery.tab = isValidAdminTab(nextTab) ? nextTab : "info";
+    } else {
+      delete nextQuery.view;
+      delete nextQuery.tab;
+    }
+
+    void router.replace(
+      {
+        pathname: router.pathname,
+        query: nextQuery
+      },
+      undefined,
+      { shallow: true }
+    );
+  }, [router]);
 
   const logout = useCallback(() => {
     setCompany(null);
@@ -58,7 +203,8 @@ export default function Home() {
     setChat([]);
     localStorage.removeItem("token");
     localStorage.removeItem("company");
-  }, []);
+    syncAdminRoute(false);
+  }, [syncAdminRoute]);
 
   const isJwtExpired = (jwtToken) => {
     if (!jwtToken || typeof jwtToken !== "string") {
@@ -137,6 +283,48 @@ export default function Home() {
       .join("\n\n");
   };
 
+  const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  const renderAiTextWithClickableMenuItems = (msg, msgIndex) => {
+    const text = typeof msg?.text === "string" ? msg.text : "";
+    const menuItems = Array.isArray(msg?.menuItems)
+      ? [...new Set(msg.menuItems.map((item) => String(item || "").trim()).filter(Boolean))]
+      : [];
+
+    if (!text || menuItems.length === 0) {
+      return text;
+    }
+
+    const sortedItems = [...menuItems].sort((a, b) => b.length - a.length);
+    const itemRegex = new RegExp(`(${sortedItems.map(escapeRegExp).join("|")})`, "gi");
+    const parts = text.split(itemRegex);
+
+    return parts.map((part, partIndex) => {
+      const matchingItem = sortedItems.find((item) => item.toLowerCase() === part.toLowerCase());
+
+      if (!matchingItem) {
+        return (
+          <span key={`msg-${msgIndex}-text-${partIndex}`} style={styles.menuInlineText}>
+            {part}
+          </span>
+        );
+      }
+
+      return (
+        <button
+          key={`msg-${msgIndex}-menu-${matchingItem}-${partIndex}`}
+          type="button"
+          style={styles.menuInlineItemButton}
+          className="menuInlineItem"
+          onClick={() => askAI(`Vad är receptet för ${matchingItem}?`)}
+          disabled={loading}
+        >
+          {part}
+        </button>
+      );
+    });
+  };
+
   const fetchCompanyDetails = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/get-details", {
@@ -153,6 +341,133 @@ export default function Home() {
       console.error("Failed to fetch details:", err);
     }
   }, [token]);
+
+  const fetchPrepTemplate = useCallback(async () => {
+    if (!token) return;
+
+    setPrepTemplateLoading(true);
+    try {
+      const res = await fetch("/api/admin/prep-template", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast(data?.error || "Kunde inte hämta prep-mall", "error");
+        return;
+      }
+
+      const templateText = typeof data?.template === "string" ? data.template : "";
+      const parsedRows = parsePrepTemplateText(templateText);
+      setPrepTemplateRows(parsedRows);
+      setSavedPrepTemplateRows(parsedRows);
+    } catch {
+      showToast("Kunde inte hämta prep-mall", "error");
+    } finally {
+      setPrepTemplateLoading(false);
+    }
+  }, [token]);
+
+  const fetchPrepTasks = useCallback(async (targetDate) => {
+    if (!token) return;
+
+    const requestedDate = typeof targetDate === "string" ? targetDate : getTodayDateString();
+    setPrepLoading(true);
+    setPrepError("");
+
+    try {
+      const res = await fetch(`/api/prep/day?date=${encodeURIComponent(requestedDate)}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setPrepError(data?.error || "Kunde inte hämta dagens prep.");
+        setPrepTasks([]);
+        setPrepLoading(false);
+        return;
+      }
+
+      setPrepDate(data?.prepDate || requestedDate);
+      setPrepTasks(Array.isArray(data?.tasks) ? data.tasks : []);
+    } catch {
+      setPrepError("Kunde inte hämta dagens prep.");
+      setPrepTasks([]);
+    }
+
+    setPrepLoading(false);
+  }, [token]);
+
+  const savePrepTemplate = async () => {
+    if (!token || prepTemplateLoading) return;
+
+    const serializedTemplate = serializePrepTemplateRows(prepTemplateRows);
+
+    setPrepTemplateLoading(true);
+    try {
+      const res = await fetch("/api/admin/prep-template", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          template: serializedTemplate,
+          publishToday: true,
+          prepDate
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast(data?.error || "Kunde inte spara prep-mall", "error");
+        setPrepTemplateLoading(false);
+        return;
+      }
+
+      const nextTemplate = typeof data?.template === "string" ? data.template : serializedTemplate;
+      const parsedRows = parsePrepTemplateText(nextTemplate);
+      setPrepTemplateRows(parsedRows);
+      setSavedPrepTemplateRows(parsedRows);
+      void fetchPrepTasks(prepDate);
+      showToast("Prep-mall sparad", "success");
+    } catch {
+      showToast("Kunde inte spara prep-mall", "error");
+    }
+
+    setPrepTemplateLoading(false);
+  };
+
+  const togglePrepTask = async (taskId, isDone) => {
+    if (!token || prepLoading) return;
+
+    setPrepTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, is_done: isDone } : task)));
+
+    try {
+      const res = await fetch("/api/prep/toggle", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ taskId, isDone })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || "Kunde inte uppdatera prep-uppgift");
+      }
+    } catch (err) {
+      setPrepTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, is_done: !isDone } : task)));
+      showToast(err?.message || "Kunde inte uppdatera prep-uppgift", "error");
+    }
+  };
 
   useEffect(() => {
     const savedToken = localStorage.getItem("token");
@@ -183,6 +498,49 @@ export default function Home() {
       chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight;
     }
   }, [chat, loading]);
+
+  useEffect(() => {
+    if (!router.isReady || !company?.is_admin) {
+      return;
+    }
+
+    const routeView = getSingleQueryParam(router.query.view);
+    const routeTab = getSingleQueryParam(router.query.tab);
+    const nextTab = isValidAdminTab(routeTab) ? routeTab : "info";
+
+    if (routeView === "admin") {
+      setAdminTab((prevTab) => (prevTab === nextTab ? prevTab : nextTab));
+
+      if (skipNextAdminRoutePromptRef.current) {
+        skipNextAdminRoutePromptRef.current = false;
+        return;
+      }
+
+      // Keep admin protected: route can request admin view, but password is still required.
+      if (!showAdmin && !adminPasswordPrompt) {
+        setAdminPasswordPrompt(true);
+        setAdminPasswordError("");
+        setAdminPassword("");
+      }
+      return;
+    }
+
+    if (showAdmin) {
+      setShowAdmin(false);
+    }
+  }, [
+    router.isReady,
+    router.query.view,
+    router.query.tab,
+    company?.is_admin,
+    showAdmin,
+    adminPasswordPrompt
+  ]);
+
+  useEffect(() => {
+    if (!showPrep || !token) return;
+    fetchPrepTasks(prepDate);
+  }, [showPrep, token, prepDate, fetchPrepTasks]);
 
   useEffect(() => {
     return () => {
@@ -226,6 +584,98 @@ export default function Home() {
 
   setLoading(false);
 };
+
+  const requestEmployeeCode = async () => {
+    if (!password.trim()) {
+      setError("Skriv in restaurangens lösenord");
+      return;
+    }
+
+    if (!employeeEmail.trim()) {
+      setError("Skriv in e-post");
+      return;
+    }
+
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/employee/request-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          password,
+          email: employeeEmail,
+          name: employeeName
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data?.error || "Kunde inte skicka kod");
+        setLoading(false);
+        return;
+      }
+
+      const debugHint = data?.debugCode ? ` Testkod: ${data.debugCode}` : "";
+      showToast(`Kod skickad till ${employeeEmail}.${debugHint}`, "info");
+    } catch {
+      setError("Ett fel uppstod. Försök igen.");
+    }
+
+    setLoading(false);
+  };
+
+  const loginWithEmployeeCode = async () => {
+    if (!password.trim()) {
+      setError("Skriv in restaurangens lösenord");
+      return;
+    }
+
+    if (!employeeEmail.trim()) {
+      setError("Skriv in e-post");
+      return;
+    }
+
+    if (!employeeCode.trim()) {
+      setError("Skriv in engångskod eller demo");
+      return;
+    }
+
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/employee/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          password,
+          email: employeeEmail,
+          code: employeeCode
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data?.error || "Kunde inte logga in med kod");
+        setLoading(false);
+        return;
+      }
+
+      setToken(data.token);
+      setCompany(data.company);
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("company", JSON.stringify(data.company));
+      setEmployeeCode("");
+    } catch {
+      setError("Ett fel uppstod. Försök igen.");
+    }
+
+    setLoading(false);
+  };
 
   const askAI = async (presetQuestion, options = {}) => {
     const messageSource = typeof presetQuestion === "string" ? presetQuestion : question;
@@ -435,9 +885,13 @@ const verifyAdminPassword = async () => {
     }
 
     // Success! Open admin panel
+    skipNextAdminRoutePromptRef.current = true;
     setAdminPasswordPrompt(false);
     setShowAdmin(true);
+    setShowPrep(false);
+    syncAdminRoute(true, adminTab);
     fetchCompanyDetails();
+    fetchPrepTemplate();
     setAdminPassword("");
   } catch {
     setAdminPasswordError("❌ Ett fel uppstod");
@@ -451,13 +905,107 @@ const handleAdminClick = () => {
   if (showAdmin) {
     // Close admin panel
     setShowAdmin(false);
+    syncAdminRoute(false);
   } else {
     // Show password prompt
+    setShowPrep(false);
     setAdminPasswordPrompt(true);
     setAdminPasswordError("");
     setAdminPassword("");
+    syncAdminRoute(true, adminTab);
   }
 };
+
+const closeAdminPasswordPrompt = () => {
+  setAdminPasswordPrompt(false);
+  setAdminPasswordError("");
+  setAdminPassword("");
+  if (!showAdmin) {
+    syncAdminRoute(false);
+  }
+};
+
+const handleAdminTabChange = (nextTab) => {
+  setAdminTab(nextTab);
+  syncAdminRoute(true, nextTab);
+};
+
+const handlePrepClick = () => {
+  const nextShowPrep = !showPrep;
+  setShowPrep(nextShowPrep);
+  setShowAdmin(false);
+  setAdminPasswordPrompt(false);
+  syncAdminRoute(false);
+
+  if (nextShowPrep) {
+    fetchPrepTasks(prepDate);
+  }
+};
+
+const updatePrepTemplateRow = (rowIndex, field, value) => {
+  setPrepTemplateRows((prev) => prev.map((row, index) => {
+    if (index !== rowIndex) return row;
+
+    if (field === "priority") {
+      return { ...row, [field]: normalizeTemplatePriority(value) };
+    }
+
+    if (field === "due_time") {
+      return { ...row, [field]: normalizeTemplateDueTime(value) || String(value || "").trim() };
+    }
+
+    return { ...row, [field]: value };
+  }));
+};
+
+const addPrepTemplateRow = () => {
+  setPrepTemplateRows((prev) => [...prev, emptyPrepTemplateRow()]);
+};
+
+const removePrepTemplateRow = (rowIndex) => {
+  setPrepTemplateRows((prev) => {
+    if (prev.length <= 1) {
+      return [emptyPrepTemplateRow()];
+    }
+    return prev.filter((_, index) => index !== rowIndex);
+  });
+};
+
+const prepTemplateDirty = serializePrepTemplateRows(prepTemplateRows) !== serializePrepTemplateRows(savedPrepTemplateRows);
+
+const completedPrepCount = prepTasks.filter((task) => task.is_done).length;
+const prepStations = [...new Set(prepTasks.map((task) => String(task.station || "").trim()).filter(Boolean))];
+
+const filteredPrepTasks = prepTasks.filter((task) => {
+  if (prepOnlyOpen && task.is_done) {
+    return false;
+  }
+  if (prepStationFilter !== "all" && String(task.station || "").trim() !== prepStationFilter) {
+    return false;
+  }
+  return true;
+});
+
+const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
+  if (a.is_done !== b.is_done) {
+    return a.is_done ? 1 : -1;
+  }
+
+  const priorityOrder = { high: 0, medium: 1, low: 2 };
+  const aPriority = priorityOrder[String(a.priority || "medium").toLowerCase()] ?? 1;
+  const bPriority = priorityOrder[String(b.priority || "medium").toLowerCase()] ?? 1;
+  if (aPriority !== bPriority) {
+    return aPriority - bPriority;
+  }
+
+  const aTime = dueTimeSortValue(a.due_time);
+  const bTime = dueTimeSortValue(b.due_time);
+  if (aTime !== bTime) {
+    return aTime - bTime;
+  }
+
+  return (a.sort_order || 0) - (b.sort_order || 0);
+});
 
   if (isRestoringSession) {
     return (
@@ -475,34 +1023,114 @@ const handleAdminClick = () => {
     return (
       <div style={styles.loginPage}>
         <div style={styles.loginCard} className="loginCard">
-
-          
-
           <h2 style={{ marginBottom: 6 }}>Intern personalguide</h2>
-          <p style={styles.subtitle}>
-            Logga in med ert personal-lösenord
-          </p>
+          <p style={styles.subtitle}>Välj inloggningssätt</p>
+
+          <div style={styles.loginModeRow}>
+            <button
+              type="button"
+              style={{
+                ...styles.loginModeButton,
+                ...(loginMode === "company" ? styles.loginModeButtonActive : {})
+              }}
+              onClick={() => {
+                setLoginMode("company");
+                setError("");
+              }}
+              disabled={loading}
+            >
+              Företag
+            </button>
+            <button
+              type="button"
+              style={{
+                ...styles.loginModeButton,
+                ...(loginMode === "employee" ? styles.loginModeButtonActive : {})
+              }}
+              onClick={() => {
+                setLoginMode("employee");
+                setError("");
+              }}
+              disabled={loading}
+            >
+              Anställd
+            </button>
+          </div>
 
           <input
             style={styles.input}
             className="chatInput"
             type="password"
-            placeholder="Lösenord"
+            placeholder="Restaurangens lösenord"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && !loading && login()}
+            onKeyDown={e => {
+              if (e.key !== "Enter" || loading) return;
+              if (loginMode === "company") {
+                login();
+              } else {
+                loginWithEmployeeCode();
+              }
+            }}
             disabled={loading}
           />
+
+          {loginMode === "employee" && (
+            <>
+              <input
+                style={styles.input}
+                className="chatInput"
+                type="text"
+                placeholder="Din e-post"
+                value={employeeEmail}
+                onChange={e => setEmployeeEmail(e.target.value)}
+                disabled={loading}
+              />
+
+              <input
+                style={styles.input}
+                className="chatInput"
+                type="text"
+                placeholder="Namn (valfritt vid första kodbegäran)"
+                value={employeeName}
+                onChange={e => setEmployeeName(e.target.value)}
+                disabled={loading}
+              />
+
+              <input
+                style={styles.input}
+                className="chatInput"
+                type="text"
+                placeholder="Engångskod eller demo"
+                value={employeeCode}
+                onChange={e => setEmployeeCode(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && !loading && loginWithEmployeeCode()}
+                disabled={loading}
+              />
+
+              <p style={styles.employeeLoginHint}>
+                Obs: <code>demo</code> fungerar endast lokalt i development.
+              </p>
+
+              <button
+                style={{ ...styles.secondaryButton, width: "100%", marginBottom: 10 }}
+                onClick={requestEmployeeCode}
+                disabled={loading}
+              >
+                {loading ? "Skickar kod..." : "Skicka engångskod"}
+              </button>
+            </>
+          )}
 
           {error && <p style={styles.error}>{error}</p>}
 
           <button
             style={styles.primaryButton}
             className="primaryButton"
-            onClick={login}
+            onClick={loginMode === "company" ? login : loginWithEmployeeCode}
             disabled={loading}
           >
-            {loading ? "Loggar in..." : "Logga in"}
+            {loading ? "Loggar in..." : loginMode === "company" ? "Logga in" : "Logga in med kod"}
           </button>
 
         </div>
@@ -514,9 +1142,19 @@ const handleAdminClick = () => {
   return (
     <div style={styles.appContainer}>
       <style jsx>{`
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap');
+
+        :global(body) {
+          font-family: 'Manrope', 'Segoe UI', sans-serif;
+          background: radial-gradient(circle at 10% 10%, #eef2ff 0%, #f8fafc 55%, #f1f5f9 100%);
+          color: #0f172a;
+        }
+
         .loginCard:hover { transform: translateY(-3px); }
         .primaryButton:hover { background: #1e40af; }
         .sendButton:hover { background: #1e40af; }
+        .loginModeButton:hover { border-color: #93c5fd; background: #f8fbff; }
+        .logoutButton:hover { background: #1f2937; }
         .chatInput:focus { border-color: #2563eb; }
         input:focus, textarea:focus {
           border-color: #2563eb;
@@ -537,6 +1175,10 @@ const handleAdminClick = () => {
           background: #e0ebff;
           transform: translateY(-1px);
           box-shadow: 0 4px 10px rgba(30, 64, 175, 0.18);
+        }
+        .menuInlineItem:hover {
+          color: #1e3a8a;
+          text-decoration-thickness: 2px;
         }
 
         .typing { display: flex; gap: 4px; align-items: center; }
@@ -582,6 +1224,15 @@ const handleAdminClick = () => {
         </div>
 
         <div style={{ display: "flex", gap: 12 }}>
+          <button
+            style={{
+              ...styles.logoutButton,
+              background: showPrep ? "#2563eb" : "#374151"
+            }}
+            onClick={handlePrepClick}
+          >
+            {showPrep ? "Tillbaka till chat" : "Dagens prep"}
+          </button>
           {company.is_admin && (
             <button
               style={{
@@ -603,7 +1254,7 @@ const handleAdminClick = () => {
       </header>
 
       {adminPasswordPrompt && (
-        <div style={styles.modalOverlay} onClick={() => setAdminPasswordPrompt(false)}>
+        <div style={styles.modalOverlay} onClick={closeAdminPasswordPrompt}>
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>Admin-lösenord krävs</h3>
             <p style={{ color: "#6b7280", fontSize: 14 }}>Ange admin-lösenord för att komma åt admin-panelen</p>
@@ -635,7 +1286,7 @@ const handleAdminClick = () => {
               </button>
               <button
                 style={{ ...styles.primaryButton, flex: 1, background: "#6b7280" }}
-                onClick={() => setAdminPasswordPrompt(false)}
+                onClick={closeAdminPasswordPrompt}
                 disabled={adminLoading}
               >
                 Avbryt
@@ -656,7 +1307,7 @@ const handleAdminClick = () => {
                   ...(adminTab === "info" ? styles.adminTabActive : {})
                 }}
                 className="adminTabButton"
-                onClick={() => setAdminTab("info")}
+                onClick={() => handleAdminTabChange("info")}
               >
                 📋 Företagsinfo
                 {isTabDirty("info") && <span style={styles.tabDirtyDot}>●</span>}
@@ -667,7 +1318,7 @@ const handleAdminClick = () => {
                   ...(adminTab === "menu" ? styles.adminTabActive : {})
                 }}
                 className="adminTabButton"
-                onClick={() => setAdminTab("menu")}
+                onClick={() => handleAdminTabChange("menu")}
               >
                 🍕 Meny & Allergener
                 {isTabDirty("menu") && <span style={styles.tabDirtyDot}>●</span>}
@@ -678,7 +1329,7 @@ const handleAdminClick = () => {
                   ...(adminTab === "routines" ? styles.adminTabActive : {})
                 }}
                 className="adminTabButton"
-                onClick={() => setAdminTab("routines")}
+                onClick={() => handleAdminTabChange("routines")}
               >
                 📝 Rutiner & Regler
                 {isTabDirty("routines") && <span style={styles.tabDirtyDot}>●</span>}
@@ -686,10 +1337,21 @@ const handleAdminClick = () => {
               <button
                 style={{
                   ...styles.adminTab,
+                  ...(adminTab === "prep" ? styles.adminTabActive : {})
+                }}
+                className="adminTabButton"
+                onClick={() => handleAdminTabChange("prep")}
+              >
+                ✅ Prep-mall
+                {prepTemplateDirty && <span style={styles.tabDirtyDot}>●</span>}
+              </button>
+              <button
+                style={{
+                  ...styles.adminTab,
                   ...(adminTab === "security" ? styles.adminTabActive : {})
                 }}
                 className="adminTabButton"
-                onClick={() => setAdminTab("security")}
+                onClick={() => handleAdminTabChange("security")}
               >
                 🔐 Säkerhet
               </button>
@@ -699,7 +1361,7 @@ const handleAdminClick = () => {
                   ...(adminTab === "stats" ? styles.adminTabActive : {})
                 }}
                 className="adminTabButton"
-                onClick={() => setAdminTab("stats")}
+                onClick={() => handleAdminTabChange("stats")}
               >
                 📊 Statistik
               </button>
@@ -881,6 +1543,109 @@ const handleAdminClick = () => {
                 </div>
               )}
 
+              {adminTab === "prep" && (
+                <div className="adminSectionCard">
+                  <h3 style={{ marginTop: 0 }}>Prep-mall (chef)</h3>
+                  <p style={styles.helperText}>
+                    Fyll i en rad per prep-uppgift med separat fält för uppgift, stress, station och klar-tid.
+                  </p>
+
+                  <div style={styles.prepTemplateTableWrap}>
+                    <table style={styles.prepTemplateTable}>
+                      <thead>
+                        <tr>
+                          <th style={styles.prepTemplateTh}>Uppgift</th>
+                          <th style={styles.prepTemplateTh}>Stress</th>
+                          <th style={styles.prepTemplateTh}>Station</th>
+                          <th style={styles.prepTemplateTh}>Klar tid</th>
+                          <th style={styles.prepTemplateTh}>Ta bort</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {prepTemplateRows.map((row, index) => (
+                          <tr key={`prep-row-${index}`}>
+                            <td style={styles.prepTemplateTd}>
+                              <input
+                                style={styles.prepTemplateInput}
+                                value={row.title}
+                                onChange={(e) => updatePrepTemplateRow(index, "title", e.target.value)}
+                                placeholder="t.ex. Hacka lok"
+                                disabled={prepTemplateLoading}
+                              />
+                            </td>
+                            <td style={styles.prepTemplateTd}>
+                              <select
+                                style={styles.prepTemplateSelect}
+                                value={row.priority}
+                                onChange={(e) => updatePrepTemplateRow(index, "priority", e.target.value)}
+                                disabled={prepTemplateLoading}
+                              >
+                                <option value="high">Hog</option>
+                                <option value="medium">Medel</option>
+                                <option value="low">Lag</option>
+                              </select>
+                            </td>
+                            <td style={styles.prepTemplateTd}>
+                              <input
+                                style={styles.prepTemplateInput}
+                                value={row.station}
+                                onChange={(e) => updatePrepTemplateRow(index, "station", e.target.value)}
+                                placeholder="t.ex. kok"
+                                disabled={prepTemplateLoading}
+                              />
+                            </td>
+                            <td style={styles.prepTemplateTd}>
+                              <input
+                                type="time"
+                                style={styles.prepTemplateInput}
+                                value={row.due_time}
+                                onChange={(e) => updatePrepTemplateRow(index, "due_time", e.target.value)}
+                                disabled={prepTemplateLoading}
+                              />
+                            </td>
+                            <td style={styles.prepTemplateTd}>
+                              <button
+                                type="button"
+                                style={styles.prepDeleteRowButton}
+                                onClick={() => removePrepTemplateRow(index)}
+                                disabled={prepTemplateLoading}
+                              >
+                                Ta bort
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <button
+                    style={{ ...styles.secondaryButton, width: "100%", marginTop: 12 }}
+                    onClick={addPrepTemplateRow}
+                    disabled={prepTemplateLoading}
+                  >
+                    + Ny rad
+                  </button>
+
+                  <div style={styles.adminActionBar}>
+                    <button
+                      style={{ ...styles.secondaryButton, flex: 1 }}
+                      onClick={() => setPrepTemplateRows(savedPrepTemplateRows)}
+                      disabled={!prepTemplateDirty || prepTemplateLoading}
+                    >
+                      Återställ
+                    </button>
+                    <button
+                      style={{ ...styles.primaryButton, flex: 1, width: "auto" }}
+                      onClick={savePrepTemplate}
+                      disabled={!prepTemplateDirty || prepTemplateLoading}
+                    >
+                      {prepTemplateLoading ? "Sparar..." : "Spara prep-mall"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {adminTab === "security" && (
                 <div className="adminSectionCard">
                   <h3 style={{ marginTop: 0 }}>Säkerhet & Åtkomst</h3>
@@ -964,6 +1729,90 @@ const handleAdminClick = () => {
             </div>
           </div>
         </>
+      ) : showPrep ? (
+        <div style={styles.prepPanel}>
+          <div style={styles.prepCard}>
+            <div style={styles.prepHeaderRow}>
+              <div>
+                <h3 style={{ margin: "0 0 4px 0" }}>Dagens prep</h3>
+                <p style={{ ...styles.helperText, margin: 0 }}>
+                  {prepDate} · {completedPrepCount}/{prepTasks.length} klara
+                </p>
+              </div>
+              <button
+                style={{ ...styles.secondaryButton, padding: "10px 14px", fontSize: 14 }}
+                onClick={() => fetchPrepTasks(prepDate)}
+                disabled={prepLoading}
+              >
+                {prepLoading ? "Laddar..." : "Uppdatera"}
+              </button>
+            </div>
+
+            <div style={styles.prepFiltersRow}>
+              <label style={styles.prepFilterToggle}>
+                <input
+                  type="checkbox"
+                  checked={prepOnlyOpen}
+                  onChange={(e) => setPrepOnlyOpen(e.target.checked)}
+                />
+                Visa bara ej klara
+              </label>
+
+              <select
+                value={prepStationFilter}
+                onChange={(e) => setPrepStationFilter(e.target.value)}
+                style={styles.prepSelect}
+              >
+                <option value="all">Alla stationer</option>
+                {prepStations.map((station) => (
+                  <option key={station} value={station}>{station}</option>
+                ))}
+              </select>
+            </div>
+
+            {prepError && <p style={styles.error}>{prepError}</p>}
+
+            {!prepError && !prepLoading && prepTasks.length === 0 && (
+              <div style={styles.prepEmptyState}>
+                Inga prep-uppgifter för idag. Be chefen lägga in en prep-mall i admin.
+              </div>
+            )}
+
+            <div style={styles.prepList}>
+              {visiblePrepTasks.map((task) => {
+                const priorityMeta = getPriorityMeta(task.priority);
+                const stationText = String(task.station || "").trim();
+                const dueTimeText = String(task.due_time || "").trim();
+
+                return (
+                <label key={task.id} style={styles.prepItem}>
+                  <input
+                    type="checkbox"
+                    checked={!!task.is_done}
+                    onChange={(e) => togglePrepTask(task.id, e.target.checked)}
+                    disabled={prepLoading}
+                  />
+                  <div style={styles.prepItemBody}>
+                    <span style={{
+                      ...styles.prepItemText,
+                      ...(task.is_done ? styles.prepItemDone : {})
+                    }}>
+                      {task.title}
+                    </span>
+                    <div style={styles.prepMetaRow}>
+                      <span style={{ ...styles.prepMetaChip, ...priorityMeta.style }}>
+                        Prioritet: {priorityMeta.label}
+                      </span>
+                      {stationText && <span style={styles.prepMetaChip}>Station: {stationText}</span>}
+                      {dueTimeText && <span style={styles.prepMetaChip}>Klar före {dueTimeText}</span>}
+                    </div>
+                  </div>
+                </label>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       ) : (
         <>
           <div style={styles.chatArea} ref={chatAreaRef}>
@@ -983,23 +1832,10 @@ const handleAdminClick = () => {
                     : styles.aiBubble
                 }
               >
-                {msg.text}
+                {msg.from === "ai" ? renderAiTextWithClickableMenuItems(msg, i) : msg.text}
                 {msg.from === "ai" && Array.isArray(msg.menuItems) && msg.menuItems.length > 0 && (
                   <div style={styles.menuItemsWrap}>
                     <div style={styles.menuItemsTitle}>Tryck på en rätt för recept</div>
-                    <div style={styles.menuItemsGrid}>
-                      {msg.menuItems.map((menuItem) => (
-                        <button
-                          key={`${i}-${menuItem}`}
-                          style={styles.menuItemButton}
-                          className="quickActionButton"
-                          onClick={() => askAI(`Vad är receptet för ${menuItem}?`) }
-                          disabled={loading}
-                        >
-                          {menuItem}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 )}
               </div>
@@ -1058,7 +1894,7 @@ const handleAdminClick = () => {
 const styles = {
   loginPage: {
     minHeight: "100vh",
-    background: "linear-gradient(135deg, #eef2ff, #f8fafc)",
+    background: "radial-gradient(circle at 15% 15%, #dbeafe 0%, #eef2ff 38%, #f8fafc 100%)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -1066,16 +1902,16 @@ const styles = {
   },
 
   loginCard: {
-    background: "#ffffff",
+    background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
     padding: 40,
-    borderRadius: 20,
+    borderRadius: 24,
     width: "100%",
-    maxWidth: 400,
-    boxShadow: "0 30px 80px rgba(0,0,0,0.08)",
-    border: "1px solid #e5e7eb",
+    maxWidth: 430,
+    boxShadow: "0 26px 70px rgba(15,23,42,0.12)",
+    border: "1px solid #dbeafe",
     textAlign: "center",
     boxSizing: "border-box",
-    transition: "transform 0.2s",
+    transition: "transform 0.2s, box-shadow 0.2s",
   },
 
   logoBox: {
@@ -1093,8 +1929,40 @@ const styles = {
 
   subtitle: {
     marginBottom: 24,
+    color: "#475569",
+    fontSize: 14,
+    fontWeight: 600
+  },
+
+  loginModeRow: {
+    display: "flex",
+    gap: 8,
+    marginBottom: 14
+  },
+
+  loginModeButton: {
+    flex: 1,
+    border: "1px solid #d1d5db",
+    background: "#fff",
+    color: "#374151",
+    borderRadius: 10,
+    padding: "10px 12px",
+    fontWeight: 600,
+    cursor: "pointer"
+  },
+
+  loginModeButtonActive: {
+    background: "#2563eb",
+    color: "#fff",
+    borderColor: "#2563eb"
+  },
+
+  employeeLoginHint: {
+    marginTop: -6,
+    marginBottom: 12,
+    fontSize: 12,
     color: "#6b7280",
-    fontSize: 14
+    textAlign: "left"
   },
 
   input: {
@@ -1102,7 +1970,7 @@ const styles = {
     padding: 14,
     fontSize: 16,
     borderRadius: 12,
-    border: "1px solid #d1d5db",
+    border: "1px solid #cbd5e1",
     marginBottom: 16,
     boxSizing: "border-box",
     outline: "none",
@@ -1133,30 +2001,36 @@ const styles = {
     flexDirection: "column",
     height: "100dvh",
     minHeight: "100vh",
-    background: "#f3f4f6"
+    background: "radial-gradient(circle at 8% 8%, #eff6ff 0%, #f3f4f6 42%, #e2e8f0 100%)"
   },
 
   header: {
     padding: "18px 28px",
-    background: "linear-gradient(90deg, #111827, #1f2937)",
+    background: "linear-gradient(100deg, #0f172a 0%, #1e293b 60%, #334155 100%)",
     color: "#fff",
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center"
+    alignItems: "center",
+    borderBottom: "1px solid rgba(148,163,184,0.28)",
+    boxShadow: "0 10px 24px rgba(15,23,42,0.22)"
   },
 
   headerSub: {
     fontSize: 13,
-    color: "#9ca3af"
+    color: "#cbd5e1",
+    fontWeight: 600,
+    letterSpacing: 0.3
   },
 
   logoutButton: {
-    background: "#374151",
-    border: "none",
+    background: "#334155",
+    border: "1px solid rgba(148,163,184,0.35)",
     color: "#fff",
-    padding: "8px 14px",
-    borderRadius: 8,
-    cursor: "pointer"
+    padding: "9px 14px",
+    borderRadius: 999,
+    cursor: "pointer",
+    fontWeight: 700,
+    transition: "background 0.2s, transform 0.15s"
   },
 
   chatArea: {
@@ -1166,7 +2040,7 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: 14,
-    background: "linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%)"
+    background: "linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%)"
   },
 
   emptyStateCard: {
@@ -1198,8 +2072,8 @@ const styles = {
     color: "#fff",
     padding: 14,
     borderRadius: "16px 16px 6px 16px",
-    maxWidth: "70%",
-    boxShadow: "0 6px 16px rgba(37,99,235,0.28)",
+    maxWidth: "76%",
+    boxShadow: "0 10px 22px rgba(37,99,235,0.24)",
     animation: "fadeIn 0.2s"
   },
 
@@ -1208,9 +2082,10 @@ const styles = {
     background: "#ffffff",
     padding: 14,
     borderRadius: "16px 16px 16px 6px",
-    maxWidth: "70%",
+    maxWidth: "76%",
     whiteSpace: "pre-wrap",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+    boxShadow: "0 8px 20px rgba(15,23,42,0.08)",
+    border: "1px solid #e2e8f0",
     animation: "fadeIn 0.2s"
   },
 
@@ -1225,6 +2100,23 @@ const styles = {
     fontWeight: 600,
     color: "#4b5563",
     marginBottom: 8
+  },
+
+  menuInlineText: {
+    color: "#1d4ed8"
+  },
+
+  menuInlineItemButton: {
+    border: "none",
+    background: "transparent",
+    padding: 0,
+    margin: 0,
+    color: "#1d4ed8",
+    font: "inherit",
+    fontWeight: 700,
+    textDecoration: "underline",
+    textUnderlineOffset: "2px",
+    cursor: "pointer"
   },
 
   menuItemsGrid: {
@@ -1249,30 +2141,31 @@ const styles = {
     display: "flex",
     flexWrap: "wrap",
     gap: 8,
-    padding: "12px 18px 16px 18px",
+    padding: "12px 18px 14px 18px",
     background: "#ffffff",
     borderTop: "1px solid #e5e7eb",
-    borderBottom: "1px solid #f3f4f6"
+    borderBottom: "1px solid #e2e8f0"
   },
 
   quickActionButton: {
-    border: "1px solid #dbeafe",
-    background: "#eff6ff",
-    color: "#1e3a8a",
+    border: "1px solid #bfdbfe",
+    background: "linear-gradient(180deg, #f8fbff 0%, #eaf2ff 100%)",
+    color: "#1e40af",
     borderRadius: 999,
     padding: "9px 14px",
     fontSize: 13,
     cursor: "pointer",
-    fontWeight: 600,
+    fontWeight: 700,
     transition: "transform 0.15s, box-shadow 0.2s, background 0.2s",
-    boxShadow: "0 1px 4px rgba(37,99,235,0.16)"
+    boxShadow: "0 2px 8px rgba(37,99,235,0.14)"
   },
 
   inputArea: {
     display: "flex",
     padding: "12px 18px 18px 18px",
     background: "#ffffff",
-    boxShadow: "0 -6px 18px rgba(17,24,39,0.04)"
+    boxShadow: "0 -8px 18px rgba(17,24,39,0.06)",
+    borderTop: "1px solid #e2e8f0"
   },
 
   chatInput: {
@@ -1280,19 +2173,210 @@ const styles = {
     padding: 14,
     fontSize: 16,
     borderRadius: 12,
-    border: "1px solid #d1d5db",
+    border: "1px solid #cbd5e1",
     marginRight: 12,
     boxSizing: "border-box"
   },
 
   sendButton: {
-    background: "#2563eb",
+    background: "linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%)",
     color: "#fff",
     border: "none",
     padding: "0 24px",
     borderRadius: 12,
     cursor: "pointer",
-    fontWeight: 600
+    fontWeight: 700,
+    boxShadow: "0 8px 16px rgba(37,99,235,0.25)"
+  },
+
+  prepPanel: {
+    flex: 1,
+    minHeight: 0,
+    overflowY: "auto",
+    padding: 24,
+    background: "linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%)"
+  },
+
+  prepCard: {
+    maxWidth: 760,
+    margin: "0 auto",
+    background: "#fff",
+    borderRadius: 18,
+    border: "1px solid #e5e7eb",
+    boxShadow: "0 12px 28px rgba(15,23,42,0.08)",
+    padding: 18
+  },
+
+  prepHeaderRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 16,
+    flexWrap: "wrap"
+  },
+
+  prepFiltersRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+    flexWrap: "wrap"
+  },
+
+  prepFilterToggle: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    fontSize: 14,
+    color: "#374151"
+  },
+
+  prepSelect: {
+    border: "1px solid #d1d5db",
+    borderRadius: 10,
+    padding: "8px 10px",
+    background: "#fff",
+    color: "#111827",
+    fontSize: 14,
+    minWidth: 170
+  },
+
+  prepEmptyState: {
+    background: "#f8fafc",
+    border: "1px dashed #cbd5e1",
+    borderRadius: 10,
+    padding: 12,
+    color: "#475569",
+    marginBottom: 12
+  },
+
+  prepList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8
+  },
+
+  prepItem: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: "10px 12px",
+    background: "#f9fafb",
+    borderRadius: 10,
+    border: "1px solid #e5e7eb"
+  },
+
+  prepItemBody: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    flex: 1,
+    minWidth: 0
+  },
+
+  prepItemText: {
+    color: "#111827",
+    lineHeight: 1.45,
+    fontSize: 15
+  },
+
+  prepMetaRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 6
+  },
+
+  prepMetaChip: {
+    fontSize: 12,
+    padding: "4px 8px",
+    borderRadius: 999,
+    background: "#eef2ff",
+    color: "#3730a3",
+    border: "1px solid #c7d2fe"
+  },
+
+  prepPriorityHigh: {
+    background: "#fee2e2",
+    color: "#991b1b",
+    border: "1px solid #fecaca"
+  },
+
+  prepPriorityMedium: {
+    background: "#fef3c7",
+    color: "#92400e",
+    border: "1px solid #fde68a"
+  },
+
+  prepPriorityLow: {
+    background: "#dcfce7",
+    color: "#166534",
+    border: "1px solid #bbf7d0"
+  },
+
+  prepItemDone: {
+    textDecoration: "line-through",
+    color: "#6b7280"
+  },
+
+  prepTemplateTableWrap: {
+    width: "100%",
+    overflowX: "auto",
+    border: "1px solid #e5e7eb",
+    borderRadius: 10,
+    background: "#fff"
+  },
+
+  prepTemplateTable: {
+    width: "100%",
+    borderCollapse: "collapse",
+    minWidth: 620
+  },
+
+  prepTemplateTh: {
+    textAlign: "left",
+    fontSize: 12,
+    color: "#4b5563",
+    padding: "10px 8px",
+    borderBottom: "1px solid #e5e7eb",
+    background: "#f9fafb"
+  },
+
+  prepTemplateTd: {
+    padding: 8,
+    borderBottom: "1px solid #f3f4f6",
+    verticalAlign: "top"
+  },
+
+  prepTemplateInput: {
+    width: "100%",
+    border: "1px solid #d1d5db",
+    borderRadius: 8,
+    padding: "8px 10px",
+    fontSize: 14,
+    boxSizing: "border-box"
+  },
+
+  prepTemplateSelect: {
+    width: "100%",
+    border: "1px solid #d1d5db",
+    borderRadius: 8,
+    padding: "8px 10px",
+    fontSize: 14,
+    boxSizing: "border-box",
+    background: "#fff"
+  },
+
+  prepDeleteRowButton: {
+    border: "1px solid #fecaca",
+    background: "#fff1f2",
+    color: "#991b1b",
+    borderRadius: 8,
+    padding: "7px 10px",
+    cursor: "pointer",
+    fontSize: 13,
+    whiteSpace: "nowrap"
   },
 
   adminPanel: {

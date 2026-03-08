@@ -1,5 +1,21 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## OTP Email Setup (Employee Login)
+
+Employee one-time codes can be sent via Resend.
+
+Set these environment variables:
+
+```bash
+RESEND_API_KEY=your_resend_api_key
+RESEND_FROM_EMAIL=login@your-verified-domain.com
+```
+
+Notes:
+
+- `RESEND_FROM_EMAIL` must be a verified sender in your Resend account.
+- In non-production, if Resend is not configured, the API returns `debugCode` for local testing.
+
 ## Getting Started
 
 First, run the development server:
