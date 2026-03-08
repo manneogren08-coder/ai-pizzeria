@@ -43,8 +43,8 @@ function dueTimeSortValue(dueTime) {
 
 function normalizeTemplatePriority(value) {
   const normalized = String(value || "").trim().toLowerCase();
-  if (["high", "hog", "hÃ¶g", "h"].includes(normalized)) return "high";
-  if (["low", "lag", "lÃ¥g", "l"].includes(normalized)) return "low";
+  if (["high", "hog", "hög", "h"].includes(normalized)) return "high";
+  if (["low", "lag", "låg", "l"].includes(normalized)) return "low";
   return "medium";
 }
 
@@ -77,7 +77,7 @@ function parsePrepTemplateText(templateText) {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => line.replace(/^[-*â€¢]\s*/, ""));
+    .map((line) => line.replace(/^[-*⬢]\s*/, ""));
 
   const rows = lines
     .map((line) => {
@@ -240,9 +240,9 @@ export default function Home() {
 
   const quickQuestions = [
     { key: "menu", label: "Visa hela menyn", prompt: "Visa hela menyn inklusive priser och eventuella tillval." },
-    { key: "allergens", label: "Vilka allergener finns?", prompt: "Lista alla allergener i menyn och nÃ¤mn vilka alternativ som finns." },
-    { key: "opening_hours", label: "Vad Ã¤r Ã¶ppettiderna?", prompt: "Vad Ã¤r Ã¶ppettiderna idag och i veckan?" },
-    { key: "opening_routine", label: "Vad Ã¤r Ã¶ppningsrutinen?", prompt: "Beskriv Ã¶ppningsrutinen steg fÃ¶r steg." }
+    { key: "allergens", label: "Vilka allergener finns?", prompt: "Lista alla allergener i menyn och nämn vilka alternativ som finns." },
+    { key: "opening_hours", label: "Vad är öppettiderna?", prompt: "Vad är öppettiderna idag och i veckan?" },
+    { key: "opening_routine", label: "Vad är öppningsrutinen?", prompt: "Beskriv öppningsrutinen steg för steg." }
   ];
 
   const [token, setToken] = useState("");
@@ -367,7 +367,7 @@ export default function Home() {
       setRecipeRows(restoredRows);
       setSelectedRecipeId(restoredRows[0]?.id || "");
     }
-    showToast("Ã„ndringar Ã¥terstÃ¤llda", "info");
+    showToast("Ändringar återställda", "info");
   };
 
   const formatAiAnswer = (answer) => {
@@ -378,7 +378,7 @@ export default function Home() {
     }
 
     const lower = trimmed.toLowerCase();
-    if (!/(meny|allergen|rutin|Ã¶ppettid|kontakt)/i.test(lower)) {
+    if (!/(meny|allergen|rutin|öppettid|kontakt)/i.test(lower)) {
       return trimmed;
     }
 
@@ -433,7 +433,7 @@ export default function Home() {
           type="button"
           style={styles.menuInlineItemButton}
           className="menuInlineItem"
-          onClick={() => askAI(`Vad Ã¤r receptet fÃ¶r ${matchingItem}?`)}
+          onClick={() => askAI(`Vad är receptet för ${matchingItem}?`)}
           disabled={loading}
         >
           {part}
@@ -476,7 +476,7 @@ export default function Home() {
       const data = await res.json();
 
       if (!res.ok) {
-        showToast(data?.error || "Kunde inte hÃ¤mta prep-mall", "error");
+        showToast(data?.error || "Kunde inte hämta prep-mall", "error");
         return;
       }
 
@@ -485,7 +485,7 @@ export default function Home() {
       setPrepTemplateRows(parsedRows);
       setSavedPrepTemplateRows(parsedRows);
     } catch {
-      showToast("Kunde inte hÃ¤mta prep-mall", "error");
+      showToast("Kunde inte hämta prep-mall", "error");
     } finally {
       setPrepTemplateLoading(false);
     }
@@ -508,7 +508,7 @@ export default function Home() {
       const data = await res.json();
 
       if (!res.ok) {
-        setPrepError(data?.error || "Kunde inte hÃ¤mta dagens prep.");
+        setPrepError(data?.error || "Kunde inte hämta dagens prep.");
         setPrepTasks([]);
         setPrepLoading(false);
         return;
@@ -517,7 +517,7 @@ export default function Home() {
       setPrepDate(data?.prepDate || requestedDate);
       setPrepTasks(Array.isArray(data?.tasks) ? data.tasks : []);
     } catch {
-      setPrepError("Kunde inte hÃ¤mta dagens prep.");
+      setPrepError("Kunde inte hämta dagens prep.");
       setPrepTasks([]);
     }
 
@@ -685,7 +685,7 @@ export default function Home() {
 
   const login = async () => {
   if (!password.trim()) {
-    setError("Skriv in lÃ¶senord");
+    setError("Skriv in lösenord");
     return;
   }
 
@@ -702,7 +702,7 @@ export default function Home() {
     const data = await res.json();
 
     if (!res.ok) {
-      setError("Fel lÃ¶senord");
+      setError("Fel lösenord");
       setLoading(false);
       return;
     }
@@ -712,7 +712,7 @@ export default function Home() {
     localStorage.setItem("token", data.token);
     localStorage.setItem("company", JSON.stringify(data.company));
   } catch {
-    setError("Ett fel uppstod. FÃ¶rsÃ¶k igen.");
+    setError("Ett fel uppstod. Försök igen.");
   }
 
   setLoading(false);
@@ -720,7 +720,7 @@ export default function Home() {
 
   const requestEmployeeCode = async () => {
     if (!password.trim()) {
-      setError("Skriv in restaurangens lÃ¶senord");
+      setError("Skriv in restaurangens lösenord");
       return;
     }
 
@@ -754,7 +754,7 @@ export default function Home() {
       const debugHint = data?.debugCode ? ` Testkod: ${data.debugCode}` : "";
       showToast(`Kod skickad till ${employeeEmail}.${debugHint}`, "info");
     } catch {
-      setError("Ett fel uppstod. FÃ¶rsÃ¶k igen.");
+      setError("Ett fel uppstod. Försök igen.");
     }
 
     setLoading(false);
@@ -762,7 +762,7 @@ export default function Home() {
 
   const loginWithEmployeeCode = async () => {
     if (!password.trim()) {
-      setError("Skriv in restaurangens lÃ¶senord");
+      setError("Skriv in restaurangens lösenord");
       return;
     }
 
@@ -772,7 +772,7 @@ export default function Home() {
     }
 
     if (!employeeCode.trim()) {
-      setError("Skriv in engÃ¥ngskod eller demo");
+      setError("Skriv in engångskod eller demo");
       return;
     }
 
@@ -804,7 +804,7 @@ export default function Home() {
       localStorage.setItem("company", JSON.stringify(data.company));
       setEmployeeCode("");
     } catch {
-      setError("Ett fel uppstod. FÃ¶rsÃ¶k igen.");
+      setError("Ett fel uppstod. Försök igen.");
     }
 
     setLoading(false);
@@ -840,13 +840,13 @@ export default function Home() {
 
     if (res.status === 401 && /ogiltig token|ingen token|session/i.test(data?.answer || "")) {
       logout();
-      showToast("Sessionen har gÃ¥tt ut. Logga in igen.", "info");
+      showToast("Sessionen har gått ut. Logga in igen.", "info");
       setLoading(false);
       return;
     }
 
     if (!res.ok) {
-      setChat(prev => [...prev, { from: "ai", text: data?.answer || "Ett fel uppstod. FÃ¶rsÃ¶k igen." }]);
+      setChat(prev => [...prev, { from: "ai", text: data?.answer || "Ett fel uppstod. Försök igen." }]);
       setLoading(false);
       return;
     }
@@ -862,7 +862,7 @@ export default function Home() {
   } catch {
     setChat(prev => [
       ...prev,
-      { from: "ai", text: "Ett fel uppstod. FÃ¶rsÃ¶k igen." }
+      { from: "ai", text: "Ett fel uppstod. Försök igen." }
     ]);
   }
 
@@ -871,7 +871,7 @@ export default function Home() {
 
 const updatePassword = async () => {
   if (!newPassword.trim()) {
-    showToast("Skriv in ett nytt lÃ¶senord", "error");
+    showToast("Skriv in ett nytt lösenord", "error");
     return;
   }
 
@@ -892,18 +892,18 @@ const updatePassword = async () => {
 
     if (!res.ok) {
       const errorText = data.details ? `${data.error || "Fel vid uppdatering"} (${data.details})` : (data.error || "Fel vid uppdatering");
-      setAdminMessage("âŒ " + errorText);
+      setAdminMessage("❌ " + errorText);
       showToast(errorText, "error");
       setAdminLoading(false);
       return;
     }
 
-    setAdminMessage("âœ… LÃ¶senord uppdaterat!");
-    showToast("LÃ¶senord uppdaterat", "success");
+    setAdminMessage("✅ Lösenord uppdaterat!");
+    showToast("Lösenord uppdaterat", "success");
     setNewPassword("");
     setTimeout(() => setAdminMessage(""), 3000);
   } catch {
-    setAdminMessage("âŒ Ett fel uppstod");
+    setAdminMessage("❌ Ett fel uppstod");
     showToast("Ett fel uppstod", "error");
   }
 
@@ -928,13 +928,13 @@ const updateCompanyDetails = async () => {
 
     if (!res.ok) {
       const errorText = data.details ? `${data.error || "Fel vid uppdatering"} (${data.details})` : (data.error || "Fel vid uppdatering");
-      setAdminMessage("âŒ " + errorText);
+      setAdminMessage("❌ " + errorText);
       showToast(errorText, "error");
       setAdminLoading(false);
       return;
     }
 
-    setAdminMessage("âœ… Uppgifter uppdaterade!");
+    setAdminMessage("✅ Uppgifter uppdaterade!");
     setSavedCompanyDetails(companyDetails);
     setSavedRecipeRows(recipeRows);
     setLastSavedAt(new Date());
@@ -942,11 +942,11 @@ const updateCompanyDetails = async () => {
     if (skippedColumns.length > 0) {
       showToast(`Sparat, men saknade DB-kolumner: ${skippedColumns.join(", ")}`, "info");
     } else {
-      showToast("Ã„ndringar sparade", "success");
+      showToast("Ändringar sparade", "success");
     }
     setTimeout(() => setAdminMessage(""), 3000);
   } catch {
-    setAdminMessage("âŒ Ett fel uppstod");
+    setAdminMessage("❌ Ett fel uppstod");
     showToast("Ett fel uppstod", "error");
   }
 
@@ -954,7 +954,7 @@ const updateCompanyDetails = async () => {
 };
 
 const toggleCompanyStatus = async () => {
-  if (!confirm(`Vill du ${company.active ? 'deaktivera' : 'aktivera'} fÃ¶retaget?`)) {
+  if (!confirm(`Vill du ${company.active ? 'deaktivera' : 'aktivera'} företaget?`)) {
     return;
   }
 
@@ -972,8 +972,8 @@ const toggleCompanyStatus = async () => {
     const data = await res.json();
 
     if (!res.ok) {
-      setAdminMessage("âŒ " + (data.error || "Fel vid statusÃ¤ndring"));
-      showToast(data.error || "Fel vid statusÃ¤ndring", "error");
+      setAdminMessage("❌ " + (data.error || "Fel vid statusändring"));
+      showToast(data.error || "Fel vid statusändring", "error");
       setAdminLoading(false);
       return;
     }
@@ -983,11 +983,11 @@ const toggleCompanyStatus = async () => {
     setCompany(updatedCompany);
     localStorage.setItem("company", JSON.stringify(updatedCompany));
     
-    setAdminMessage(`âœ… FÃ¶retaget Ã¤r nu ${!company.active ? 'aktiverat' : 'deaktiverat'}`);
-    showToast(`FÃ¶retaget Ã¤r nu ${!company.active ? 'aktiverat' : 'deaktiverat'}`, "success");
+    setAdminMessage(`✅ Företaget är nu ${!company.active ? 'aktiverat' : 'deaktiverat'}`);
+    showToast(`Företaget är nu ${!company.active ? 'aktiverat' : 'deaktiverat'}`, "success");
     setTimeout(() => setAdminMessage(""), 3000);
   } catch {
-    setAdminMessage("âŒ Ett fel uppstod");
+    setAdminMessage("❌ Ett fel uppstod");
     showToast("Ett fel uppstod", "error");
   }
 
@@ -996,7 +996,7 @@ const toggleCompanyStatus = async () => {
 
 const verifyAdminPassword = async () => {
   if (!adminPassword.trim()) {
-    setAdminPasswordError("Ange admin-lÃ¶senord");
+    setAdminPasswordError("Ange admin-lösenord");
     return;
   }
 
@@ -1017,7 +1017,7 @@ const verifyAdminPassword = async () => {
 
     if (!res.ok) {
       const errorText = data.details ? `${data.error || "Fel vid verifiering"} (${data.details})` : (data.error || "Fel vid verifiering");
-      setAdminPasswordError("âŒ " + errorText);
+      setAdminPasswordError("❌ " + errorText);
       showToast(errorText, "error");
       setAdminLoading(false);
       return;
@@ -1033,7 +1033,7 @@ const verifyAdminPassword = async () => {
     fetchPrepTemplate();
     setAdminPassword("");
   } catch {
-    setAdminPasswordError("âŒ Ett fel uppstod");
+    setAdminPasswordError("❌ Ett fel uppstod");
     showToast("Ett fel uppstod", "error");
   }
 
@@ -1226,19 +1226,19 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
       <div style={styles.loginPage}>
         <div style={styles.loginCard}>
           <h2 style={{ marginBottom: 8 }}>Laddar session...</h2>
-          <p style={styles.subtitle}>Ett Ã¶gonblick, vi hÃ¤mtar din inloggning.</p>
+          <p style={styles.subtitle}>Ett ögonblick, vi hämtar din inloggning.</p>
         </div>
       </div>
     );
   }
 
-  // ðŸ” LOGIN PAGE
+  // LOGIN PAGE
   if (!company) {
     return (
       <div style={styles.loginPage}>
         <div style={styles.loginCard} className="loginCard">
           <h2 style={{ marginBottom: 6 }}>Intern personalguide</h2>
-          <p style={styles.subtitle}>VÃ¤lj inloggningssÃ¤tt</p>
+          <p style={styles.subtitle}>Välj inloggningssätt</p>
 
           <div style={styles.loginModeRow}>
             <button
@@ -1253,7 +1253,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
               }}
               disabled={loading}
             >
-              FÃ¶retag
+              Företag
             </button>
             <button
               type="button"
@@ -1267,7 +1267,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
               }}
               disabled={loading}
             >
-              AnstÃ¤lld
+              Anställd
             </button>
           </div>
 
@@ -1275,7 +1275,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
             style={styles.input}
             className="chatInput"
             type="password"
-            placeholder="Restaurangens lÃ¶senord"
+            placeholder="Restaurangens lösenord"
             value={password}
             onChange={e => setPassword(e.target.value)}
             onKeyDown={e => {
@@ -1305,7 +1305,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                 style={styles.input}
                 className="chatInput"
                 type="text"
-                placeholder="Namn (valfritt vid fÃ¶rsta kodbegÃ¤ran)"
+                placeholder="Namn (valfritt vid första kodbegäran)"
                 value={employeeName}
                 onChange={e => setEmployeeName(e.target.value)}
                 disabled={loading}
@@ -1315,7 +1315,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                 style={styles.input}
                 className="chatInput"
                 type="text"
-                placeholder="EngÃ¥ngskod eller demo"
+                placeholder="Engångskod eller demo"
                 value={employeeCode}
                 onChange={e => setEmployeeCode(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && !loading && loginWithEmployeeCode()}
@@ -1331,7 +1331,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                 onClick={requestEmployeeCode}
                 disabled={loading}
               >
-                {loading ? "Skickar kod..." : "Skicka engÃ¥ngskod"}
+                {loading ? "Skickar kod..." : "Skicka engångskod"}
               </button>
             </>
           )}
@@ -1352,7 +1352,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
     );
   }
 
-  // ðŸ’¬ APP
+  // APP
   return (
     <div style={styles.appContainer}>
       <style jsx>{`
@@ -1456,7 +1456,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
               }}
               onClick={handleAdminClick}
             >
-              {showAdmin ? "Tillbaka" : "âš™ï¸ Admin"}
+              {showAdmin ? "Tillbaka" : "Admin"}
             </button>
           )}
           <button
@@ -1471,13 +1471,13 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
       {adminPasswordPrompt && (
         <div style={styles.modalOverlay} onClick={closeAdminPasswordPrompt}>
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>Admin-lÃ¶senord krÃ¤vs</h3>
-            <p style={{ color: "#6b7280", fontSize: 14 }}>Ange admin-lÃ¶senord fÃ¶r att komma Ã¥t admin-panelen</p>
+            <h3 style={{ marginTop: 0 }}>Admin-lösenord krävs</h3>
+            <p style={{ color: "#6b7280", fontSize: 14 }}>Ange admin-lösenord för att komma åt admin-panelen</p>
             
             <input
               style={styles.input}
               type="password"
-              placeholder="Admin-lÃ¶senord"
+              placeholder="Admin-lösenord"
               value={adminPassword}
               onChange={e => setAdminPassword(e.target.value)}
               onKeyDown={e => e.key === "Enter" && !adminLoading && verifyAdminPassword()}
@@ -1497,7 +1497,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                 onClick={verifyAdminPassword}
                 disabled={adminLoading}
               >
-                {adminLoading ? "Verifierar..." : "Ã–ppna admin"}
+                {adminLoading ? "Verifierar..." : "Öppna admin"}
               </button>
               <button
                 style={{ ...styles.primaryButton, flex: 1, background: "#6b7280" }}
@@ -1524,8 +1524,8 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                 className="adminTabButton"
                 onClick={() => handleAdminTabChange("info")}
               >
-                ðŸ“‹ FÃ¶retagsinfo
-                {isTabDirty("info") && <span style={styles.tabDirtyDot}>â—</span>}
+                Företagsinfo
+                {isTabDirty("info") && <span style={styles.tabDirtyDot}>●</span>}
               </button>
               <button
                 style={{
@@ -1535,8 +1535,8 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                 className="adminTabButton"
                 onClick={() => handleAdminTabChange("menu")}
               >
-                ðŸ• Meny & Allergener
-                {isTabDirty("menu") && <span style={styles.tabDirtyDot}>â—</span>}
+                Meny & Allergener
+                {isTabDirty("menu") && <span style={styles.tabDirtyDot}>●</span>}
               </button>
               <button
                 style={{
@@ -1546,8 +1546,8 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                 className="adminTabButton"
                 onClick={() => handleAdminTabChange("routines")}
               >
-                ðŸ“ Rutiner & Regler
-                {isTabDirty("routines") && <span style={styles.tabDirtyDot}>â—</span>}
+                Rutiner & Regler
+                {isTabDirty("routines") && <span style={styles.tabDirtyDot}>●</span>}
               </button>
               <button
                 style={{
@@ -1557,8 +1557,8 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                 className="adminTabButton"
                 onClick={() => handleAdminTabChange("prep")}
               >
-                âœ… Prep-mall
-                {prepTemplateDirty && <span style={styles.tabDirtyDot}>â—</span>}
+                Prep-mall
+                {prepTemplateDirty && <span style={styles.tabDirtyDot}>●</span>}
               </button>
               <button
                 style={{
@@ -1568,7 +1568,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                 className="adminTabButton"
                 onClick={() => handleAdminTabChange("security")}
               >
-                ðŸ” SÃ¤kerhet
+                Säkerhet
               </button>
               <button
                 style={{
@@ -1578,7 +1578,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                 className="adminTabButton"
                 onClick={() => handleAdminTabChange("stats")}
               >
-                ðŸ“Š Statistik
+                Statistik
               </button>
             </div>
 
@@ -1591,8 +1591,8 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
               )}
               {adminTab === "info" && (
                 <div className="adminSectionCard">
-                  <h3 style={{ marginTop: 0 }}>FÃ¶retagsinformation</h3>
-                  <p style={styles.helperText}>Exempel: supportmail, Ã¶ppettider och eventuell stÃ¤ngningsinfo.</p>
+                  <h3 style={{ marginTop: 0 }}>Företagsinformation</h3>
+                  <p style={styles.helperText}>Exempel: supportmail, öppettider och eventuell stängningsinfo.</p>
                   
                   <label style={styles.label}>Support E-post</label>
                   <input
@@ -1603,18 +1603,18 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                     onChange={e => setCompanyDetails({...companyDetails, support_email: e.target.value})}
                   />
 
-                  <label style={styles.label}>Ã–ppettider</label>
+                  <label style={styles.label}>Öppettider</label>
                   <textarea
                     style={{...styles.input, minHeight: 80}}
-                    placeholder="t.ex. MÃ¥n-Fre 10-22"
+                    placeholder="t.ex. Mån-Fre 10-22"
                     value={companyDetails.opening_hours || ""}
                     onChange={e => setCompanyDetails({...companyDetails, opening_hours: e.target.value})}
                   />
 
-                  <label style={styles.label}>StÃ¤ngningsinformation</label>
+                  <label style={styles.label}>Stängningsinformation</label>
                   <textarea
                     style={{...styles.input, minHeight: 60}}
-                    placeholder="t.ex. StÃ¤ngt rÃ¶da dagar"
+                    placeholder="t.ex. Stängt röda dagar"
                     value={companyDetails.closure_info || ""}
                     onChange={e => setCompanyDetails({...companyDetails, closure_info: e.target.value})}
                   />
@@ -1625,14 +1625,14 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                       onClick={resetCurrentTab}
                       disabled={!isTabDirty("info") || adminLoading}
                     >
-                      Ã…terstÃ¤ll
+                      Återställ
                     </button>
                     <button
                       style={{ ...styles.primaryButton, flex: 1, width: "auto" }}
                       onClick={updateCompanyDetails}
                       disabled={!isTabDirty("info") || adminLoading}
                     >
-                      {adminLoading ? "Sparar..." : "Spara Ã¤ndringar"}
+                      {adminLoading ? "Sparar..." : "Spara ändringar"}
                     </button>
                   </div>
                 </div>
@@ -1641,12 +1641,12 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
               {adminTab === "menu" && (
                 <div className="adminSectionCard">
                   <h3 style={{ marginTop: 0 }}>Meny & Allergener</h3>
-                  <p style={styles.helperText}>Exempel: kategori + rÃ¤tt + pris + kort beskrivning.</p>
+                  <p style={styles.helperText}>Exempel: kategori + rätt + pris + kort beskrivning.</p>
                   
                   <label style={styles.label}>Meny</label>
                   <textarea
                     style={{...styles.input, minHeight: 120}}
-                    placeholder="t.ex. FÃ¶rrÃ¤tt: Toast Skagen - 145 kr"
+                    placeholder="t.ex. Förrätt: Toast Skagen - 145 kr"
                     value={companyDetails.menu || ""}
                     onChange={e => setCompanyDetails({...companyDetails, menu: e.target.value})}
                   />
@@ -1654,26 +1654,26 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                   <label style={styles.label}>Allergener</label>
                   <textarea
                     style={{...styles.input, minHeight: 100}}
-                    placeholder="t.ex. InnehÃ¥ller gluten, mjÃ¶lk, nÃ¶tter"
+                    placeholder="t.ex. Innehåller gluten, mjölk, nötter"
                     value={companyDetails.allergens || ""}
                     onChange={e => setCompanyDetails({...companyDetails, allergens: e.target.value})}
                   />
 
                   <label style={styles.label}>Receptbyggare</label>
-                  <p style={styles.helperText}>SÃ¶k rÃ¤tt, vÃ¤lj i listan och fyll i strukturerade fÃ¤lt istÃ¤llet fÃ¶r en lÃ¥ng text.</p>
+                  <p style={styles.helperText}>Sök rätt, välj i listan och fyll i strukturerade fält istället för en lång text.</p>
 
                   <div style={styles.recipeBuilderLayout} className="recipeBuilderGrid">
                     <div style={styles.recipeSidebar}>
                       <input
                         style={{ ...styles.input, marginBottom: 10 }}
-                        placeholder="SÃ¶k rÃ¤tt..."
+                        placeholder="Sök rätt..."
                         value={recipeSearch}
                         onChange={(e) => setRecipeSearch(e.target.value)}
                       />
 
                       <div style={styles.recipeList}>
                         {visibleRecipeRows.map((row) => {
-                          const dishLabel = String(row.dish_name || "").trim() || "NamnlÃ¶s rÃ¤tt";
+                          const dishLabel = String(row.dish_name || "").trim() || "Namnlös rätt";
                           const isActive = selectedRecipeRow.id === row.id;
                           return (
                             <button
@@ -1691,7 +1691,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                         })}
 
                         {visibleRecipeRows.length === 0 && (
-                          <div style={styles.prepEmptyState}>Ingen rÃ¤tt matchar sÃ¶kningen.</div>
+                          <div style={styles.prepEmptyState}>Ingen rätt matchar sökningen.</div>
                         )}
                       </div>
 
@@ -1701,12 +1701,12 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                         onClick={addRecipeRow}
                         disabled={adminLoading}
                       >
-                        + Ny rÃ¤tt
+                        + Ny rätt
                       </button>
                     </div>
 
                     <div style={styles.recipeEditor}>
-                      <label style={{ ...styles.label, marginTop: 0 }}>RÃ¤ttnamn</label>
+                      <label style={{ ...styles.label, marginTop: 0 }}>Rättnamn</label>
                       <input
                         style={styles.input}
                         value={selectedRecipeRow.dish_name || ""}
@@ -1721,7 +1721,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                           onClick={duplicateRecipeRow}
                           disabled={adminLoading}
                         >
-                          Duplicera rÃ¤tt
+                          Duplicera rätt
                         </button>
                         <button
                           type="button"
@@ -1729,7 +1729,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                           onClick={() => removeRecipeRow(selectedRecipeRow.id)}
                           disabled={adminLoading}
                         >
-                          Ta bort rÃ¤tt
+                          Ta bort rätt
                         </button>
                       </div>
 
@@ -1762,7 +1762,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                         style={{ ...styles.input, minHeight: 90 }}
                         value={selectedRecipeRow.cooking || ""}
                         onChange={(e) => updateRecipeRow(selectedRecipeRow.id, "cooking", e.target.value)}
-                        placeholder="t.ex. Baka i 3-4 min pÃ¥ 320 grader"
+                        placeholder="t.ex. Baka i 3-4 min på 320 grader"
                       />
 
                       <label style={styles.label}>Plating</label>
@@ -1778,10 +1778,10 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                         style={styles.input}
                         value={selectedRecipeRow.allergens || ""}
                         onChange={(e) => updateRecipeRow(selectedRecipeRow.id, "allergens", e.target.value)}
-                        placeholder="t.ex. Gluten, mjÃ¶lk"
+                        placeholder="t.ex. Gluten, mjölk"
                       />
 
-                      <label style={styles.label}>TidsÃ¥tgÃ¥ng</label>
+                      <label style={styles.label}>Tidsåtgång</label>
                       <input
                         style={styles.input}
                         value={selectedRecipeRow.time || ""}
@@ -1797,14 +1797,14 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                       onClick={resetCurrentTab}
                       disabled={!isTabDirty("menu") || adminLoading}
                     >
-                      Ã…terstÃ¤ll
+                      Återställ
                     </button>
                     <button
                       style={{ ...styles.primaryButton, flex: 1, width: "auto" }}
                       onClick={updateCompanyDetails}
                       disabled={!isTabDirty("menu") || adminLoading}
                     >
-                      {adminLoading ? "Sparar..." : "Spara Ã¤ndringar"}
+                      {adminLoading ? "Sparar..." : "Spara ändringar"}
                     </button>
                   </div>
                 </div>
@@ -1813,28 +1813,28 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
               {adminTab === "routines" && (
                 <div className="adminSectionCard">
                   <h3 style={{ marginTop: 0 }}>Rutiner & Regler</h3>
-                  <p style={styles.helperText}>Exempel: korta punktlistor fÃ¶r Ã¶ppning, stÃ¤ngning och personalsituationer.</p>
+                  <p style={styles.helperText}>Exempel: korta punktlistor för öppning, stängning och personalsituationer.</p>
                   
                   <label style={styles.label}>Arbetsrutiner</label>
                   <textarea
                     style={{...styles.input, minHeight: 80}}
-                    placeholder="t.ex. Starta kassan, fyll pÃ¥ stationer"
+                    placeholder="t.ex. Starta kassan, fyll på stationer"
                     value={companyDetails.routines || ""}
                     onChange={e => setCompanyDetails({...companyDetails, routines: e.target.value})}
                   />
 
-                  <label style={styles.label}>Ã–ppningsrutiner</label>
+                  <label style={styles.label}>Öppningsrutiner</label>
                   <textarea
                     style={{...styles.input, minHeight: 80}}
-                    placeholder="t.ex. Ugn 250Â°, deg ut 30 min innan"
+                    placeholder="t.ex. Ugn 250°, deg ut 30 min innan"
                     value={companyDetails.opening_routine || ""}
                     onChange={e => setCompanyDetails({...companyDetails, opening_routine: e.target.value})}
                   />
 
-                  <label style={styles.label}>StÃ¤ngningsrutiner</label>
+                  <label style={styles.label}>Stängningsrutiner</label>
                   <textarea
                     style={{...styles.input, minHeight: 80}}
-                    placeholder="t.ex. StÃ¤ng kassan, rengÃ¶r alla ytor"
+                    placeholder="t.ex. Stäng kassan, rengör alla ytor"
                     value={companyDetails.closing_routine || ""}
                     onChange={e => setCompanyDetails({...companyDetails, closing_routine: e.target.value})}
                   />
@@ -1842,7 +1842,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                   <label style={styles.label}>Beteenderegler</label>
                   <textarea
                     style={{...styles.input, minHeight: 80}}
-                    placeholder="t.ex. Mobil endast pÃ¥ rast"
+                    placeholder="t.ex. Mobil endast på rast"
                     value={companyDetails.behavior_guidelines || ""}
                     onChange={e => setCompanyDetails({...companyDetails, behavior_guidelines: e.target.value})}
                   />
@@ -1850,7 +1850,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                   <label style={styles.label}>Personalroller</label>
                   <textarea
                     style={{...styles.input, minHeight: 80}}
-                    placeholder="t.ex. Kassa, kÃ¶k, servering"
+                    placeholder="t.ex. Kassa, kök, servering"
                     value={companyDetails.staff_roles || ""}
                     onChange={e => setCompanyDetails({...companyDetails, staff_roles: e.target.value})}
                   />
@@ -1858,7 +1858,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                   <label style={styles.label}>Personalsituationer</label>
                   <textarea
                     style={{...styles.input, minHeight: 80}}
-                    placeholder="t.ex. Sen kollega, allergifrÃ¥ga, stress"
+                    placeholder="t.ex. Sen kollega, allergifråga, stress"
                     value={companyDetails.staff_situations || ""}
                     onChange={e => setCompanyDetails({...companyDetails, staff_situations: e.target.value})}
                   />
@@ -1869,14 +1869,14 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                       onClick={resetCurrentTab}
                       disabled={!isTabDirty("routines") || adminLoading}
                     >
-                      Ã…terstÃ¤ll
+                      Återställ
                     </button>
                     <button
                       style={{ ...styles.primaryButton, flex: 1, width: "auto" }}
                       onClick={updateCompanyDetails}
                       disabled={!isTabDirty("routines") || adminLoading}
                     >
-                      {adminLoading ? "Sparar..." : "Spara Ã¤ndringar"}
+                      {adminLoading ? "Sparar..." : "Spara ändringar"}
                     </button>
                   </div>
                 </div>
@@ -1886,7 +1886,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                 <div className="adminSectionCard">
                   <h3 style={{ marginTop: 0 }}>Prep-mall (chef)</h3>
                   <p style={styles.helperText}>
-                    Fyll i en rad per prep-uppgift med separat fÃ¤lt fÃ¶r uppgift, stress, station och klar-tid.
+                    Fyll i en rad per prep-uppgift med separat fält för uppgift, stress, station och klar-tid.
                   </p>
 
                   <div style={styles.prepTemplateTableWrap}>
@@ -1972,7 +1972,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                       onClick={() => setPrepTemplateRows(savedPrepTemplateRows)}
                       disabled={!prepTemplateDirty || prepTemplateLoading}
                     >
-                      Ã…terstÃ¤ll
+                      Återställ
                     </button>
                     <button
                       style={{ ...styles.primaryButton, flex: 1, width: "auto" }}
@@ -1987,12 +1987,12 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
 
               {adminTab === "security" && (
                 <div className="adminSectionCard">
-                  <h3 style={{ marginTop: 0 }}>SÃ¤kerhet & Ã…tkomst</h3>
-                  <p style={styles.helperText}>Hantera Ã¥tkomst och byt lÃ¶senord vid behov.</p>
+                  <h3 style={{ marginTop: 0 }}>Säkerhet & Åtkomst</h3>
+                  <p style={styles.helperText}>Hantera åtkomst och byt lösenord vid behov.</p>
                   
                   <div style={{ background: "#f3f4f6", padding: 16, borderRadius: 8, marginBottom: 20 }}>
                     <p style={{ margin: 0, fontSize: 14 }}>
-                      <strong>Status:</strong> FÃ¶retaget Ã¤r {company.active ? "aktiverat âœ…" : "deaktiverat âŒ"}
+                      <strong>Status:</strong> Företaget är {company.active ? "aktiverat" : "deaktiverat"}
                     </p>
                   </div>
 
@@ -2005,14 +2005,14 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                     onClick={toggleCompanyStatus}
                     disabled={adminLoading}
                   >
-                    {company.active ? "Deaktivera fÃ¶retag" : "Aktivera fÃ¶retag"}
+                    {company.active ? "Deaktivera företag" : "Aktivera företag"}
                   </button>
 
-                  <h4>Byt lÃ¶senord</h4>
+                  <h4>Byt lösenord</h4>
                   <input
                     style={styles.input}
                     type="password"
-                    placeholder="Nytt lÃ¶senord"
+                    placeholder="Nytt lösenord"
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
                     disabled={adminLoading}
@@ -2021,7 +2021,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                   {adminMessage && (
                     <p style={{
                       ...styles.adminMessage,
-                      color: adminMessage.includes("âœ…") ? "#059669" : "#dc2626"
+                      color: adminMessage.includes("✅") ? "#059669" : "#dc2626"
                     }}>
                       {adminMessage}
                     </p>
@@ -2032,7 +2032,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                     onClick={updatePassword}
                     disabled={adminLoading}
                   >
-                    {adminLoading ? "Uppdaterar..." : "Uppdatera lÃ¶senord"}
+                    {adminLoading ? "Uppdaterar..." : "Uppdatera lösenord"}
                   </button>
                 </div>
               )}
@@ -2046,22 +2046,22 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                     onClick={fetchCompanyDetails}
                     disabled={adminLoading}
                   >
-                    ðŸ”„ Uppdatera statistik
+                    Uppdatera statistik
                   </button>
 
                   <div style={styles.statCard}>
                     <div style={styles.statNumber}>{companyDetails.query_count || 0}</div>
-                    <div style={styles.statLabel}>Totalt antal frÃ¥gor</div>
+                    <div style={styles.statLabel}>Totalt antal frågor</div>
                   </div>
 
                   <div style={styles.statCard}>
                     <div style={styles.statNumber}>{company.is_admin ? "Ja" : "Nej"}</div>
-                    <div style={styles.statLabel}>Admin-behÃ¶righet</div>
+                    <div style={styles.statLabel}>Admin-behörighet</div>
                   </div>
 
                   <div style={styles.statCard}>
                     <div style={styles.statNumber}>{company.active ? "Aktiv" : "Inaktiv"}</div>
-                    <div style={styles.statLabel}>FÃ¶retagsstatus</div>
+                    <div style={styles.statLabel}>Företagsstatus</div>
                   </div>
                 </div>
               )}
@@ -2075,7 +2075,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
               <div>
                 <h3 style={{ margin: "0 0 4px 0" }}>Dagens prep</h3>
                 <p style={{ ...styles.helperText, margin: 0 }}>
-                  {prepDate} Â· {completedPrepCount}/{prepTasks.length} klara
+                  {prepDate} · {completedPrepCount}/{prepTasks.length} klara
                 </p>
               </div>
               <button
@@ -2113,7 +2113,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
 
             {!prepError && !prepLoading && prepTasks.length === 0 && (
               <div style={styles.prepEmptyState}>
-                Inga prep-uppgifter fÃ¶r idag. Be chefen lÃ¤gga in en prep-mall i admin.
+                Inga prep-uppgifter för idag. Be chefen lägga in en prep-mall i admin.
               </div>
             )}
 
@@ -2143,7 +2143,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                         Prioritet: {priorityMeta.label}
                       </span>
                       {stationText && <span style={styles.prepMetaChip}>Station: {stationText}</span>}
-                      {dueTimeText && <span style={styles.prepMetaChip}>Klar fÃ¶re {dueTimeText}</span>}
+                      {dueTimeText && <span style={styles.prepMetaChip}>Klar före {dueTimeText}</span>}
                     </div>
                   </div>
                 </label>
@@ -2157,8 +2157,8 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
           <div style={styles.chatArea} ref={chatAreaRef}>
             {chat.length === 0 && !loading && (
               <div style={styles.emptyStateCard}>
-                <div style={styles.emptyStateTitle}>Hej ðŸ‘‹</div>
-                <div style={styles.emptyStateText}>VÃ¤lj en snabbfrÃ¥ga nedan eller skriv en egen frÃ¥ga till personalguiden.</div>
+                <div style={styles.emptyStateTitle}>Hej</div>
+                <div style={styles.emptyStateText}>Välj en snabbfråga nedan eller skriv en egen fråga till personalguiden.</div>
               </div>
             )}
 
@@ -2174,7 +2174,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                 {msg.from === "ai" ? renderAiTextWithClickableMenuItems(msg, i) : msg.text}
                 {msg.from === "ai" && Array.isArray(msg.menuItems) && msg.menuItems.length > 0 && (
                   <div style={styles.menuItemsWrap}>
-                    <div style={styles.menuItemsTitle}>Tryck pÃ¥ en rÃ¤tt fÃ¶r recept</div>
+                    <div style={styles.menuItemsTitle}>Tryck på en rätt för recept</div>
                   </div>
                 )}
               </div>
@@ -2207,7 +2207,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
             <input
               style={styles.chatInput}
               className="chatInput"
-              placeholder="StÃ¤ll en frÃ¥ga till personalguiden..."
+              placeholder="Ställ en fråga till personalguiden..."
               value={question}
               onChange={e => setQuestion(e.target.value)}
               onKeyDown={e => e.key === "Enter" && askAI()}
