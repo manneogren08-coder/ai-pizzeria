@@ -28,6 +28,11 @@ function extractEmbeddedRecipes(menuText) {
   return { cleanedMenu, recipes };
 }
 
+function normalizeMenuText(text) {
+  if (typeof text !== "string") return "";
+  return text.replace(/\bFÃ–Ã„TT\b/g, "FÃ–RRÃ„TT");
+}
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Only GET allowed" });
@@ -62,7 +67,7 @@ export default async function handler(req, res) {
       .single();
 
     if (error || !company) {
-      return res.status(404).json({ error: "Företag hittas inte" });
+      return res.status(404).json({ error: "FÃ¶retag hittas inte" });
     }
 
     const { cleanedRoutines, openingRoutine } = extractEmbeddedOpeningRoutine(company.routines || "");
@@ -72,7 +77,7 @@ export default async function handler(req, res) {
       support_email: company.support_email || "",
       opening_hours: company.opening_hours || "",
       closure_info: company.closure_info || "",
-      menu: cleanedMenu,
+      menu: normalizeMenuText(cleanedMenu),
       recipes: company.recipes || recipes,
       allergens: company.allergens || "",
       routines: cleanedRoutines,
@@ -89,7 +94,7 @@ export default async function handler(req, res) {
 
   } catch (err) {
     if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
-      return res.status(401).json({ error: "Din session har gått ut. Logga in igen." });
+      return res.status(401).json({ error: "Din session har gÃ¥tt ut. Logga in igen." });
     }
     console.error("Error:", err);
     return res.status(500).json({ error: "Serverfel" });

@@ -18,6 +18,12 @@ function stripRecipesSection(text) {
   return text.replace(pattern, "").trim();
 }
 
+function normalizeMenuText(text) {
+  if (typeof text !== "string") return "";
+  // Normalize a common typo that has repeatedly appeared in menu text.
+  return text.replace(/\bFÃ–Ã„TT\b/g, "FÃ–RRÃ„TT");
+}
+
 function withEmbeddedRecipes(menuText, recipesText) {
   const baseMenu = stripRecipesSection(menuText);
   const recipes = typeof recipesText === "string" ? recipesText.trim() : "";
@@ -86,7 +92,7 @@ export default async function handler(req, res) {
       .single();
 
     if (companyError || !company || !company.is_admin) {
-      return res.status(403).json({ error: "Du är inte admin" });
+      return res.status(403).json({ error: "Du Ã¤r inte admin" });
     }
 
     // Get details from request
@@ -100,7 +106,7 @@ export default async function handler(req, res) {
       support_email: details.support_email ?? "",
       opening_hours: details.opening_hours ?? "",
       closure_info: details.closure_info ?? "",
-      menu: stripRecipesSection(details.menu ?? ""),
+      menu: normalizeMenuText(stripRecipesSection(details.menu ?? "")),
       recipes: details.recipes ?? "",
       allergens: details.allergens ?? "",
       routines: stripOpeningRoutineSection(details.routines ?? ""),
@@ -164,7 +170,7 @@ export default async function handler(req, res) {
       console.error("Update error:", updateError);
       return res.status(500).json({
         error: "Kunde inte uppdatera uppgifter",
-        details: updateError.message || "Okänt databasfel"
+        details: updateError.message || "OkÃ¤nt databasfel"
       });
     }
 
@@ -176,12 +182,12 @@ export default async function handler(req, res) {
 
   } catch (err) {
     if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
-      return res.status(401).json({ error: "Din session har gått ut. Logga in igen." });
+      return res.status(401).json({ error: "Din session har gÃ¥tt ut. Logga in igen." });
     }
     console.error("Error:", err);
     return res.status(500).json({
       error: "Serverfel",
-      details: err?.message || "Okänt serverfel"
+      details: err?.message || "OkÃ¤nt serverfel"
     });
   }
 }
