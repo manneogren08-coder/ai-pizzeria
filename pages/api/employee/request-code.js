@@ -85,6 +85,33 @@ async function sendOtpEmail({ to, code, companyName }) {
   return { sent: true };
 }
 
+function getOtpSendErrorMessage(emailResult) {
+  if (!emailResult || emailResult.sent) {
+    return "Kunde inte skicka e-postkod just nu";
+  }
+
+  if (emailResult.reason === "missing_api_key") {
+    return "Servern saknar RESEND_API_KEY i production";
+  }
+
+  if (emailResult.reason === "resend_error") {
+    if (emailResult.status === 401) {
+      return "Ogiltig Resend API-nyckel i production";
+    }
+    if (emailResult.status === 403) {
+      return "Avsändaradressen är inte verifierad i Resend";
+    }
+    if (emailResult.status === 422) {
+      return "Ogiltig avsändaradress eller mottagare för e-post";
+    }
+    if (emailResult.status === 429) {
+      return "Resend rate limit nådd, försök igen om en minut";
+    }
+  }
+
+  return "Kunde inte skicka e-postkod just nu";
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST allowed" });
@@ -138,7 +165,7 @@ export default async function handler(req, res) {
 
     if (!emailResult.sent && process.env.NODE_ENV === "production") {
       console.error("OTP email send failed:", emailResult);
-      return res.status(502).json({ error: "Kunde inte skicka e-postkod just nu" });
+      return res.status(502).json({ error: getOtpSendErrorMessage(emailResult) });
     }
 
     // In development, we expose fallback code if email integration is not fully configured yet.
