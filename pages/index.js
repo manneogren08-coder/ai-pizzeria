@@ -118,6 +118,8 @@ function emptyRecipeRow(overrides = {}) {
   return {
     id: nextRecipeRowId(),
     dish_name: "",
+    category: "",
+    is_active: true,
     ingredients: "",
     yield: "",
     mise: "",
@@ -130,11 +132,18 @@ function emptyRecipeRow(overrides = {}) {
 }
 
 function parseRecipeSection(block, label) {
-  const labels = ["Ingredienser", "Yield", "Mise en place", "Tillagning", "Plating", "Allergener", "Tid"];
+  const labels = ["Kategori", "Aktiv", "Ingredienser", "Yield", "Mise en place", "Tillagning", "Plating", "Allergener", "Tid"];
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const pattern = new RegExp(`(?:^|\\n)${escaped}:\\s*([\\s\\S]*?)(?=\\n(?:${labels.join("|")}):|$)`, "i");
   const match = block.match(pattern);
   return match?.[1]?.trim() || "";
+}
+
+function parseRecipeActive(block) {
+  const raw = parseRecipeSection(block, "Aktiv").toLowerCase();
+  if (!raw) return true;
+  if (["nej", "false", "0", "inaktiv", "no"].includes(raw)) return false;
+  return true;
 }
 
 function parseRecipesText(recipesText) {
@@ -158,6 +167,8 @@ function parseRecipesText(recipesText) {
     const dishName = dishMatch?.[1]?.trim() || "";
     return emptyRecipeRow({
       dish_name: dishName,
+      category: parseRecipeSection(block, "Kategori"),
+      is_active: parseRecipeActive(block),
       ingredients: parseRecipeSection(block, "Ingredienser"),
       yield: parseRecipeSection(block, "Yield"),
       mise: parseRecipeSection(block, "Mise en place"),
@@ -166,7 +177,7 @@ function parseRecipesText(recipesText) {
       allergens: parseRecipeSection(block, "Allergener"),
       time: parseRecipeSection(block, "Tid")
     });
-  }).filter((row) => row.dish_name || row.ingredients || row.yield || row.mise || row.cooking || row.plating || row.allergens || row.time);
+  }).filter((row) => row.dish_name || row.category || row.ingredients || row.yield || row.mise || row.cooking || row.plating || row.allergens || row.time);
 
   return rows.length > 0 ? rows : [emptyRecipeRow({ dish_name: "Ratt 1", cooking: text })];
 }
@@ -175,6 +186,8 @@ function serializeRecipesRows(rows) {
   const safeRows = (Array.isArray(rows) ? rows : [])
     .map((row) => ({
       dish_name: String(row?.dish_name || "").trim(),
+      category: String(row?.category || "").trim(),
+      is_active: row?.is_active !== false,
       ingredients: String(row?.ingredients || "").trim(),
       yield: String(row?.yield || "").trim(),
       mise: String(row?.mise || "").trim(),
@@ -183,13 +196,19 @@ function serializeRecipesRows(rows) {
       allergens: String(row?.allergens || "").trim(),
       time: String(row?.time || "").trim()
     }))
-    .filter((row) => row.dish_name || row.ingredients || row.yield || row.mise || row.cooking || row.plating || row.allergens || row.time);
+    .filter((row) => row.dish_name || row.category || row.ingredients || row.yield || row.mise || row.cooking || row.plating || row.allergens || row.time);
 
   return safeRows
     .map((row) => {
       const dishName = row.dish_name || "Namnlos ratt";
       return [
         `### ${dishName}`,
+        "Kategori:",
+        row.category,
+        "",
+        "Aktiv:",
+        row.is_active ? "ja" : "nej",
+        "",
         "Ingredienser:",
         row.ingredients,
         "",
@@ -247,6 +266,7 @@ export default function Home() {
 
   const [token, setToken] = useState("");
   const [loginMode, setLoginMode] = useState("company");
+  const [companyIdentifier, setCompanyIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [employeeEmail, setEmployeeEmail] = useState("");
   const [employeeName, setEmployeeName] = useState("");
@@ -684,6 +704,11 @@ export default function Home() {
   }, [recipeRows, selectedRecipeId]);
 
   const login = async () => {
+  if (!companyIdentifier.trim()) {
+    setError("Skriv in företags-id eller företagsnamn");
+    return;
+  }
+
   if (!password.trim()) {
     setError("Skriv in lösenord");
     return;
@@ -696,13 +721,13 @@ export default function Home() {
     const res = await fetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password })
+      body: JSON.stringify({ password, companyIdentifier })
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      setError("Fel lösenord");
+      setError(data?.error || "Fel företagskod eller lösenord");
       setLoading(false);
       return;
     }
@@ -1141,6 +1166,8 @@ const duplicateRecipeRow = () => {
 
   const nextRow = emptyRecipeRow({
     dish_name: source.dish_name ? `${source.dish_name} kopia` : "Ny kopia",
+    category: source.category,
+    is_active: source.is_active,
     ingredients: source.ingredients,
     yield: source.yield,
     mise: source.mise,
@@ -1171,13 +1198,15 @@ const removeRecipeRow = (recipeId) => {
 const visibleRecipeRows = recipeRows.filter((row) => {
   const term = recipeSearch.trim().toLowerCase();
   if (!term) return true;
-  const haystack = `${row.dish_name} ${row.ingredients} ${row.yield} ${row.cooking}`.toLowerCase();
+  const haystack = `${row.dish_name} ${row.category} ${row.ingredients} ${row.yield} ${row.cooking}`.toLowerCase();
   return haystack.includes(term);
 });
 
 const selectedRecipeRow = recipeRows.find((row) => row.id === selectedRecipeId) || recipeRows[0] || {
   id: "",
   dish_name: "",
+  category: "",
+  is_active: true,
   ingredients: "",
   yield: "",
   mise: "",
@@ -1270,6 +1299,18 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
               Anställd
             </button>
           </div>
+
+          {loginMode === "company" && (
+            <input
+              style={styles.input}
+              className="chatInput"
+              type="text"
+              placeholder="Företags-id eller företagsnamn"
+              value={companyIdentifier}
+              onChange={e => setCompanyIdentifier(e.target.value)}
+              disabled={loading}
+            />
+          )}
 
           <input
             style={styles.input}
@@ -1674,6 +1715,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                       <div style={styles.recipeList}>
                         {visibleRecipeRows.map((row) => {
                           const dishLabel = String(row.dish_name || "").trim() || "Namnlös rätt";
+                          const categoryLabel = String(row.category || "").trim();
                           const isActive = selectedRecipeRow.id === row.id;
                           return (
                             <button
@@ -1686,6 +1728,8 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                               onClick={() => setSelectedRecipeId(row.id)}
                             >
                               {dishLabel}
+                              {categoryLabel && <span style={styles.recipeListMeta}> · {categoryLabel}</span>}
+                              {row.is_active === false && <span style={styles.recipeInactiveTag}> (inaktiv)</span>}
                             </button>
                           );
                         })}
@@ -1713,6 +1757,24 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                         onChange={(e) => updateRecipeRow(selectedRecipeRow.id, "dish_name", e.target.value)}
                         placeholder="t.ex. Margherita"
                       />
+
+                      <label style={styles.label}>Kategori</label>
+                      <input
+                        style={styles.input}
+                        value={selectedRecipeRow.category || ""}
+                        onChange={(e) => updateRecipeRow(selectedRecipeRow.id, "category", e.target.value)}
+                        placeholder="t.ex. Förrätt, Pizza, Dessert"
+                      />
+
+                      <label style={styles.label}>Status</label>
+                      <select
+                        style={styles.prepTemplateSelect}
+                        value={selectedRecipeRow.is_active === false ? "inactive" : "active"}
+                        onChange={(e) => updateRecipeRow(selectedRecipeRow.id, "is_active", e.target.value === "active")}
+                      >
+                        <option value="active">Aktiv (synlig i drift)</option>
+                        <option value="inactive">Inaktiv (utkast/pausad)</option>
+                      </select>
 
                       <div style={styles.recipeEditorActions}>
                         <button
@@ -2757,6 +2819,16 @@ const styles = {
     borderColor: "#2563eb",
     background: "#eff6ff",
     color: "#1d4ed8"
+  },
+
+  recipeListMeta: {
+    color: "#6b7280",
+    fontWeight: 500
+  },
+
+  recipeInactiveTag: {
+    color: "#b91c1c",
+    fontWeight: 700
   },
 
   recipeEditor: {

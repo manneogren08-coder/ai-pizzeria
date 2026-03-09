@@ -46,20 +46,36 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { password } = req.body;
+    const { password, companyIdentifier } = req.body;
+    const normalizedIdentifier = String(companyIdentifier || "").trim();
 
     if (!password) {
       return res.status(400).json({ error: "Missing password" });
     }
 
-    // Hämta alla aktiva företag
-    const { data: companies, error } = await supabase
+    if (!normalizedIdentifier) {
+      return res.status(400).json({ error: "Skriv in företags-id eller företagsnamn" });
+    }
+
+    const selectFields = "id, name, support_email, password_hash, is_admin, active, query_count";
+    const cleanIdentifier = normalizedIdentifier.replace(/[%,]/g, "");
+    const isNumericId = /^\d+$/.test(cleanIdentifier);
+
+    let query = supabase
       .from("companies")
-      .select("id, name, password_hash, is_admin, active, query_count")
+      .select(selectFields)
       .eq("active", true);
 
+    if (isNumericId) {
+      query = query.eq("id", Number(cleanIdentifier));
+    } else {
+      query = query.or(`name.ilike.%${cleanIdentifier}%,support_email.ilike.%${cleanIdentifier}%`);
+    }
+
+    const { data: companies, error } = await query.limit(20);
+
     if (error || !companies || companies.length === 0) {
-      return res.status(401).json({ error: "Fel lösenord" });
+      return res.status(401).json({ error: "Företaget hittades inte" });
     }
 
     // Testa lösenordet mot alla aktiva företag
@@ -74,7 +90,7 @@ export default async function handler(req, res) {
     }
 
     if (!matchedCompany) {
-      return res.status(401).json({ error: "Fel lösenord" });
+      return res.status(401).json({ error: "Fel företagskod eller lösenord" });
     }
 
     const data = matchedCompany;
