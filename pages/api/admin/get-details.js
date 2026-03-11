@@ -30,7 +30,10 @@ function extractEmbeddedRecipes(menuText) {
 
 function normalizeMenuText(text) {
   if (typeof text !== "string") return "";
-  return text.replace(/\bFÃ–Ã„TT\b/g, "FÃ–RRÃ„TT");
+  return text
+    .replace(/\bFÖÄTT\b/gi, "FÖRRÄTT")
+    .replace(/\bFÃ–Ã„TT\b/g, "FÖRRÄTT")
+    .replace(/\bFÃ–RRÃ„TT\b/g, "FÖRRÄTT");
 }
 
 export default async function handler(req, res) {
