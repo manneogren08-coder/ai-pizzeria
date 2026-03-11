@@ -277,11 +277,30 @@ export default async function handler(req, res) {
     } catch (openAiError) {
       const errorCode = openAiError?.code || "";
       const errorMessage = openAiError?.message || "";
+      const statusCode = Number(openAiError?.status || openAiError?.statusCode || 0);
       console.error("OpenAI error:", errorCode, errorMessage);
 
       if (errorCode === "context_length_exceeded" || /context length|maximum context/i.test(errorMessage)) {
         return res.status(400).json({
           answer: "För mycket text i underlaget efter senaste admin-ändring. Korta ner några fält (t.ex. meny/rutiner) och försök igen."
+        });
+      }
+
+      if (statusCode === 401 || errorCode === "invalid_api_key" || /incorrect api key|invalid api key/i.test(errorMessage)) {
+        return res.status(502).json({
+          answer: "AI-nyckeln verkar ogiltig i servermiljön. Kontrollera OPENAI_API_KEY i Vercel och deploya om."
+        });
+      }
+
+      if (statusCode === 429 || errorCode === "insufficient_quota" || /quota|rate limit/i.test(errorMessage)) {
+        return res.status(429).json({
+          answer: "AI-tjänsten har nått gräns för förfrågningar/krediter. Kontrollera OpenAI quota och försök igen om en stund."
+        });
+      }
+
+      if (statusCode === 404 || errorCode === "model_not_found" || /model .*does not exist|model not found/i.test(errorMessage)) {
+        return res.status(502).json({
+          answer: "Vald AI-modell är inte tillgänglig för detta konto just nu. Byt modell i API-koden eller kontrollera OpenAI-projektets åtkomst."
         });
       }
 
