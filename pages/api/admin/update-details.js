@@ -8,13 +8,13 @@ const RECIPES_END = "[/RECIPES]";
 
 function stripOpeningRoutineSection(text) {
   if (typeof text !== "string") return "";
-  const pattern = new RegExp(`${OPENING_ROUTINE_START}[\\s\\S]*?${OPENING_ROUTINE_END}`, "g");
+  const pattern = /\[OPENING_ROUTINE\][\s\S]*?\[\/OPENING_ROUTINE\]/g;
   return text.replace(pattern, "").trim();
 }
 
 function stripRecipesSection(text) {
   if (typeof text !== "string") return "";
-  const pattern = new RegExp(`${RECIPES_START}[\\s\\S]*?${RECIPES_END}`, "g");
+  const pattern = /\[RECIPES\][\s\S]*?\[\/RECIPES\]/g;
   return text.replace(pattern, "").trim();
 }
 
