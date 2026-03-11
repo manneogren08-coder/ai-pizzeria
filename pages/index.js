@@ -1417,6 +1417,18 @@ const prepProgressPercent = visiblePrepTasks.length > 0
             .heroLead {
               font-size: 1rem !important;
             }
+
+            .heroCtaRow {
+              flex-direction: column;
+            }
+
+            .heroCtaBtn {
+              width: 100%;
+            }
+
+            .loginCard {
+              padding: 18px !important;
+            }
           }
         `}</style>
 
@@ -1437,10 +1449,11 @@ const prepProgressPercent = visiblePrepTasks.length > 0
                 Samla rutiner, recept och allergener i en enkel AI-guide. Mindre frågor i köket, snabbare onboarding och tryggare allergensvar.
               </p>
 
-              <div style={styles.heroCtaRow}>
+              <div style={styles.heroCtaRow} className="heroCtaRow">
                 <button
                   type="button"
                   style={styles.heroCtaPrimary}
+                  className="heroCtaBtn"
                   onClick={() => {
                     setLoginMode("company");
                     setError("");
@@ -1457,6 +1470,7 @@ const prepProgressPercent = visiblePrepTasks.length > 0
                 <button
                   type="button"
                   style={styles.heroCtaSecondary}
+                  className="heroCtaBtn"
                   onClick={() => {
                     setLoginMode("employee");
                     setError("");
@@ -1681,6 +1695,51 @@ const prepProgressPercent = visiblePrepTasks.length > 0
           .adminTabsBar { padding: 12px 12px !important; gap: 6px !important; }
           .quickActionWrap { padding: 10px 12px 14px 12px !important; }
           .recipeBuilderGrid { grid-template-columns: 1fr !important; }
+          .appHeader {
+            padding: 12px 12px !important;
+            align-items: stretch !important;
+            flex-direction: column !important;
+            gap: 10px !important;
+          }
+          .appHeaderActions {
+            width: 100%;
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px !important;
+          }
+          .appHeaderActions button:last-child {
+            grid-column: 1 / -1;
+          }
+          .prepHeaderActionsMobile {
+            width: 100%;
+            display: grid !important;
+            grid-template-columns: 1fr;
+            gap: 8px !important;
+          }
+          .prepFiltersMobile {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 8px !important;
+          }
+          .prepFiltersMobile select {
+            width: 100%;
+            min-width: 0 !important;
+          }
+          .inputAreaWrap {
+            flex-direction: column !important;
+            gap: 8px;
+            padding: 10px 12px 12px 12px !important;
+          }
+          .inputAreaWrap .chatInput {
+            margin-right: 0 !important;
+          }
+          .inputAreaWrap .sendButton {
+            width: 100%;
+            min-height: 44px;
+          }
+          .chatAreaMobile {
+            padding: 12px !important;
+          }
         }
 
         @keyframes blink {
@@ -1703,13 +1762,13 @@ const prepProgressPercent = visiblePrepTasks.length > 0
           {toast.text}
         </div>
       )}
-      <header style={styles.header}>
+      <header style={styles.header} className="appHeader">
         <div>
           <h2 style={{ margin: 0 }}>{company.name}</h2>
           <span style={styles.headerSub}>STAFFGUIDE</span>
         </div>
 
-        <div style={{ display: "flex", gap: 12 }}>
+        <div style={{ display: "flex", gap: 12 }} className="appHeaderActions">
           <button
             style={{
               ...styles.logoutButton,
@@ -2372,7 +2431,7 @@ const prepProgressPercent = visiblePrepTasks.length > 0
                   {prepDate} · {completedPrepCount}/{prepTasks.length} klara
                 </p>
               </div>
-              <div style={styles.prepHeaderActions}>
+              <div style={styles.prepHeaderActions} className="prepHeaderActionsMobile">
                 <button
                   style={{ ...styles.secondaryButton, padding: "10px 14px", fontSize: 14 }}
                   onClick={() => setFilteredPrepTasksDone(true)}
@@ -2406,7 +2465,7 @@ const prepProgressPercent = visiblePrepTasks.length > 0
               </div>
             </div>
 
-            <div style={styles.prepFiltersRow}>
+            <div style={styles.prepFiltersRow} className="prepFiltersMobile">
               <label style={styles.prepFilterToggle}>
                 <input
                   type="checkbox"
@@ -2473,7 +2532,7 @@ const prepProgressPercent = visiblePrepTasks.length > 0
         </div>
       ) : (
         <>
-          <div style={styles.chatArea} ref={chatAreaRef}>
+          <div style={styles.chatArea} ref={chatAreaRef} className="chatAreaMobile">
             {chat.length === 0 && !loading && (
               <div style={styles.emptyStateCard}>
                 <div style={styles.emptyStateTitle}>Hej</div>
@@ -2522,7 +2581,7 @@ const prepProgressPercent = visiblePrepTasks.length > 0
             ))}
           </div>
 
-          <div style={styles.inputArea}>
+          <div style={styles.inputArea} className="inputAreaWrap">
             <input
               style={styles.chatInput}
               className="chatInput"
