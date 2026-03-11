@@ -146,6 +146,7 @@ export default function Demo() {
     <div style={styles.page}>
       <style jsx>{`
         .primaryButton:hover, .sendButton:hover { background: #1e40af; }
+        .secondaryButton:hover { background: #dbeafe; }
         .chatInput:focus, .demoInput:focus { border-color: #2563eb; }
         .typing { display: flex; gap: 4px; }
         .typing .dot { width: 8px; height: 8px; background: #2563eb; border-radius: 50%; animation: blink 1s infinite alternate; }
@@ -243,7 +244,7 @@ export default function Demo() {
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "#f3f4f6",
+    background: "#f8fafc",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -253,13 +254,14 @@ const styles = {
     background: "#fff",
     maxWidth: 520,
     width: "100%",
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 20,
-    boxShadow: "0 10px 30px rgba(0,0,0,0.1)"
+    border: "1px solid #dbeafe",
+    boxShadow: "0 8px 20px rgba(37,99,235,0.08)"
   },
   proof: {
-    border: "2px solid #ef4444",
-    background: "#fff7ed",
+    border: "1px solid #bfdbfe",
+    background: "#eff6ff",
     borderRadius: 10,
     padding: 10,
     fontSize: 13,
@@ -274,28 +276,31 @@ const styles = {
   chip: {
     padding: "8px 12px",
     borderRadius: 999,
-    border: "1px solid #d1d5db",
-    background: "#fff",
+    border: "1px solid #bfdbfe",
+    background: "#eff6ff",
+    color: "#1d4ed8",
     fontSize: 13,
     lineHeight: 1.2,
     textAlign: "left"
   },
   chat: {
-    border: "1px solid #ddd",
-    borderRadius: 8,
+    border: "1px solid #dbeafe",
+    borderRadius: 10,
     padding: 10,
     height: 220,
     overflowY: "auto",
     marginBottom: 10
   },
   user: {
-    background: "#e5e7eb",
+    background: "#dbeafe",
+    color: "#1e3a8a",
     padding: 8,
     borderRadius: 6,
     marginBottom: 6
   },
   ai: {
-    background: "#dbeafe",
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
     padding: 8,
     borderRadius: 6,
     marginBottom: 6
@@ -325,9 +330,9 @@ const styles = {
     padding: 12,
     minHeight: 48,
     fontSize: 16,
-    background: "#111827",
-    color: "#fff",
-    border: "none",
+    background: "#eff6ff",
+    color: "#1d4ed8",
+    border: "1px solid #bfdbfe",
     borderRadius: 8,
     opacity: 0.9
   }

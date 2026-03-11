@@ -23,10 +23,10 @@ function isValidAdminTab(tab) {
 function getPriorityMeta(priority) {
   const normalized = String(priority || "medium").toLowerCase();
   if (normalized === "high") {
-    return { key: "high", label: "Hog", style: styles.prepPriorityHigh };
+    return { key: "high", label: "Hög", style: styles.prepPriorityHigh };
   }
   if (normalized === "low") {
-    return { key: "low", label: "Lag", style: styles.prepPriorityLow };
+    return { key: "low", label: "Låg", style: styles.prepPriorityLow };
   }
   return { key: "medium", label: "Medel", style: styles.prepPriorityMedium };
 }
@@ -154,7 +154,7 @@ function parseRecipesText(recipesText) {
 
   const hasStructuredHeadings = /(^|\n)###\s+/m.test(text);
   if (!hasStructuredHeadings) {
-    return [emptyRecipeRow({ dish_name: "Ratt 1", cooking: text })];
+    return [emptyRecipeRow({ dish_name: "Rätt 1", cooking: text })];
   }
 
   const blocks = text
@@ -179,7 +179,7 @@ function parseRecipesText(recipesText) {
     });
   }).filter((row) => row.dish_name || row.category || row.ingredients || row.yield || row.mise || row.cooking || row.plating || row.allergens || row.time);
 
-  return rows.length > 0 ? rows : [emptyRecipeRow({ dish_name: "Ratt 1", cooking: text })];
+  return rows.length > 0 ? rows : [emptyRecipeRow({ dish_name: "Rätt 1", cooking: text })];
 }
 
 function serializeRecipesRows(rows) {
@@ -200,7 +200,7 @@ function serializeRecipesRows(rows) {
 
   return safeRows
     .map((row) => {
-      const dishName = row.dish_name || "Namnlos ratt";
+      const dishName = row.dish_name || "Namnlös rätt";
       return [
         `### ${dishName}`,
         "Kategori:",
@@ -264,6 +264,25 @@ export default function Home() {
     { key: "opening_routine", label: "Vad är öppningsrutinen?", prompt: "Beskriv öppningsrutinen steg för steg." }
   ];
 
+  const landingFaqs = [
+    {
+      question: "Hur snabbt kommer en ny medarbetare igång?",
+      answer: "Ofta samma dag. Lägg in rutiner, recept och allergener i admin så kan personalen fråga AI-guiden direkt i mobilen."
+    },
+    {
+      question: "Fungerar det för både kök och servering?",
+      answer: "Ja. Ni kan använda samma konto men olika innehåll: köksrutiner, service-scripts, allergenstöd och öppning/stängning."
+    },
+    {
+      question: "Kan vi styra vad personalen ser?",
+      answer: "Ja. Innehållet hämtas från er adminpanel. Uppdaterar ni text där slår det igenom i svaren direkt efter sparning."
+    },
+    {
+      question: "Är sidan bra på iPad och telefon?",
+      answer: "Ja. Gränssnittet är byggt mobile-first med tydliga kort, stora klickytor och enkel navigering under service."
+    }
+  ];
+
   const [token, setToken] = useState("");
   const [loginMode, setLoginMode] = useState("company");
   const [companyIdentifier, setCompanyIdentifier] = useState("");
@@ -297,6 +316,7 @@ export default function Home() {
   const [prepTemplateRows, setPrepTemplateRows] = useState([emptyPrepTemplateRow()]);
   const [savedPrepTemplateRows, setSavedPrepTemplateRows] = useState([emptyPrepTemplateRow()]);
   const [prepTemplateLoading, setPrepTemplateLoading] = useState(false);
+  const [prepBulkUpdating, setPrepBulkUpdating] = useState(false);
   const [prepOnlyOpen, setPrepOnlyOpen] = useState(false);
   const [prepStationFilter, setPrepStationFilter] = useState("all");
   const [recipeRows, setRecipeRows] = useState([emptyRecipeRow()]);
@@ -608,6 +628,63 @@ export default function Home() {
       setPrepTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, is_done: !isDone } : task)));
       showToast(err?.message || "Kunde inte uppdatera prep-uppgift", "error");
     }
+  };
+
+  const setFilteredPrepTasksDone = async (isDone) => {
+    if (!token || prepLoading || prepBulkUpdating) return;
+
+    const targetTasks = prepTasks
+      .filter((task) => {
+        if (prepOnlyOpen && task.is_done) return false;
+        if (prepStationFilter !== "all" && String(task.station || "").trim() !== prepStationFilter) return false;
+        return true;
+      })
+      .filter((task) => Boolean(task.is_done) !== isDone);
+
+    if (targetTasks.length === 0) {
+      showToast(isDone ? "Alla synliga uppgifter är redan klara" : "Inga synliga uppgifter att återställa", "info");
+      return;
+    }
+
+    const targetIds = new Set(targetTasks.map((task) => task.id));
+    setPrepBulkUpdating(true);
+    setPrepTasks((prev) => prev.map((task) => (targetIds.has(task.id) ? { ...task, is_done: isDone } : task)));
+
+    const failedIds = [];
+
+    const results = await Promise.allSettled(
+      targetTasks.map(async (task) => {
+        const res = await fetch("/api/prep/toggle", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ taskId: task.id, isDone })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.error || "Kunde inte uppdatera prep-uppgift");
+        }
+      })
+    );
+
+    results.forEach((result, index) => {
+      if (result.status === "rejected") {
+        failedIds.push(targetTasks[index].id);
+      }
+    });
+
+    if (failedIds.length > 0) {
+      const failedSet = new Set(failedIds);
+      setPrepTasks((prev) => prev.map((task) => (failedSet.has(task.id) ? { ...task, is_done: !isDone } : task)));
+      showToast("Vissa prep-uppgifter kunde inte uppdateras", "error");
+    } else {
+      showToast(isDone ? "Synliga uppgifter markerade som klara" : "Synliga uppgifter återställda", "success");
+    }
+
+    setPrepBulkUpdating(false);
   };
 
   useEffect(() => {
@@ -1154,7 +1231,7 @@ const updateRecipeRow = (recipeId, field, value) => {
 };
 
 const addRecipeRow = () => {
-  const nextRow = emptyRecipeRow({ dish_name: `Ratt ${recipeRows.length + 1}` });
+  const nextRow = emptyRecipeRow({ dish_name: `Rätt ${recipeRows.length + 1}` });
   const nextRows = [...recipeRows, nextRow];
   upsertRecipeRows(nextRows);
   setSelectedRecipeId(nextRow.id);
@@ -1250,6 +1327,11 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
   return (a.sort_order || 0) - (b.sort_order || 0);
 });
 
+const filteredCompletedPrepCount = visiblePrepTasks.filter((task) => task.is_done).length;
+const prepProgressPercent = visiblePrepTasks.length > 0
+  ? Math.round((filteredCompletedPrepCount / visiblePrepTasks.length) * 100)
+  : 0;
+
   if (isRestoringSession) {
     return (
       <div style={styles.loginPage}>
@@ -1264,130 +1346,278 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
   // LOGIN PAGE
   if (!company) {
     return (
-      <div style={styles.loginPage}>
-        <div style={styles.loginCard} className="loginCard">
-          <h2 style={{ marginBottom: 6 }}>Intern personalguide</h2>
-          <p style={styles.subtitle}>Välj inloggningssätt</p>
+      <div style={styles.landingPage}>
+        <style jsx>{`
+          .landingOrb {
+            position: absolute;
+            border-radius: 9999px;
+            filter: blur(2px);
+            opacity: 0.55;
+            animation: drift 12s ease-in-out infinite;
+          }
 
-          <div style={styles.loginModeRow}>
-            <button
-              type="button"
-              style={{
-                ...styles.loginModeButton,
-                ...(loginMode === "company" ? styles.loginModeButtonActive : {})
-              }}
-              onClick={() => {
-                setLoginMode("company");
-                setError("");
-              }}
-              disabled={loading}
-            >
-              Företag
-            </button>
-            <button
-              type="button"
-              style={{
-                ...styles.loginModeButton,
-                ...(loginMode === "employee" ? styles.loginModeButtonActive : {})
-              }}
-              onClick={() => {
-                setLoginMode("employee");
-                setError("");
-              }}
-              disabled={loading}
-            >
-              Anställd
-            </button>
-          </div>
+          .orbA {
+            width: 280px;
+            height: 280px;
+            background: radial-gradient(circle, rgba(37, 99, 235, 0.28) 0%, rgba(37, 99, 235, 0) 72%);
+            top: 5%;
+            left: -70px;
+          }
 
-          {loginMode === "company" && (
-            <input
-              style={styles.input}
-              className="chatInput"
-              type="text"
-              placeholder="Företags-id eller företagsnamn"
-              value={companyIdentifier}
-              onChange={e => setCompanyIdentifier(e.target.value)}
-              disabled={loading}
-            />
-          )}
+          .orbB {
+            width: 360px;
+            height: 360px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.24) 0%, rgba(59, 130, 246, 0) 74%);
+            bottom: -100px;
+            right: -100px;
+            animation-duration: 15s;
+          }
 
-          <input
-            style={styles.input}
-            className="chatInput"
-            type="password"
-            placeholder="Restaurangens lösenord"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => {
-              if (e.key !== "Enter" || loading) return;
-              if (loginMode === "company") {
-                login();
-              } else {
-                loginWithEmployeeCode();
-              }
-            }}
-            disabled={loading}
-          />
+          .orbC {
+            width: 180px;
+            height: 180px;
+            background: radial-gradient(circle, rgba(191, 219, 254, 0.8) 0%, rgba(191, 219, 254, 0) 72%);
+            top: 44%;
+            right: 20%;
+            animation-duration: 10s;
+          }
 
-          {loginMode === "employee" && (
-            <>
-              <input
-                style={styles.input}
-                className="chatInput"
-                type="text"
-                placeholder="Din e-post"
-                value={employeeEmail}
-                onChange={e => setEmployeeEmail(e.target.value)}
-                disabled={loading}
-              />
+          .heroPulse {
+            animation: pulse 6s ease-in-out infinite;
+          }
 
-              <input
-                style={styles.input}
-                className="chatInput"
-                type="text"
-                placeholder="Namn (valfritt vid första kodbegäran)"
-                value={employeeName}
-                onChange={e => setEmployeeName(e.target.value)}
-                disabled={loading}
-              />
+          @keyframes drift {
+            0% { transform: translate3d(0, 0, 0) scale(1); }
+            50% { transform: translate3d(0, -12px, 0) scale(1.04); }
+            100% { transform: translate3d(0, 0, 0) scale(1); }
+          }
 
-              <input
-                style={styles.input}
-                className="chatInput"
-                type="text"
-                placeholder="Engångskod eller demo"
-                value={employeeCode}
-                onChange={e => setEmployeeCode(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && !loading && loginWithEmployeeCode()}
-                disabled={loading}
-              />
+          @keyframes pulse {
+            0% { box-shadow: 0 10px 28px rgba(37, 99, 235, 0.14); }
+            50% { box-shadow: 0 14px 34px rgba(37, 99, 235, 0.2); }
+            100% { box-shadow: 0 10px 28px rgba(37, 99, 235, 0.14); }
+          }
 
-              <p style={styles.employeeLoginHint}>
-                Obs: <code>demo</code> fungerar endast lokalt i development.
+          @media (max-width: 1040px) {
+            .landingGrid {
+              grid-template-columns: 1fr;
+              gap: 20px;
+            }
+
+            .faqGrid {
+              grid-template-columns: 1fr;
+            }
+          }
+
+          @media (max-width: 700px) {
+            .heroTitle {
+              font-size: 1.95rem !important;
+            }
+
+            .heroLead {
+              font-size: 1rem !important;
+            }
+          }
+        `}</style>
+
+        <div style={styles.landingBackground}>
+          <div className="landingOrb orbA" />
+          <div className="landingOrb orbB" />
+          <div className="landingOrb orbC" />
+        </div>
+
+        <div style={styles.landingContentWrap}>
+          <div className="landingGrid" style={styles.landingGrid}>
+            <section style={styles.heroPanel}>
+              <span style={styles.heroBadge}>STAFFGUIDE</span>
+              <h1 className="heroTitle" style={styles.heroTitle}>
+                Ge personalen rätt svar direkt under service
+              </h1>
+              <p className="heroLead" style={styles.heroLead}>
+                Samla rutiner, recept och allergener i en enkel AI-guide. Mindre frågor i köket, snabbare onboarding och tryggare allergensvar.
               </p>
 
+              <div style={styles.heroCtaRow}>
+                <button
+                  type="button"
+                  style={styles.heroCtaPrimary}
+                  onClick={() => {
+                    setLoginMode("company");
+                    setError("");
+                    requestAnimationFrame(() => {
+                      const field = document.querySelector('input[placeholder="Företags-id eller företagsnamn"]');
+                      if (field && typeof field.focus === "function") {
+                        field.focus();
+                      }
+                    });
+                  }}
+                >
+                  Kom igång nu
+                </button>
+                <button
+                  type="button"
+                  style={styles.heroCtaSecondary}
+                  onClick={() => {
+                    setLoginMode("employee");
+                    setError("");
+                  }}
+                >
+                  Personal-login
+                </button>
+              </div>
+
+              <div style={styles.heroMetaRow}>
+                <span style={styles.heroMetaChip}>Meny + recept i realtid</span>
+                <span style={styles.heroMetaChip}>Säkrare svar om allergener</span>
+                <span style={styles.heroMetaChip}>Byggt för iPad och mobil</span>
+              </div>
+
+              <div className="heroPulse" style={styles.heroVisualCard}>
+                <p style={styles.heroVisualTitle}>Dagens prep</p>
+                <ul style={styles.heroVisualList}>
+                  <li>Degjäsning kontrollerad 09:00</li>
+                  <li>Allergenlista verifierad inför lunch</li>
+                  <li>Specialsås uppdaterad i receptbanken</li>
+                </ul>
+              </div>
+            </section>
+
+            <section style={styles.loginCard} className="loginCard">
+              <h2 style={{ marginBottom: 6, color: "#0f172a" }}>Intern personalguide</h2>
+              <p style={styles.subtitle}>Välj inloggningssätt</p>
+
+              <div style={styles.loginModeRow}>
+                <button
+                  type="button"
+                  style={{
+                    ...styles.loginModeButton,
+                    ...(loginMode === "company" ? styles.loginModeButtonActive : {})
+                  }}
+                  onClick={() => {
+                    setLoginMode("company");
+                    setError("");
+                  }}
+                  disabled={loading}
+                >
+                  Företag
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    ...styles.loginModeButton,
+                    ...(loginMode === "employee" ? styles.loginModeButtonActive : {})
+                  }}
+                  onClick={() => {
+                    setLoginMode("employee");
+                    setError("");
+                  }}
+                  disabled={loading}
+                >
+                  Anställd
+                </button>
+              </div>
+
+              {loginMode === "company" && (
+                <input
+                  style={styles.input}
+                  className="chatInput"
+                  type="text"
+                  placeholder="Företags-id eller företagsnamn"
+                  value={companyIdentifier}
+                  onChange={e => setCompanyIdentifier(e.target.value)}
+                  disabled={loading}
+                />
+              )}
+
+              <input
+                style={styles.input}
+                className="chatInput"
+                type="password"
+                placeholder="Restaurangens lösenord"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key !== "Enter" || loading) return;
+                  if (loginMode === "company") {
+                    login();
+                  } else {
+                    loginWithEmployeeCode();
+                  }
+                }}
+                disabled={loading}
+              />
+
+              {loginMode === "employee" && (
+                <>
+                  <input
+                    style={styles.input}
+                    className="chatInput"
+                    type="text"
+                    placeholder="Din e-post"
+                    value={employeeEmail}
+                    onChange={e => setEmployeeEmail(e.target.value)}
+                    disabled={loading}
+                  />
+
+                  <input
+                    style={styles.input}
+                    className="chatInput"
+                    type="text"
+                    placeholder="Namn (valfritt vid första kodbegäran)"
+                    value={employeeName}
+                    onChange={e => setEmployeeName(e.target.value)}
+                    disabled={loading}
+                  />
+
+                  <input
+                    style={styles.input}
+                    className="chatInput"
+                    type="text"
+                    placeholder="Engångskod eller demo"
+                    value={employeeCode}
+                    onChange={e => setEmployeeCode(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && !loading && loginWithEmployeeCode()}
+                    disabled={loading}
+                  />
+
+                  <p style={styles.employeeLoginHint}>
+                    Obs: <code>demo</code> fungerar endast lokalt i development.
+                  </p>
+
+                  <button
+                    style={{ ...styles.secondaryButton, width: "100%", marginBottom: 10 }}
+                    onClick={requestEmployeeCode}
+                    disabled={loading}
+                  >
+                    {loading ? "Skickar kod..." : "Skicka engångskod"}
+                  </button>
+                </>
+              )}
+
+              {error && <p style={styles.error}>{error}</p>}
+
               <button
-                style={{ ...styles.secondaryButton, width: "100%", marginBottom: 10 }}
-                onClick={requestEmployeeCode}
+                style={styles.primaryButton}
+                className="primaryButton"
+                onClick={loginMode === "company" ? login : loginWithEmployeeCode}
                 disabled={loading}
               >
-                {loading ? "Skickar kod..." : "Skicka engångskod"}
+                {loading ? "Loggar in..." : loginMode === "company" ? "Logga in" : "Logga in med kod"}
               </button>
-            </>
-          )}
+            </section>
+          </div>
 
-          {error && <p style={styles.error}>{error}</p>}
-
-          <button
-            style={styles.primaryButton}
-            className="primaryButton"
-            onClick={loginMode === "company" ? login : loginWithEmployeeCode}
-            disabled={loading}
-          >
-            {loading ? "Loggar in..." : loginMode === "company" ? "Logga in" : "Logga in med kod"}
-          </button>
-
+          <section style={styles.faqSection}>
+            <h3 style={styles.faqTitle}>Vanliga frågor</h3>
+            <div className="faqGrid" style={styles.faqGrid}>
+              {landingFaqs.map((item) => (
+                <details key={item.question} style={styles.faqItem}>
+                  <summary style={styles.faqSummary}>{item.question}</summary>
+                  <p style={styles.faqAnswer}>{item.answer}</p>
+                </details>
+              ))}
+            </div>
+          </section>
         </div>
       </div>
     );
@@ -1401,7 +1631,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
 
         :global(body) {
           font-family: 'Manrope', 'Segoe UI', sans-serif;
-          background: radial-gradient(circle at 10% 10%, #eef2ff 0%, #f8fafc 55%, #f1f5f9 100%);
+          background: #f8fafc;
           color: #0f172a;
         }
 
@@ -1409,7 +1639,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
         .primaryButton:hover { background: #1e40af; }
         .sendButton:hover { background: #1e40af; }
         .loginModeButton:hover { border-color: #93c5fd; background: #f8fbff; }
-        .logoutButton:hover { background: #1f2937; }
+        .logoutButton:hover { background: #eff6ff; }
         .chatInput:focus { border-color: #2563eb; }
         input:focus, textarea:focus {
           border-color: #2563eb;
@@ -1476,14 +1706,15 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
       <header style={styles.header}>
         <div>
           <h2 style={{ margin: 0 }}>{company.name}</h2>
-          <span style={styles.headerSub}>AI Personalguide</span>
+          <span style={styles.headerSub}>STAFFGUIDE</span>
         </div>
 
         <div style={{ display: "flex", gap: 12 }}>
           <button
             style={{
               ...styles.logoutButton,
-              background: showPrep ? "#2563eb" : "#374151"
+              background: showPrep ? "#2563eb" : "#ffffff",
+              color: showPrep ? "#ffffff" : "#1d4ed8"
             }}
             onClick={handlePrepClick}
           >
@@ -1493,7 +1724,8 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
             <button
               style={{
                 ...styles.logoutButton,
-                background: showAdmin ? "#2563eb" : "#374151"
+                background: showAdmin ? "#2563eb" : "#ffffff",
+                color: showAdmin ? "#ffffff" : "#1d4ed8"
               }}
               onClick={handleAdminClick}
             >
@@ -1541,7 +1773,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                 {adminLoading ? "Verifierar..." : "Öppna admin"}
               </button>
               <button
-                style={{ ...styles.primaryButton, flex: 1, background: "#6b7280" }}
+                style={{ ...styles.secondaryButton, flex: 1, background: "#e5edff", color: "#1e40af" }}
                 onClick={closeAdminPasswordPrompt}
                 disabled={adminLoading}
               >
@@ -1549,7 +1781,7 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
               </button>
             </div>
           </div>
-        </div>
+            </div>
       )}
 
       {showAdmin ? (
@@ -1981,9 +2213,9 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                                 onChange={(e) => updatePrepTemplateRow(index, "priority", e.target.value)}
                                 disabled={prepTemplateLoading}
                               >
-                                <option value="high">Hog</option>
+                                <option value="high">Hög</option>
                                 <option value="medium">Medel</option>
-                                <option value="low">Lag</option>
+                                <option value="low">Låg</option>
                               </select>
                             </td>
                             <td style={styles.prepTemplateTd}>
@@ -2140,13 +2372,38 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
                   {prepDate} · {completedPrepCount}/{prepTasks.length} klara
                 </p>
               </div>
-              <button
-                style={{ ...styles.secondaryButton, padding: "10px 14px", fontSize: 14 }}
-                onClick={() => fetchPrepTasks(prepDate)}
-                disabled={prepLoading}
-              >
-                {prepLoading ? "Laddar..." : "Uppdatera"}
-              </button>
+              <div style={styles.prepHeaderActions}>
+                <button
+                  style={{ ...styles.secondaryButton, padding: "10px 14px", fontSize: 14 }}
+                  onClick={() => setFilteredPrepTasksDone(true)}
+                  disabled={prepLoading || prepBulkUpdating}
+                >
+                  Markera synliga klara
+                </button>
+                <button
+                  style={{ ...styles.secondaryButton, padding: "10px 14px", fontSize: 14 }}
+                  onClick={() => setFilteredPrepTasksDone(false)}
+                  disabled={prepLoading || prepBulkUpdating}
+                >
+                  Återställ synliga
+                </button>
+                <button
+                  style={{ ...styles.secondaryButton, padding: "10px 14px", fontSize: 14 }}
+                  onClick={() => fetchPrepTasks(prepDate)}
+                  disabled={prepLoading || prepBulkUpdating}
+                >
+                  {prepLoading ? "Laddar..." : "Uppdatera"}
+                </button>
+              </div>
+            </div>
+
+            <div style={styles.prepProgressWrap}>
+              <div style={styles.prepProgressText}>
+                Synliga uppgifter: {filteredCompletedPrepCount}/{visiblePrepTasks.length} klara ({prepProgressPercent}%)
+              </div>
+              <div style={styles.prepProgressTrack}>
+                <div style={{ ...styles.prepProgressFill, width: `${prepProgressPercent}%` }} />
+              </div>
             </div>
 
             <div style={styles.prepFiltersRow}>
@@ -2295,20 +2552,158 @@ const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
 const styles = {
   loginPage: {
     minHeight: "100vh",
-    background: "radial-gradient(circle at 15% 15%, #dbeafe 0%, #eef2ff 38%, #f8fafc 100%)",
+    background: "#f8fafc",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     padding: 20
   },
 
-  loginCard: {
-    background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
-    padding: 40,
+  landingPage: {
+    minHeight: "100vh",
+    position: "relative",
+    overflow: "hidden",
+    background: "linear-gradient(145deg, #ffffff 0%, #f8fbff 52%, #eff6ff 100%)"
+  },
+
+  landingBackground: {
+    position: "absolute",
+    inset: 0,
+    pointerEvents: "none"
+  },
+
+  landingContentWrap: {
+    position: "relative",
+    zIndex: 1,
+    maxWidth: 1200,
+    margin: "0 auto",
+    padding: "30px 18px 34px"
+  },
+
+  landingGrid: {
+    display: "grid",
+    gridTemplateColumns: "1.25fr 0.95fr",
+    gap: 26,
+    alignItems: "stretch"
+  },
+
+  heroPanel: {
+    background: "rgba(255, 255, 255, 0.92)",
+    border: "1px solid #dbeafe",
     borderRadius: 24,
+    padding: 28,
+    backdropFilter: "blur(5px)",
+    boxShadow: "0 12px 30px rgba(37, 99, 235, 0.1)"
+  },
+
+  heroBadge: {
+    display: "inline-block",
+    background: "#2563eb",
+    color: "#ffffff",
+    padding: "6px 12px",
+    borderRadius: 999,
+    fontSize: 11,
+    letterSpacing: "0.09em",
+    fontWeight: 700,
+    marginBottom: 12
+  },
+
+  heroTitle: {
+    margin: "0 0 12px",
+    fontSize: "2.5rem",
+    lineHeight: 1.08,
+    color: "#0f172a",
+    fontWeight: 800,
+    letterSpacing: "-0.02em"
+  },
+
+  heroLead: {
+    margin: "0 0 18px",
+    fontSize: "1.07rem",
+    lineHeight: 1.55,
+    color: "#334155",
+    maxWidth: "58ch"
+  },
+
+  heroCtaRow: {
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+    marginBottom: 16
+  },
+
+  heroCtaPrimary: {
+    border: "none",
+    background: "#2563eb",
+    color: "#fff",
+    borderRadius: 10,
+    padding: "10px 16px",
+    fontWeight: 700,
+    cursor: "pointer",
+    minHeight: 44
+  },
+
+  heroCtaSecondary: {
+    border: "1px solid #bfdbfe",
+    background: "#fff",
+    color: "#1d4ed8",
+    borderRadius: 10,
+    padding: "10px 16px",
+    fontWeight: 700,
+    cursor: "pointer",
+    minHeight: 44
+  },
+
+  heroMetaRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 18
+  },
+
+  heroMetaChip: {
+    background: "#eff6ff",
+    border: "1px solid #bfdbfe",
+    color: "#1d4ed8",
+    borderRadius: 999,
+    padding: "8px 12px",
+    fontSize: 13,
+    fontWeight: 600
+  },
+
+  heroVisualCard: {
+    background: "linear-gradient(155deg, #ffffff 0%, #eff6ff 100%)",
+    border: "1px solid #dbeafe",
+    borderRadius: 16,
+    padding: "14px 14px 12px"
+  },
+
+  heroVisualTitle: {
+    margin: "0 0 8px",
+    fontSize: 13,
+    fontWeight: 800,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    color: "#1d4ed8"
+  },
+
+  heroVisualList: {
+    margin: 0,
+    paddingLeft: 18,
+    display: "grid",
+    gap: 8,
+    color: "#334155",
+    fontSize: 14,
+    lineHeight: 1.45
+  },
+
+  loginCard: {
+    background: "#ffffff",
+    padding: 30,
+    borderRadius: 16,
     width: "100%",
     maxWidth: 430,
-    boxShadow: "0 26px 70px rgba(15,23,42,0.12)",
+    boxShadow: "0 10px 24px rgba(37,99,235,0.08)",
     border: "1px solid #dbeafe",
     textAlign: "center",
     boxSizing: "border-box",
@@ -2368,11 +2763,11 @@ const styles = {
 
   input: {
     width: "100%",
-    padding: 14,
+    padding: 12,
     fontSize: 16,
-    borderRadius: 12,
+    borderRadius: 10,
     border: "1px solid #cbd5e1",
-    marginBottom: 16,
+    marginBottom: 12,
     boxSizing: "border-box",
     outline: "none",
     transition: "border-color 0.2s"
@@ -2380,14 +2775,15 @@ const styles = {
 
   primaryButton: {
     width: "100%",
-    padding: 14,
+    padding: 12,
     fontSize: 16,
     background: "#2563eb",
     color: "#fff",
     border: "none",
-    borderRadius: 12,
+    borderRadius: 10,
     cursor: "pointer",
     fontWeight: 600,
+    minHeight: 46,
     transition: "background 0.2s, transform 0.1s"
   },
 
@@ -2397,36 +2793,79 @@ const styles = {
     fontSize: 14
   },
 
+  faqSection: {
+    marginTop: 22,
+    background: "rgba(255, 255, 255, 0.92)",
+    border: "1px solid #dbeafe",
+    borderRadius: 20,
+    padding: "20px 18px"
+  },
+
+  faqTitle: {
+    margin: "0 0 12px",
+    fontSize: 20,
+    color: "#0f172a",
+    letterSpacing: "-0.01em"
+  },
+
+  faqGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 10
+  },
+
+  faqItem: {
+    background: "#fff",
+    border: "1px solid #dbeafe",
+    borderRadius: 12,
+    padding: 12
+  },
+
+  faqSummary: {
+    cursor: "pointer",
+    fontWeight: 700,
+    color: "#1e3a8a",
+    fontSize: 15,
+    lineHeight: 1.35
+  },
+
+  faqAnswer: {
+    margin: "10px 0 0",
+    color: "#475569",
+    fontSize: 14,
+    lineHeight: 1.5
+  },
+
   appContainer: {
     display: "flex",
     flexDirection: "column",
     height: "100dvh",
     minHeight: "100vh",
-    background: "radial-gradient(circle at 8% 8%, #eff6ff 0%, #f3f4f6 42%, #e2e8f0 100%)"
+    background: "#f8fafc"
   },
 
   header: {
     padding: "18px 28px",
-    background: "linear-gradient(100deg, #0f172a 0%, #1e293b 60%, #334155 100%)",
-    color: "#fff",
+    background: "#ffffff",
+    color: "#0f172a",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    borderBottom: "1px solid rgba(148,163,184,0.28)",
-    boxShadow: "0 10px 24px rgba(15,23,42,0.22)"
+    borderBottom: "1px solid #e2e8f0",
+    boxShadow: "0 2px 12px rgba(15,23,42,0.04)"
   },
 
   headerSub: {
     fontSize: 13,
-    color: "#cbd5e1",
+    color: "#64748b",
     fontWeight: 600,
     letterSpacing: 0.3
   },
 
   logoutButton: {
-    background: "#334155",
-    border: "1px solid rgba(148,163,184,0.35)",
-    color: "#fff",
+    background: "#ffffff",
+    border: "1px solid #bfdbfe",
+    color: "#1d4ed8",
     padding: "9px 14px",
     borderRadius: 999,
     cursor: "pointer",
@@ -2441,7 +2880,7 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: 14,
-    background: "linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%)"
+    background: "#f8fafc"
   },
 
   emptyStateCard: {
@@ -2550,44 +2989,45 @@ const styles = {
 
   quickActionButton: {
     border: "1px solid #bfdbfe",
-    background: "linear-gradient(180deg, #f8fbff 0%, #eaf2ff 100%)",
+    background: "#eff6ff",
     color: "#1e40af",
-    borderRadius: 999,
-    padding: "9px 14px",
+    borderRadius: 10,
+    padding: "10px 14px",
     fontSize: 13,
     cursor: "pointer",
     fontWeight: 700,
     transition: "transform 0.15s, box-shadow 0.2s, background 0.2s",
-    boxShadow: "0 2px 8px rgba(37,99,235,0.14)"
+    boxShadow: "none"
   },
 
   inputArea: {
     display: "flex",
     padding: "12px 18px 18px 18px",
     background: "#ffffff",
-    boxShadow: "0 -8px 18px rgba(17,24,39,0.06)",
+    boxShadow: "0 -2px 10px rgba(15,23,42,0.04)",
     borderTop: "1px solid #e2e8f0"
   },
 
   chatInput: {
     flex: 1,
-    padding: 14,
+    padding: 12,
     fontSize: 16,
-    borderRadius: 12,
+    borderRadius: 10,
     border: "1px solid #cbd5e1",
     marginRight: 12,
     boxSizing: "border-box"
   },
 
   sendButton: {
-    background: "linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%)",
+    background: "#2563eb",
     color: "#fff",
     border: "none",
-    padding: "0 24px",
-    borderRadius: 12,
+    padding: "0 20px",
+    borderRadius: 10,
     cursor: "pointer",
     fontWeight: 700,
-    boxShadow: "0 8px 16px rgba(37,99,235,0.25)"
+    minHeight: 46,
+    boxShadow: "none"
   },
 
   prepPanel: {
@@ -2595,17 +3035,49 @@ const styles = {
     minHeight: 0,
     overflowY: "auto",
     padding: 24,
-    background: "linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%)"
+    background: "#f8fafc"
   },
 
   prepCard: {
     maxWidth: 760,
     margin: "0 auto",
     background: "#fff",
-    borderRadius: 18,
+    borderRadius: 14,
     border: "1px solid #e5e7eb",
-    boxShadow: "0 12px 28px rgba(15,23,42,0.08)",
+    boxShadow: "0 6px 18px rgba(15,23,42,0.06)",
     padding: 18
+  },
+
+  prepHeaderActions: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap"
+  },
+
+  prepProgressWrap: {
+    marginBottom: 12
+  },
+
+  prepProgressText: {
+    fontSize: 13,
+    color: "#475569",
+    marginBottom: 6,
+    fontWeight: 600
+  },
+
+  prepProgressTrack: {
+    width: "100%",
+    height: 8,
+    borderRadius: 999,
+    background: "#e2e8f0",
+    overflow: "hidden"
+  },
+
+  prepProgressFill: {
+    height: "100%",
+    background: "#2563eb",
+    borderRadius: 999,
+    transition: "width 0.25s ease"
   },
 
   prepHeaderRow: {
@@ -2663,7 +3135,7 @@ const styles = {
     display: "flex",
     alignItems: "flex-start",
     gap: 10,
-    padding: "10px 12px",
+    padding: "12px 12px",
     background: "#f9fafb",
     borderRadius: 10,
     border: "1px solid #e5e7eb"
@@ -2850,7 +3322,7 @@ const styles = {
     minHeight: 0,
     display: "flex",
     flexDirection: "column",
-    background: "#f3f4f6",
+    background: "#f8fafc",
     width: "100%",
     boxSizing: "border-box",
     overflow: "hidden"
@@ -2935,19 +3407,20 @@ const styles = {
     gap: 10,
     paddingTop: 12,
     paddingBottom: 6,
-    background: "linear-gradient(180deg, rgba(255,255,255,0), #fff 28%)"
+    background: "linear-gradient(180deg, rgba(248,250,252,0), #f8fafc 28%)"
   },
 
   secondaryButton: {
     width: "auto",
-    padding: 14,
-    fontSize: 16,
-    background: "#e5e7eb",
-    color: "#111827",
-    border: "none",
-    borderRadius: 12,
+    padding: 12,
+    fontSize: 15,
+    background: "#eff6ff",
+    color: "#1d4ed8",
+    border: "1px solid #bfdbfe",
+    borderRadius: 10,
     cursor: "pointer",
-    fontWeight: 600
+    fontWeight: 600,
+    minHeight: 44
   },
 
   adminMessage: {
@@ -3021,6 +3494,6 @@ const styles = {
   },
 
   toastInfo: {
-    background: "#374151"
+    background: "#1d4ed8"
   }
 };
