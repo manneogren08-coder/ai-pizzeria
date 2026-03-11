@@ -1346,7 +1346,7 @@ const prepProgressPercent = visiblePrepTasks.length > 0
   // LOGIN PAGE
   if (!company) {
     return (
-      <div style={styles.landingPage}>
+      <div style={styles.landingPage} className="landingPage">
         <style jsx>{`
           .landingOrb {
             position: absolute;
@@ -1400,22 +1400,43 @@ const prepProgressPercent = visiblePrepTasks.length > 0
 
           @media (max-width: 1040px) {
             .landingGrid {
-              grid-template-columns: 1fr;
-              gap: 20px;
+              grid-template-columns: 1fr !important;
+              gap: 16px !important;
             }
 
             .faqGrid {
-              grid-template-columns: 1fr;
+              grid-template-columns: 1fr !important;
+            }
+
+            .landingGrid > section {
+              min-width: 0;
             }
           }
 
           @media (max-width: 700px) {
+            .landingPage {
+              overflow-x: hidden;
+            }
+
+            .landingGrid {
+              gap: 12px !important;
+            }
+
+            .landingContentWrap {
+              padding: 12px !important;
+            }
+
+            .heroPanel {
+              padding: 16px !important;
+              border-radius: 14px !important;
+            }
+
             .heroTitle {
-              font-size: 1.95rem !important;
+              font-size: 1.55rem !important;
             }
 
             .heroLead {
-              font-size: 1rem !important;
+              font-size: 0.95rem !important;
             }
 
             .heroCtaRow {
@@ -1428,6 +1449,7 @@ const prepProgressPercent = visiblePrepTasks.length > 0
 
             .loginCard {
               padding: 18px !important;
+              border-radius: 14px !important;
             }
           }
         `}</style>
@@ -1438,9 +1460,9 @@ const prepProgressPercent = visiblePrepTasks.length > 0
           <div className="landingOrb orbC" />
         </div>
 
-        <div style={styles.landingContentWrap}>
+        <div style={styles.landingContentWrap} className="landingContentWrap">
           <div className="landingGrid" style={styles.landingGrid}>
-            <section style={styles.heroPanel}>
+            <section style={styles.heroPanel} className="heroPanel">
               <span style={styles.heroBadge}>STAFFGUIDE</span>
               <h1 className="heroTitle" style={styles.heroTitle}>
                 Ge personalen rätt svar direkt under service
