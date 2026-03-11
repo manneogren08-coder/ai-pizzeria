@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 
-const ADMIN_TABS = ["info", "menu", "routines", "prep", "security", "stats"];
+const ADMIN_TABS = ["info", "menu", "recipes", "routines", "prep", "security", "stats"];
 
 function getTodayDateString() {
   const now = new Date();
@@ -253,7 +253,8 @@ export default function Home() {
 
   const tabFieldMap = {
     info: ["support_email", "opening_hours", "closure_info"],
-    menu: ["menu", "recipes", "allergens"],
+    menu: ["menu", "allergens"],
+    recipes: ["recipes"],
     routines: ["routines", "opening_routine", "closing_routine", "behavior_guidelines", "staff_roles", "staff_situations"]
   };
 
@@ -402,7 +403,7 @@ export default function Home() {
       nextDetails[field] = savedCompanyDetails[field] || "";
     });
     setCompanyDetails(nextDetails);
-    if (adminTab === "menu") {
+    if (adminTab === "recipes") {
       const restoredRows = savedRecipeRows.length > 0 ? savedRecipeRows : parseRecipesText(savedCompanyDetails.recipes || "");
       setRecipeRows(restoredRows);
       setSelectedRecipeId(restoredRows[0]?.id || "");
@@ -1895,6 +1896,17 @@ const prepProgressPercent = visiblePrepTasks.length > 0
               <button
                 style={{
                   ...styles.adminTab,
+                  ...(adminTab === "recipes" ? styles.adminTabActive : {})
+                }}
+                className="adminTabButton"
+                onClick={() => handleAdminTabChange("recipes")}
+              >
+                Receptbyggare
+                {isTabDirty("recipes") && <span style={styles.tabDirtyDot}>●</span>}
+              </button>
+              <button
+                style={{
+                  ...styles.adminTab,
                   ...(adminTab === "routines" ? styles.adminTabActive : {})
                 }}
                 className="adminTabButton"
@@ -2013,7 +2025,43 @@ const prepProgressPercent = visiblePrepTasks.length > 0
                     onChange={e => setCompanyDetails({...companyDetails, allergens: e.target.value})}
                   />
 
-                  <label style={styles.label}>Receptbyggare</label>
+                  <div style={styles.prepEmptyState}>
+                    Recept hanteras nu i fliken <strong>Receptbyggare</strong> för tydligare redigering.
+                  </div>
+
+                  <button
+                    type="button"
+                    style={{ ...styles.secondaryButton, width: "100%", marginBottom: 10 }}
+                    onClick={() => handleAdminTabChange("recipes")}
+                  >
+                    Öppna Receptbyggare
+                  </button>
+
+                  <div style={styles.adminActionBar}>
+                    <button
+                      style={{ ...styles.secondaryButton, flex: 1 }}
+                      onClick={resetCurrentTab}
+                      disabled={!isTabDirty("menu") || adminLoading}
+                    >
+                      Återställ
+                    </button>
+                    <button
+                      style={{ ...styles.primaryButton, flex: 1, width: "auto" }}
+                      onClick={updateCompanyDetails}
+                      disabled={!isTabDirty("menu") || adminLoading}
+                    >
+                      {adminLoading ? "Sparar..." : "Spara ändringar"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {adminTab === "recipes" && (
+                <div className="adminSectionCard">
+                  <div style={styles.recipeTabHeader}>
+                    <h3 style={{ marginTop: 0, marginBottom: 0 }}>Receptbyggare</h3>
+                    <span style={styles.recipeCountBadge}>{recipeRows.length} recept</span>
+                  </div>
                   <p style={styles.helperText}>Sök rätt, välj i listan och fyll i strukturerade fält istället för en lång text.</p>
 
                   <div style={styles.recipeBuilderLayout} className="recipeBuilderGrid">
@@ -2170,14 +2218,14 @@ const prepProgressPercent = visiblePrepTasks.length > 0
                     <button
                       style={{ ...styles.secondaryButton, flex: 1 }}
                       onClick={resetCurrentTab}
-                      disabled={!isTabDirty("menu") || adminLoading}
+                      disabled={!isTabDirty("recipes") || adminLoading}
                     >
                       Återställ
                     </button>
                     <button
                       style={{ ...styles.primaryButton, flex: 1, width: "auto" }}
                       onClick={updateCompanyDetails}
-                      disabled={!isTabDirty("menu") || adminLoading}
+                      disabled={!isTabDirty("recipes") || adminLoading}
                     >
                       {adminLoading ? "Sparar..." : "Spara ändringar"}
                     </button>
@@ -3338,6 +3386,25 @@ const styles = {
     gridTemplateColumns: "240px 1fr",
     gap: 12,
     alignItems: "start"
+  },
+
+  recipeTabHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 8,
+    flexWrap: "wrap"
+  },
+
+  recipeCountBadge: {
+    border: "1px solid #bfdbfe",
+    color: "#1d4ed8",
+    background: "#eff6ff",
+    borderRadius: 999,
+    padding: "4px 10px",
+    fontSize: 12,
+    fontWeight: 700
   },
 
   recipeSidebar: {
