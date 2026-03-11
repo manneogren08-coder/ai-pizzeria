@@ -18,14 +18,6 @@ function stripRecipesSection(text) {
   return text.replace(pattern, "").trim();
 }
 
-function normalizeMenuText(text) {
-  if (typeof text !== "string") return "";
-  return text
-    .replace(/\bFÖÄTT\b/gi, "FÖRRÄTT")
-    .replace(/\bFÃ–Ã„TT\b/g, "FÖRRÄTT")
-    .replace(/\bFÃ–RRÃ„TT\b/g, "FÖRRÄTT");
-}
-
 function withEmbeddedRecipes(menuText, recipesText) {
   const baseMenu = stripRecipesSection(menuText);
   const recipes = typeof recipesText === "string" ? recipesText.trim() : "";
@@ -108,7 +100,7 @@ export default async function handler(req, res) {
       support_email: details.support_email ?? "",
       opening_hours: details.opening_hours ?? "",
       closure_info: details.closure_info ?? "",
-      menu: normalizeMenuText(stripRecipesSection(details.menu ?? "")),
+      menu: stripRecipesSection(details.menu ?? ""),
       recipes: details.recipes ?? "",
       allergens: details.allergens ?? "",
       routines: stripOpeningRoutineSection(details.routines ?? ""),

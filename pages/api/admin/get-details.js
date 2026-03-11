@@ -28,14 +28,6 @@ function extractEmbeddedRecipes(menuText) {
   return { cleanedMenu, recipes };
 }
 
-function normalizeMenuText(text) {
-  if (typeof text !== "string") return "";
-  return text
-    .replace(/\bFÖÄTT\b/gi, "FÖRRÄTT")
-    .replace(/\bFÃ–Ã„TT\b/g, "FÖRRÄTT")
-    .replace(/\bFÃ–RRÃ„TT\b/g, "FÖRRÄTT");
-}
-
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Only GET allowed" });
@@ -80,7 +72,7 @@ export default async function handler(req, res) {
       support_email: company.support_email || "",
       opening_hours: company.opening_hours || "",
       closure_info: company.closure_info || "",
-      menu: normalizeMenuText(cleanedMenu),
+      menu: cleanedMenu,
       recipes: company.recipes || recipes,
       allergens: company.allergens || "",
       routines: cleanedRoutines,
