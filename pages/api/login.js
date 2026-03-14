@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import { setAuthCookie } from "../../lib/auth.js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -10,7 +11,7 @@ const supabase = createClient(
 // Simple rate limiting: track attempts by IP
 const loginAttempts = {};
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
-const MAX_ATTEMPTS = 50; // Higher for development, reduce to 5 in production
+const MAX_ATTEMPTS = process.env.NODE_ENV === "production" ? 10 : 20;
 
 function getClientIP(req) {
   return req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || 'unknown';
@@ -101,6 +102,8 @@ export default async function handler(req, res) {
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
+
+    setAuthCookie(res, token);
 
     return res.status(200).json({
       token,

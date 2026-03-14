@@ -822,6 +822,11 @@ export default function Home() {
 };
 
   const requestEmployeeCode = async () => {
+    if (!companyIdentifier.trim()) {
+      setError("Skriv in företags-id eller företagsnamn");
+      return;
+    }
+
     if (!password.trim()) {
       setError("Skriv in restaurangens lösenord");
       return;
@@ -840,6 +845,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          companyIdentifier,
           password,
           email: employeeEmail,
           name: employeeName
@@ -864,6 +870,11 @@ export default function Home() {
   };
 
   const loginWithEmployeeCode = async () => {
+    if (!companyIdentifier.trim()) {
+      setError("Skriv in företags-id eller företagsnamn");
+      return;
+    }
+
     if (!password.trim()) {
       setError("Skriv in restaurangens lösenord");
       return;
@@ -887,6 +898,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          companyIdentifier,
           password,
           email: employeeEmail,
           code: employeeCode

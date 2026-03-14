@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { supabase } from "@/lib/supabase";
 import jwt from "jsonwebtoken";
+import { extractAuthToken } from "@/lib/auth";
 
 const OPENING_ROUTINE_SECTION_REGEX = /\[OPENING_ROUTINE\]([\s\S]*?)\[\/OPENING_ROUTINE\]/i;
 const RECIPES_SECTION_REGEX = /\[RECIPES\]([\s\S]*?)\[\/RECIPES\]/i;
@@ -163,7 +164,7 @@ export default async function handler(req, res) {
   const { question, quickActionKey } = req.body;
 
   try {
-    const token = req.headers.authorization?.split(" ")[1];
+    const token = extractAuthToken(req);
     if (!token) {
       return res.status(401).json({ answer: "Ingen token skickad." });
     }

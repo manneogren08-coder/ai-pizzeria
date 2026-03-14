@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { getSupabaseAdminClient } from "../../../lib/supabase.js";
+import { extractAuthToken } from "../../../lib/auth.js";
 
 const EXPECTED_COMPANY_COLUMNS = [
   "support_email",
@@ -23,13 +24,17 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Only GET allowed" });
   }
 
+  if (process.env.NODE_ENV === "production") {
+    return res.status(404).json({ error: "Not found" });
+  }
+
   try {
     const supabase = getSupabaseAdminClient();
     if (!supabase) {
       return res.status(500).json({ error: "Servern saknar SUPABASE_SERVICE_ROLE_KEY" });
     }
 
-    const token = req.headers.authorization?.replace("Bearer ", "");
+    const token = extractAuthToken(req);
     if (!token) {
       return res.status(401).json({ error: "Missing token" });
     }

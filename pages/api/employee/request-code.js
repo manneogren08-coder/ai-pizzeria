@@ -6,11 +6,47 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-async function getCompanyByPassword(password) {
-  const { data: companies, error } = await supabase
+const rateLimitStore = new Map();
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const MAX_REQUESTS_PER_IP = process.env.NODE_ENV === "production" ? 12 : 30;
+const MAX_REQUESTS_PER_ACCOUNT = process.env.NODE_ENV === "production" ? 5 : 10;
+
+function getClientIP(req) {
+  return req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+}
+
+function consumeRateLimit(key, maxRequests) {
+  const now = Date.now();
+  const existing = rateLimitStore.get(key);
+
+  if (!existing || now > existing.resetAt) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+
+  existing.count += 1;
+  return existing.count > maxRequests;
+}
+
+async function getCompanyByIdentifierAndPassword(companyIdentifier, password) {
+  const normalizedIdentifier = String(companyIdentifier || "").trim();
+  if (!normalizedIdentifier) return null;
+
+  const cleanIdentifier = normalizedIdentifier.replace(/[%,]/g, "");
+  const isNumericId = /^\d+$/.test(cleanIdentifier);
+
+  let query = supabase
     .from("companies")
-    .select("id, name, password_hash, active")
+    .select("id, name, password_hash, active, support_email")
     .eq("active", true);
+
+  if (isNumericId) {
+    query = query.eq("id", Number(cleanIdentifier));
+  } else {
+    query = query.or(`name.ilike.%${cleanIdentifier}%,support_email.ilike.%${cleanIdentifier}%`);
+  }
+
+  const { data: companies, error } = await query.limit(20);
 
   if (error || !Array.isArray(companies)) {
     return null;
@@ -118,7 +154,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    const clientIP = getClientIP(req);
     const password = String(req.body?.password || "").trim();
+    const companyIdentifier = String(req.body?.companyIdentifier || "").trim();
     const email = String(req.body?.email || "").trim().toLowerCase();
     const name = String(req.body?.name || "").trim();
 
@@ -126,11 +164,20 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Saknar restaurangens lösenord" });
     }
 
+    if (!companyIdentifier) {
+      return res.status(400).json({ error: "Skriv in företags-id eller företagsnamn" });
+    }
+
     if (!email || !email.includes("@")) {
       return res.status(400).json({ error: "Ange en giltig e-post" });
     }
 
-    const company = await getCompanyByPassword(password);
+    const accountLimitKey = `employee-request:${companyIdentifier.toLowerCase()}:${email}`;
+    if (consumeRateLimit(`employee-request-ip:${clientIP}`, MAX_REQUESTS_PER_IP) || consumeRateLimit(accountLimitKey, MAX_REQUESTS_PER_ACCOUNT)) {
+      return res.status(429).json({ error: "För många kodförsök. Vänta några minuter och försök igen." });
+    }
+
+    const company = await getCompanyByIdentifierAndPassword(companyIdentifier, password);
     if (!company) {
       return res.status(401).json({ error: "Fel restauranglösenord" });
     }
