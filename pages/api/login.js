@@ -1,12 +1,7 @@
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdminClient } from "../../lib/supabase.js";
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { setAuthCookie } from "../../lib/auth.js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
 
 // Simple rate limiting: track attempts by IP
 const loginAttempts = {};
@@ -62,6 +57,8 @@ export default async function handler(req, res) {
     const cleanIdentifier = normalizedIdentifier.replace(/[%,]/g, "");
     const isNumericId = /^\d+$/.test(cleanIdentifier);
 
+    const supabase = getSupabaseAdminClient();
+    
     let query = supabase
       .from("companies")
       .select(selectFields)

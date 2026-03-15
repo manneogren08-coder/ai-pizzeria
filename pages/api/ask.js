@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseAdminClient } from "@/lib/supabase";
 import jwt from "jsonwebtoken";
 import { extractAuthToken } from "@/lib/auth";
 
@@ -147,6 +147,7 @@ function extractMenuItems(menuText) {
 
 async function incrementQueryCount(companyId, currentCount) {
   try {
+    const supabase = getSupabaseAdminClient();
     await supabase
       .from("companies")
       .update({ query_count: (currentCount || 0) + 1 })
@@ -171,6 +172,7 @@ export default async function handler(req, res) {
 
     const { companyId } = jwt.verify(token, process.env.JWT_SECRET);
 
+    const supabase = getSupabaseAdminClient();
     const { data: companyData, error } = await supabase
       .from("companies")
       .select("*")
