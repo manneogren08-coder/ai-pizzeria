@@ -1344,10 +1344,10 @@ const prepProgressPercent = visiblePrepTasks.length > 0
       {/* Toast Notification */}
       {toast.visible && (
         <div
-          className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full font-bold text-sm shadow-xl transition-all duration-300 animate-in slide-in-from-top-4 ${
-            toast.type === "error" ? "bg-red-500 text-white shadow-red-500/30" :
-            toast.type === "info" ? "bg-blue-500 text-white shadow-blue-500/30" :
-            "bg-emerald-500 text-white shadow-emerald-500/30"
+          className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-5 py-2.5 rounded shadow-lg font-medium text-sm transition-all duration-300 animate-in slide-in-from-top-4 ${
+            toast.type === "error" ? "bg-red-500 text-white" :
+            toast.type === "info" ? "bg-blue-500 text-white" :
+            "bg-slate-900 text-white"
           }`}
         >
           {toast.text}
@@ -1355,35 +1355,35 @@ const prepProgressPercent = visiblePrepTasks.length > 0
       )}
 
       {/* Header */}
-      <header className="flex flex-col md:flex-row justify-between items-center px-6 md:px-8 py-4 bg-white border-b border-slate-200 shadow-sm z-30 shrink-0 gap-4">
+      <header className="flex flex-col md:flex-row justify-between items-center px-6 py-3 bg-white border-b border-slate-200 z-30 shrink-0 gap-4">
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-inner flex items-center justify-center text-white font-bold text-lg shrink-0">
+          <div className="w-8 h-8 bg-slate-900 rounded flex items-center justify-center text-white font-bold shrink-0">
             {company?.name?.charAt(0).toUpperCase()}
           </div>
           <div>
-            <h2 className="m-0 text-xl font-extrabold text-slate-800 leading-tight">{company?.name}</h2>
-            <span className="text-xs font-bold text-blue-600 tracking-wider uppercase">STAFFGUIDE</span>
+            <h2 className="m-0 text-base font-bold text-slate-900 tracking-tight">{company?.name}</h2>
+            <span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Staffguide</span>
           </div>
         </div>
 
-        <div className="flex gap-3 w-full md:w-auto">
+        <div className="flex gap-2 w-full md:w-auto">
           <button
-            className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm border ${
+            className={`flex-1 md:flex-none px-4 py-2 rounded font-medium text-sm transition-colors border ${
               showPrep 
-                ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700" 
-                : "bg-white text-blue-700 border-blue-200 hover:bg-blue-50"
+                ? "bg-slate-900 text-white border-slate-900" 
+                : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
             }`}
             onClick={handlePrepClick}
           >
-            {showPrep ? "Tillbaka till chat" : "Dagens prep"}
+            {showPrep ? "Tillbaka till chatt" : "Dagens prep"}
           </button>
           
           {company?.is_admin && (
             <button
-              className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm border ${
+              className={`flex-1 md:flex-none px-4 py-2 rounded font-medium text-sm transition-colors border ${
                 showAdmin 
-                  ? "bg-slate-800 text-white border-slate-800 hover:bg-slate-900" 
-                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
+                  ? "bg-slate-900 text-white border-slate-900" 
+                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
               }`}
               onClick={handleAdminClick}
             >
@@ -1392,7 +1392,7 @@ const prepProgressPercent = visiblePrepTasks.length > 0
           )}
           
           <button
-            className="flex-none px-5 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-semibold border border-red-100 rounded-xl transition-colors text-sm"
+            className="flex-none px-4 py-2 bg-white hover:bg-red-50 text-red-600 font-medium border border-slate-300 hover:border-red-200 rounded transition-colors text-sm"
             onClick={logout}
           >
             Logga ut
@@ -1402,41 +1402,38 @@ const prepProgressPercent = visiblePrepTasks.length > 0
 
       {/* Admin Password Prompt Overlay */}
       {adminPasswordPrompt && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex flex-col justify-center items-center p-6 animate-in fade-in" onClick={closeAdminPasswordPrompt}>
-          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-6 text-xl">
-              🔒
-            </div>
-            <h3 className="text-2xl font-bold text-slate-800 mb-2">Admin-lösenord krävs</h3>
-            <p className="text-slate-500 mb-6 text-sm">Ange restaurangens admin-lösenord för att komma åt inställningar och receptbyggare.</p>
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex flex-col justify-center items-center p-6 animate-in fade-in" onClick={closeAdminPasswordPrompt}>
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-slate-900 mb-1">Admin-lösenord krävs</h3>
+            <p className="text-slate-500 mb-6 text-sm">Ange administratörslösenord för att fortsätta.</p>
             
             <input
               type="password"
-              placeholder="Skriv lösenord..."
+              placeholder="Lösenord..."
               value={adminPassword}
               onChange={e => setAdminPassword(e.target.value)}
               onKeyDown={e => e.key === "Enter" && !adminLoading && verifyAdminPassword()}
               disabled={adminLoading}
               autoFocus
-              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 mb-4 font-mono"
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:border-slate-500 focus:ring-1 focus:ring-slate-500 outline-none transition-all placeholder:text-slate-400 mb-4 font-mono text-sm"
             />
             
             {adminPasswordError && (
-              <p className="text-red-600 text-sm font-medium mb-6 animate-in fade-in">
+              <p className="text-red-600 text-sm font-medium mb-4">
                 {adminPasswordError}
               </p>
             )}
             
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
-                className="flex-1 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-md shadow-blue-500/20 disabled:opacity-50"
+                className="flex-1 py-2 bg-slate-900 hover:bg-black text-white font-semibold rounded text-sm transition-all disabled:opacity-50"
                 onClick={verifyAdminPassword}
                 disabled={adminLoading}
               >
-                {adminLoading ? "Verifierar..." : "Öppna admin"}
+                {adminLoading ? "Verifierar..." : "Logga in"}
               </button>
               <button
-                className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors disabled:opacity-50"
+                className="flex-1 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-semibold rounded text-sm transition-colors disabled:opacity-50"
                 onClick={closeAdminPasswordPrompt}
                 disabled={adminLoading}
               >
@@ -1521,4 +1518,3 @@ const prepProgressPercent = visiblePrepTasks.length > 0
     </div>
   );
 }
-

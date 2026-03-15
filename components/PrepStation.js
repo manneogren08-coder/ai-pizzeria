@@ -38,7 +38,7 @@ export default function PrepStation({
     <div className="flex bg-slate-50 relative animate-in fade-in slide-in-from-bottom-4 duration-300 flex-1 overflow-y-auto w-full p-4 md:p-8">
       <div className="max-w-4xl mx-auto w-full">
         {/* Header section with glassmorphism */}
-        <div className="bg-white/80 backdrop-blur-xl border border-white shadow-xl shadow-slate-200/50 rounded-3xl p-6 md:p-8 mb-8">
+        <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-6 md:p-8 mb-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
             <div>
               <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">Dagens Prep</h2>
@@ -53,14 +53,14 @@ export default function PrepStation({
               <button 
                 onClick={() => setFilteredPrepTasksDone(true)}
                 disabled={prepLoading || prepBulkUpdating || visiblePrepTasks.length === 0}
-                className="px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 font-semibold rounded-xl text-sm transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 font-semibold rounded text-sm transition-colors disabled:opacity-50"
               >
                 Markera synliga klara
               </button>
               <button 
                 onClick={() => fetchPrepTasks(prepDate)}
                 disabled={prepLoading || prepBulkUpdating}
-                className="px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold rounded-xl text-sm transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold rounded text-sm transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 {prepLoading ? (
                   <><span className="w-4 h-4 rounded-full border-2 border-slate-400 border-t-transparent animate-spin"></span> Laddar...</>
@@ -69,7 +69,7 @@ export default function PrepStation({
             </div>
           </div>
 
-          <div className="bg-slate-100/50 rounded-2xl p-4 md:p-5 border border-slate-200/50">
+          <div className="bg-slate-50 border border-slate-200 rounded p-4 md:p-5 border border-slate-200/50">
             <div className="flex justify-between items-end mb-3">
               <span className="text-sm font-bold text-slate-700 uppercase tracking-wider">Progress</span>
               <span className="text-sm font-bold text-blue-600">{prepProgressPercent}%</span>
@@ -104,7 +104,7 @@ export default function PrepStation({
             <select 
               value={prepStationFilter}
               onChange={(e) => setPrepStationFilter(e.target.value)}
-              className="w-full sm:w-auto appearance-none bg-white border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl pl-4 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-sm transition-all cursor-pointer"
+              className="w-full sm:w-auto appearance-none bg-white border border-slate-200 text-slate-700 font-semibold text-sm rounded pl-4 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-sm transition-all cursor-pointer"
             >
               <option value="all">Fokusera station: Alla</option>
               {prepStations.map((station) => (
@@ -118,13 +118,13 @@ export default function PrepStation({
         </div>
 
         {prepError && (
-          <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-sm font-medium mb-6 animate-in fade-in">
+          <div className="p-4 bg-red-50 border border-red-100 rounded-md text-red-600 text-sm font-medium mb-6 animate-in fade-in">
             {prepError}
           </div>
         )}
 
         {!prepError && !prepLoading && totalPrepCount === 0 && (
-          <div className="bg-white border border-dashed border-slate-300 rounded-3xl p-12 text-center shadow-sm">
+          <div className="bg-white border border-dashed border-slate-300 rounded-lg p-12 text-center shadow-sm">
             <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">📝</div>
             <h3 className="text-lg font-bold text-slate-800 mb-2">Inga prep-uppgifter för idag</h3>
             <p className="text-slate-500">Be chefen lägga in en prep-mall i admin-panelen för att komma igång.</p>
@@ -135,7 +135,7 @@ export default function PrepStation({
           {visiblePrepTasks.map((task) => (
             <label 
               key={task.id} 
-              className={`group relative flex items-start gap-4 p-5 md:p-6 bg-white rounded-2xl border transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md ${
+              className={`group relative flex items-start gap-4 p-5 md:p-6 bg-white rounded-md border transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md ${
                 task.is_done 
                   ? "border-slate-200 opacity-60 bg-slate-50" 
                   : "border-slate-200 hover:border-blue-300"

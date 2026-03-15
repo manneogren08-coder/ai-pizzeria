@@ -57,10 +57,10 @@ export default function AdminPanel({
           <button
             key={tab.id}
             onClick={() => handleAdminTabChange(tab.id)}
-            className={`px-5 py-2.5 rounded-xl whitespace-nowrap text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
+            className={`px-5 py-2.5 rounded-md whitespace-nowrap text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
               adminTab === tab.id
-                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
+                ? "bg-blue-600 text-white shadow-sm border border-blue-600"
+                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
             }`}
           >
             {tab.label}
@@ -83,7 +83,7 @@ export default function AdminPanel({
 
           {/* TAB: INFO */}
           {adminTab === "info" && (
-            <div className="bg-white/80 backdrop-blur-xl border border-slate-100 shadow-xl shadow-slate-200/40 rounded-3xl p-6 md:p-8 animate-in fade-in slide-in-from-bottom-4">
+            <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-6 md:p-8">
               <h3 className="text-2xl font-bold text-slate-800 mb-2">Företagsinformation</h3>
               <p className="text-slate-500 mb-8">Här kan du ställa in kontaktuppgifter och schema-regler för din AI.</p>
               
@@ -95,7 +95,7 @@ export default function AdminPanel({
                     placeholder="t.ex. support@restaurang.se"
                     value={companyDetails.support_email || ""}
                     onChange={e => setCompanyDetails({...companyDetails, support_email: e.target.value})}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
                   />
                 </div>
 
@@ -105,7 +105,7 @@ export default function AdminPanel({
                     placeholder="t.ex. Mån-Fre 10-22"
                     value={companyDetails.opening_hours || ""}
                     onChange={e => setCompanyDetails({...companyDetails, opening_hours: e.target.value})}
-                    className="w-full px-4 py-3 min-h-[100px] bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 resize-y"
+                    className="w-full px-4 py-3 min-h-[100px] bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 resize-y"
                   />
                 </div>
 
@@ -115,24 +115,24 @@ export default function AdminPanel({
                     placeholder="t.ex. Stängt röda dagar"
                     value={companyDetails.closure_info || ""}
                     onChange={e => setCompanyDetails({...companyDetails, closure_info: e.target.value})}
-                    className="w-full px-4 py-3 min-h-[100px] bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 resize-y"
+                    className="w-full px-4 py-3 min-h-[100px] bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 resize-y"
                   />
                 </div>
               </div>
 
               {/* Action Bar */}
-              <div className="flex gap-4 mt-10 pt-6 border-t border-slate-100 sticky bottom-0 bg-white/90 backdrop-blur-sm -mx-6 px-6 pb-2">
+              <div className="flex gap-4 mt-10 pt-6 border-t border-slate-100 sticky bottom-0 bg-white -mx-6 px-6 pb-2">
                 <button
                   onClick={resetCurrentTab}
                   disabled={!isTabDirty("info") || adminLoading}
-                  className="flex-1 py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors disabled:opacity-50"
+                  className="flex-1 py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-colors disabled:opacity-50"
                 >
                   Återställ
                 </button>
                 <button
                   onClick={updateCompanyDetails}
                   disabled={!isTabDirty("info") || adminLoading}
-                  className="flex-1 py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:hover:bg-blue-600"
+                  className="flex-1 py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition-all shadow-sm disabled:opacity-50 disabled:hover:bg-blue-600"
                 >
                   {adminLoading ? "Sparar..." : "Spara ändringar"}
                 </button>
@@ -142,7 +142,7 @@ export default function AdminPanel({
 
           {/* TAB: MENU */}
           {adminTab === "menu" && (
-            <div className="bg-white/80 backdrop-blur-xl border border-slate-100 shadow-xl shadow-slate-200/40 rounded-3xl p-6 md:p-8 animate-in fade-in slide-in-from-bottom-4">
+            <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-6 md:p-8">
               <h3 className="text-2xl font-bold text-slate-800 mb-2">Meny & Allergener</h3>
               <p className="text-slate-500 mb-8">Definiera hela din basmeny samt generella allergenrekommendationer här.</p>
               
@@ -153,7 +153,7 @@ export default function AdminPanel({
                     placeholder="t.ex. Förrätt: Toast Skagen - 145 kr"
                     value={companyDetails.menu || ""}
                     onChange={e => setCompanyDetails({...companyDetails, menu: e.target.value})}
-                    className="w-full px-4 py-3 min-h-[180px] bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 resize-y"
+                    className="w-full px-4 py-3 min-h-[180px] bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 resize-y"
                   />
                 </div>
 
@@ -163,11 +163,11 @@ export default function AdminPanel({
                     placeholder="t.ex. Innehåller gluten, mjölk, nötter"
                     value={companyDetails.allergens || ""}
                     onChange={e => setCompanyDetails({...companyDetails, allergens: e.target.value})}
-                    className="w-full px-4 py-3 min-h-[120px] bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 resize-y"
+                    className="w-full px-4 py-3 min-h-[120px] bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 resize-y"
                   />
                 </div>
 
-                <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-start gap-4">
+                <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg flex items-start gap-4">
                   <span className="text-xl">💡</span>
                   <div className="flex flex-col gap-2">
                     <p className="text-blue-800 text-sm">Specifika recept hanteras numera mycket bättre i strukturerade vyn under <strong>Receptbyggare</strong>.</p>
@@ -181,18 +181,18 @@ export default function AdminPanel({
                 </div>
               </div>
 
-              <div className="flex gap-4 mt-10 pt-6 border-t border-slate-100 sticky bottom-0 bg-white/90 backdrop-blur-sm -mx-6 px-6 pb-2">
+              <div className="flex gap-4 mt-10 pt-6 border-t border-slate-100 sticky bottom-0 bg-white -mx-6 px-6 pb-2">
                 <button
                   onClick={resetCurrentTab}
                   disabled={!isTabDirty("menu") || adminLoading}
-                  className="flex-1 py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors disabled:opacity-50"
+                  className="flex-1 py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-colors disabled:opacity-50"
                 >
                   Återställ
                 </button>
                 <button
                   onClick={updateCompanyDetails}
                   disabled={!isTabDirty("menu") || adminLoading}
-                  className="flex-1 py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:hover:bg-blue-600"
+                  className="flex-1 py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition-all shadow-sm disabled:opacity-50 disabled:hover:bg-blue-600"
                 >
                   {adminLoading ? "Sparar..." : "Spara ändringar"}
                 </button>
@@ -202,7 +202,7 @@ export default function AdminPanel({
 
           {/* TAB: RECIPES */}
           {adminTab === "recipes" && (
-            <div className="bg-white/80 backdrop-blur-xl border border-slate-100 shadow-xl shadow-slate-200/40 rounded-3xl p-6 md:p-8 animate-in fade-in slide-in-from-bottom-4">
+            <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-6 md:p-8">
               <div className="flex sm:items-center justify-between flex-col sm:flex-row gap-4 mb-2">
                 <h3 className="text-2xl font-bold text-slate-800 m-0">Receptbyggare</h3>
                 <span className="bg-blue-100 text-blue-800 text-sm font-bold px-3 py-1 rounded-full border border-blue-200 self-start sm:self-auto">
@@ -213,12 +213,12 @@ export default function AdminPanel({
 
               <div className="grid lg:grid-cols-[280px_1fr] gap-6">
                 {/* Sidebar */}
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col h-[500px]">
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex flex-col h-[500px]">
                   <input
                     placeholder="Sök rätt..."
                     value={recipeSearch}
                     onChange={(e) => setRecipeSearch(e.target.value)}
-                    className="w-full px-4 py-2.5 mb-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
+                    className="w-full px-4 py-2.5 mb-4 bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
                   />
                   <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                     {visibleRecipeRows.map((row) => {
@@ -227,7 +227,7 @@ export default function AdminPanel({
                         <button
                           key={row.id}
                           onClick={() => setSelectedRecipeId(row.id)}
-                          className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 border ${
+                          className={`w-full text-left px-4 py-3 rounded-md transition-all duration-200 border ${
                             isActive 
                               ? "bg-white border-blue-500 shadow-sm ring-1 ring-blue-500" 
                               : "bg-white/50 border-slate-200 hover:bg-white hover:border-blue-300"
@@ -250,14 +250,14 @@ export default function AdminPanel({
                   <button
                     onClick={addRecipeRow}
                     disabled={adminLoading}
-                    className="w-full mt-4 py-3 px-4 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition-colors disabled:opacity-50"
+                    className="w-full mt-4 py-3 px-4 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-md transition-colors disabled:opacity-50"
                   >
                     + Ny rätt
                   </button>
                 </div>
 
                 {/* Editor */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 lg:p-8">
+                <div className="bg-white border border-slate-200 rounded-lg p-6 lg:p-8">
                   {selectedRecipeRow ? (
                     <div className="space-y-6">
                       <div className="flex flex-wrap gap-4 items-end mb-2 border-b border-slate-100 pb-6">
@@ -267,7 +267,7 @@ export default function AdminPanel({
                             value={selectedRecipeRow.dish_name || ""}
                             onChange={(e) => updateRecipeRow(selectedRecipeRow.id, "dish_name", e.target.value)}
                             placeholder="t.ex. Margherita"
-                            className="w-full text-xl font-bold px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                            className="w-full text-xl font-bold px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none"
                           />
                         </div>
                         <div className="flex gap-2">
@@ -295,7 +295,7 @@ export default function AdminPanel({
                             value={selectedRecipeRow.category || ""}
                             onChange={(e) => updateRecipeRow(selectedRecipeRow.id, "category", e.target.value)}
                             placeholder="t.ex. Förrätt, Pizza, Dessert"
-                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
                           />
                         </div>
                         <div>
@@ -304,7 +304,7 @@ export default function AdminPanel({
                             <select
                               value={selectedRecipeRow.is_active === false ? "inactive" : "active"}
                               onChange={(e) => updateRecipeRow(selectedRecipeRow.id, "is_active", e.target.value === "active")}
-                              className="w-full appearance-none px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium cursor-pointer"
+                              className="w-full appearance-none px-4 py-3 bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-medium cursor-pointer"
                             >
                               <option value="active">Aktiv (synlig i drift)</option>
                               <option value="inactive">Inaktiv (utkast/pausad)</option>
@@ -324,7 +324,7 @@ export default function AdminPanel({
                             value={selectedRecipeRow.ingredients || ""}
                             onChange={(e) => updateRecipeRow(selectedRecipeRow.id, "ingredients", e.target.value)}
                             placeholder="t.ex.\n40 skivor toastbröd\n300 g smör"
-                            className="w-full px-4 py-3 min-h-[120px] bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 resize-y"
+                            className="w-full px-4 py-3 min-h-[120px] bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400 resize-y"
                           />
                         </div>
                         
@@ -334,7 +334,7 @@ export default function AdminPanel({
                             value={selectedRecipeRow.mise || ""}
                             onChange={(e) => updateRecipeRow(selectedRecipeRow.id, "mise", e.target.value)}
                             placeholder="t.ex. Ta fram deg 30 min innan"
-                            className="w-full px-4 py-3 min-h-[100px] bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none resize-y"
+                            className="w-full px-4 py-3 min-h-[100px] bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none resize-y"
                           />
                         </div>
                         <div>
@@ -343,7 +343,7 @@ export default function AdminPanel({
                             value={selectedRecipeRow.cooking || ""}
                             onChange={(e) => updateRecipeRow(selectedRecipeRow.id, "cooking", e.target.value)}
                             placeholder="t.ex. Baka i 3-4 min på 320 grader"
-                            className="w-full px-4 py-3 min-h-[100px] bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none resize-y"
+                            className="w-full px-4 py-3 min-h-[100px] bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none resize-y"
                           />
                         </div>
 
@@ -353,7 +353,7 @@ export default function AdminPanel({
                             value={selectedRecipeRow.plating || ""}
                             onChange={(e) => updateRecipeRow(selectedRecipeRow.id, "plating", e.target.value)}
                             placeholder="t.ex. Ringla olivolja, toppa med basilika"
-                            className="w-full px-4 py-3 min-h-[80px] bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none resize-y"
+                            className="w-full px-4 py-3 min-h-[80px] bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none resize-y"
                           />
                         </div>
                         <div className="flex flex-col gap-6">
@@ -363,7 +363,7 @@ export default function AdminPanel({
                                 value={selectedRecipeRow.allergens || ""}
                                 onChange={(e) => updateRecipeRow(selectedRecipeRow.id, "allergens", e.target.value)}
                                 placeholder="t.ex. Gluten, mjölk"
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-md outline-none"
                             />
                             </div>
                             <div className="flex gap-4">
@@ -373,7 +373,7 @@ export default function AdminPanel({
                                     value={selectedRecipeRow.yield || ""}
                                     onChange={(e) => updateRecipeRow(selectedRecipeRow.id, "yield", e.target.value)}
                                     placeholder="20 port"
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-md outline-none"
                                 />
                                 </div>
                                 <div className="flex-1">
@@ -382,7 +382,7 @@ export default function AdminPanel({
                                     value={selectedRecipeRow.time || ""}
                                     onChange={(e) => updateRecipeRow(selectedRecipeRow.id, "time", e.target.value)}
                                     placeholder="6 min"
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-md outline-none"
                                 />
                                 </div>
                             </div>
@@ -395,18 +395,18 @@ export default function AdminPanel({
                 </div>
               </div>
 
-              <div className="flex gap-4 mt-8 pt-6 border-t border-slate-100 sticky bottom-0 bg-white/90 backdrop-blur-sm -mx-6 px-6 pb-2 z-20">
+              <div className="flex gap-4 mt-8 pt-6 border-t border-slate-100 sticky bottom-0 bg-white -mx-6 px-6 pb-2 z-20">
                 <button
                   onClick={resetCurrentTab}
                   disabled={!isTabDirty("recipes") || adminLoading}
-                  className="flex-1 py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors disabled:opacity-50"
+                  className="flex-1 py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-colors disabled:opacity-50"
                 >
                   Återställ
                 </button>
                 <button
                   onClick={updateCompanyDetails}
                   disabled={!isTabDirty("recipes") || adminLoading}
-                  className="flex-1 py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:hover:bg-blue-600"
+                  className="flex-1 py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition-all shadow-sm disabled:opacity-50 disabled:hover:bg-blue-600"
                 >
                   {adminLoading ? "Sparar..." : "Spara ändringar"}
                 </button>
@@ -416,7 +416,7 @@ export default function AdminPanel({
 
           {/* TAB: ROUTINES */}
           {adminTab === "routines" && (
-            <div className="bg-white/80 backdrop-blur-xl border border-slate-100 shadow-xl shadow-slate-200/40 rounded-3xl p-6 md:p-8 animate-in fade-in slide-in-from-bottom-4">
+            <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-6 md:p-8">
               <h3 className="text-2xl font-bold text-slate-800 mb-2">Rutiner & Regler</h3>
               <p className="text-slate-500 mb-8">Korta punktlistor för öppning, stängning och personalsituationer.</p>
               
@@ -427,7 +427,7 @@ export default function AdminPanel({
                     placeholder="t.ex. Starta kassan, fyll på stationer"
                     value={companyDetails.routines || ""}
                     onChange={e => setCompanyDetails({...companyDetails, routines: e.target.value})}
-                    className="w-full px-4 py-3 min-h-[140px] bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-y"
+                    className="w-full px-4 py-3 min-h-[140px] bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all resize-y"
                   />
                 </div>
                 <div>
@@ -436,7 +436,7 @@ export default function AdminPanel({
                     placeholder="t.ex. Mobil endast på rast"
                     value={companyDetails.behavior_guidelines || ""}
                     onChange={e => setCompanyDetails({...companyDetails, behavior_guidelines: e.target.value})}
-                    className="w-full px-4 py-3 min-h-[140px] bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-y"
+                    className="w-full px-4 py-3 min-h-[140px] bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all resize-y"
                   />
                 </div>
                 <div>
@@ -445,7 +445,7 @@ export default function AdminPanel({
                     placeholder="t.ex. Ugn 250°, deg ut 30 min innan"
                     value={companyDetails.opening_routine || ""}
                     onChange={e => setCompanyDetails({...companyDetails, opening_routine: e.target.value})}
-                    className="w-full px-4 py-3 min-h-[140px] bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-y"
+                    className="w-full px-4 py-3 min-h-[140px] bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all resize-y"
                   />
                 </div>
                 <div>
@@ -454,7 +454,7 @@ export default function AdminPanel({
                     placeholder="t.ex. Stäng kassan, rengör alla ytor"
                     value={companyDetails.closing_routine || ""}
                     onChange={e => setCompanyDetails({...companyDetails, closing_routine: e.target.value})}
-                    className="w-full px-4 py-3 min-h-[140px] bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-y"
+                    className="w-full px-4 py-3 min-h-[140px] bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all resize-y"
                   />
                 </div>
                 <div>
@@ -463,7 +463,7 @@ export default function AdminPanel({
                     placeholder="t.ex. Kassa, kök, servering"
                     value={companyDetails.staff_roles || ""}
                     onChange={e => setCompanyDetails({...companyDetails, staff_roles: e.target.value})}
-                    className="w-full px-4 py-3 min-h-[140px] bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-y"
+                    className="w-full px-4 py-3 min-h-[140px] bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all resize-y"
                   />
                 </div>
                 <div>
@@ -472,23 +472,23 @@ export default function AdminPanel({
                     placeholder="t.ex. Sen kollega, stress"
                     value={companyDetails.staff_situations || ""}
                     onChange={e => setCompanyDetails({...companyDetails, staff_situations: e.target.value})}
-                    className="w-full px-4 py-3 min-h-[140px] bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-y"
+                    className="w-full px-4 py-3 min-h-[140px] bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all resize-y"
                   />
                 </div>
               </div>
 
-              <div className="flex gap-4 mt-10 pt-6 border-t border-slate-100 sticky bottom-0 bg-white/90 backdrop-blur-sm -mx-6 px-6 pb-2">
+              <div className="flex gap-4 mt-10 pt-6 border-t border-slate-100 sticky bottom-0 bg-white -mx-6 px-6 pb-2">
                 <button
                   onClick={resetCurrentTab}
                   disabled={!isTabDirty("routines") || adminLoading}
-                  className="flex-1 py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors disabled:opacity-50"
+                  className="flex-1 py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md transition-colors disabled:opacity-50"
                 >
                   Återställ
                 </button>
                 <button
                   onClick={updateCompanyDetails}
                   disabled={!isTabDirty("routines") || adminLoading}
-                  className="flex-1 py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:hover:bg-blue-600"
+                  className="flex-1 py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition-all shadow-sm disabled:opacity-50 disabled:hover:bg-blue-600"
                 >
                   {adminLoading ? "Sparar..." : "Spara ändringar"}
                 </button>
@@ -498,11 +498,11 @@ export default function AdminPanel({
 
           {/* TAB: PREP TEMPLATE */}
           {adminTab === "prep" && (
-            <div className="bg-white/80 backdrop-blur-xl border border-slate-100 shadow-xl shadow-slate-200/40 rounded-3xl p-6 md:p-8 animate-in fade-in slide-in-from-bottom-4">
+            <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-6 md:p-8">
               <h3 className="text-2xl font-bold text-slate-800 mb-2">Prep-mall (daglig)</h3>
               <p className="text-slate-500 mb-8">Fyll i en rad per prep-uppgift. Dessa skapas och läggs ut automatiskt varje dag.</p>
               
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl overflow-x-auto shadow-inner">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-x-auto shadow-inner">
                 <table className="w-full min-w-[620px] text-left">
                   <thead>
                     <tr className="border-b border-slate-200">
@@ -522,7 +522,7 @@ export default function AdminPanel({
                             onChange={(e) => updatePrepTemplateRow(index, "title", e.target.value)}
                             placeholder="t.ex. Hacka lök"
                             disabled={prepTemplateLoading}
-                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-sm"
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none text-sm"
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -531,7 +531,7 @@ export default function AdminPanel({
                               value={row.priority}
                               onChange={(e) => updatePrepTemplateRow(index, "priority", e.target.value)}
                               disabled={prepTemplateLoading}
-                              className={`appearance-none w-full px-3 py-2 border rounded-lg outline-none text-sm font-semibold cursor-pointer focus:ring-2 focus:ring-blue-500/20 ${
+                              className={`appearance-none w-full px-3 py-2 border rounded-lg outline-none text-sm font-semibold cursor-pointer focus:ring-2 focus:ring-blue-500/10 ${
                                 row.priority === "high" ? "bg-red-50 text-red-700 border-red-200" :
                                 row.priority === "low" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
                                 "bg-amber-50 text-amber-700 border-amber-200"
@@ -552,7 +552,7 @@ export default function AdminPanel({
                             onChange={(e) => updatePrepTemplateRow(index, "station", e.target.value)}
                             placeholder="t.ex. Kök 1"
                             disabled={prepTemplateLoading}
-                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-sm uppercase tracking-wide"
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none text-sm uppercase tracking-wide"
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -561,7 +561,7 @@ export default function AdminPanel({
                             value={row.due_time}
                             onChange={(e) => updatePrepTemplateRow(index, "due_time", e.target.value)}
                             disabled={prepTemplateLoading}
-                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-sm font-mono tracking-wide"
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none text-sm font-mono tracking-wide"
                           />
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -583,16 +583,16 @@ export default function AdminPanel({
               <button
                 onClick={addPrepTemplateRow}
                 disabled={prepTemplateLoading}
-                className="w-full mt-4 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold border border-slate-200 border-dashed rounded-xl transition-colors disabled:opacity-50"
+                className="w-full mt-4 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold border border-slate-200 border-dashed rounded-md transition-colors disabled:opacity-50"
               >
                 + Lägg till uppgift
               </button>
 
-              <div className="flex gap-4 mt-10 pt-6 border-t border-slate-100 sticky bottom-0 bg-white/90 backdrop-blur-sm -mx-6 px-6 pb-2">
+              <div className="flex gap-4 mt-10 pt-6 border-t border-slate-100 sticky bottom-0 bg-white -mx-6 px-6 pb-2">
                 <button
                   onClick={savePrepTemplate}
                   disabled={!prepTemplateDirty || prepTemplateLoading}
-                  className="w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:hover:bg-blue-600"
+                  className="w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md transition-all shadow-sm disabled:opacity-50 disabled:hover:bg-blue-600"
                 >
                   {prepTemplateLoading ? "Sparar..." : "Spara mall & Publicera till idag"}
                 </button>
@@ -602,13 +602,13 @@ export default function AdminPanel({
 
           {/* TAB: SECURITY */}
           {adminTab === "security" && (
-            <div className="bg-white/80 backdrop-blur-xl border border-slate-100 shadow-xl shadow-slate-200/40 rounded-3xl p-6 md:p-8 animate-in fade-in slide-in-from-bottom-4">
+            <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-6 md:p-8">
               <h3 className="text-2xl font-bold text-slate-800 mb-2">Säkerhet</h3>
               <p className="text-slate-500 mb-8">Hantera konto-status och lösenord för företaget.</p>
               
               <div className="grid md:grid-cols-2 gap-8">
                 {/* Account Status Card */}
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-6">
                   <div className="flex items-center gap-4 mb-4">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center ${company.active ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
                       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -630,7 +630,7 @@ export default function AdminPanel({
                   <button
                     onClick={toggleCompanyStatus}
                     disabled={adminLoading}
-                    className={`w-full py-3 px-4 rounded-xl font-bold transition-colors disabled:opacity-50 ${
+                    className={`w-full py-3 px-4 rounded-md font-bold transition-colors disabled:opacity-50 ${
                       company.active 
                         ? "bg-red-50 hover:bg-red-100 text-red-700 border border-red-200" 
                         : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
@@ -641,7 +641,7 @@ export default function AdminPanel({
                 </div>
 
                 {/* Password Update Card */}
-                <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-6 relative overflow-hidden">
+                <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-6 relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -z-10"></div>
                   <h4 className="font-bold text-slate-800 text-lg mb-2">Byt lösenord</h4>
                   <p className="text-sm text-slate-500 mb-6">Kom ihåg att meddela samtliga ledare det nya lösenordet.</p>
@@ -653,11 +653,11 @@ export default function AdminPanel({
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
                       disabled={adminLoading}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
                     />
 
                     {adminMessage && (
-                      <div className={`p-3 text-sm font-medium rounded-xl animate-in fade-in ${adminMessage.includes("✅") ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                      <div className={`p-3 text-sm font-medium rounded-md animate-in fade-in ${adminMessage.includes("✅") ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
                         {adminMessage}
                       </div>
                     )}
@@ -665,7 +665,7 @@ export default function AdminPanel({
                     <button
                       onClick={updatePassword}
                       disabled={adminLoading || !newPassword}
-                      className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition-all shadow-md shadow-slate-900/20 disabled:opacity-50"
+                      className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-md transition-all shadow-sm disabled:opacity-50"
                     >
                       {adminLoading ? "Uppdaterar..." : "Uppdatera lösenord"}
                     </button>
@@ -677,7 +677,7 @@ export default function AdminPanel({
 
           {/* TAB: STATS */}
           {adminTab === "stats" && (
-            <div className="bg-white/80 backdrop-blur-xl border border-slate-100 shadow-xl shadow-slate-200/40 rounded-3xl p-6 md:p-8 animate-in fade-in slide-in-from-bottom-4">
+            <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-6 md:p-8">
               <div className="flex justify-between items-center mb-8">
                 <div>
                   <h3 className="text-2xl font-bold text-slate-800 mb-2">Statistik</h3>
@@ -693,17 +693,17 @@ export default function AdminPanel({
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white border border-slate-100 p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
                   <div className="text-4xl md:text-5xl font-extrabold text-blue-600 mb-3">{companyDetails.query_count || 0}</div>
                   <div className="text-sm font-bold text-slate-500 uppercase tracking-widest">Frågor ställda</div>
                 </div>
 
-                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white border border-slate-100 p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
                   <div className="text-4xl md:text-5xl font-extrabold text-blue-600 mb-3">{company.is_admin ? "Ja" : "Nej"}</div>
                   <div className="text-sm font-bold text-slate-500 uppercase tracking-widest">Admin Modus</div>
                 </div>
 
-                <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white border border-slate-100 p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
                   <div className={`text-3xl md:text-4xl font-extrabold mb-3 ${company.active ? 'text-emerald-500' : 'text-red-500'}`}>
                     {company.active ? "Aktivt" : "Inaktivt"}
                   </div>

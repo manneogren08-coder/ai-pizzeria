@@ -61,7 +61,7 @@ export default function Chat({
         ref={chatAreaRef}
       >
         {chat.length === 0 && !loading && (
-          <div className="m-auto text-center max-w-md bg-white p-8 rounded-2xl shadow-sm border border-slate-100 animate-in fade-in zoom-in-95 duration-300">
+          <div className="m-auto text-center max-w-md bg-white p-8 rounded-lg shadow-sm border border-slate-100 animate-in fade-in zoom-in-95 duration-300">
             <div className="text-4xl mb-4">👋</div>
             <h2 className="text-xl font-bold text-slate-800 mb-2">Hej, hur kan jag hjälpa dig?</h2>
             <p className="text-slate-500">
@@ -76,9 +76,9 @@ export default function Chat({
             className={`flex w-full animate-in fade-in slide-in-from-bottom-2 duration-300 ${msg.from === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[85%] md:max-w-[70%] rounded-2xl p-4 shadow-sm ${
+              className={`max-w-[85%] md:max-w-[70%] rounded-lg p-4 shadow-sm ${
                 msg.from === "user"
-                  ? "bg-blue-600 text-white rounded-br-sm shadow-blue-500/20"
+                  ? "bg-blue-600 text-white rounded-br-sm shadow-sm"
                   : "bg-white text-slate-800 rounded-bl-sm border border-slate-200"
               }`}
             >
@@ -97,7 +97,7 @@ export default function Chat({
 
         {loading && (
           <div className="flex justify-start w-full animate-in fade-in">
-            <div className="bg-white rounded-2xl rounded-bl-sm p-4 border border-slate-200 shadow-sm flex gap-1.5 items-center">
+            <div className="bg-white rounded-lg rounded-bl-sm p-4 border border-slate-200 shadow-sm flex gap-1.5 items-center">
               <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
               <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
               <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></span>
@@ -107,7 +107,7 @@ export default function Chat({
       </div>
 
       {/* Input Area */}
-      <div className="bg-white border-t border-slate-200 p-4 md:p-6 shadow-[0_-4px_20px_rgba(0,0,0,0.02)] z-10 w-full">
+      <div className="bg-white border-t border-slate-200 p-4 md:p-6 shadow-sm z-10 w-full">
         {chat.length === 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
             {quickQuestions.map((q) => (
@@ -125,7 +125,7 @@ export default function Chat({
 
         <div className="flex gap-3 relative">
           <input
-            className="flex-1 bg-slate-50 border border-slate-200 text-slate-900 text-base rounded-xl px-5 py-4 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
+            className="flex-1 bg-slate-50 border border-slate-200 text-slate-900 text-base rounded-md px-5 py-4 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
             placeholder="Klicka för att skriva fråga..."
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
@@ -141,7 +141,7 @@ export default function Chat({
           <button
             onClick={() => askAI()}
             disabled={loading || !question.trim()}
-            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-6 font-bold shadow-md shadow-blue-500/20 transition-all disabled:opacity-50 disabled:hover:bg-blue-600 flex items-center justify-center min-w-[100px]"
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded-md px-6 font-bold shadow-md shadow-sm transition-all disabled:opacity-50 disabled:hover:bg-blue-600 flex items-center justify-center min-w-[100px]"
           >
             Skicka
           </button>
