@@ -1340,14 +1340,21 @@ const prepProgressPercent = visiblePrepTasks.length > 0
 
   // APP
   return (
-    <div className="flex flex-col h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
+    <div className="flex flex-col h-screen bg-slate-50 text-slate-800 font-sans overflow-hidden relative">
+      
+      {/* Dynamic Background Elements for App */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-blue-400/10 rounded-full blur-[100px] animate-pulse [animation-duration:10s]"></div>
+        <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] bg-indigo-400/10 rounded-full blur-[120px] animate-pulse [animation-duration:15s] [animation-delay:2s]"></div>
+      </div>
+
       {/* Toast Notification */}
       {toast.visible && (
         <div
-          className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-5 py-2.5 rounded shadow-lg font-medium text-sm transition-all duration-300 animate-in slide-in-from-top-4 ${
-            toast.type === "error" ? "bg-red-500 text-white" :
-            toast.type === "info" ? "bg-blue-500 text-white" :
-            "bg-slate-900 text-white"
+          className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-2xl shadow-2xl font-bold text-sm transition-all duration-300 animate-in slide-in-from-top-4 backdrop-blur-md ${
+            toast.type === "error" ? "bg-red-500/90 text-white border border-red-400/50" :
+            toast.type === "info" ? "bg-blue-600/90 text-white border border-blue-400/50" :
+            "bg-slate-900/90 text-white border border-slate-700/50"
           }`}
         >
           {toast.text}
@@ -1355,44 +1362,44 @@ const prepProgressPercent = visiblePrepTasks.length > 0
       )}
 
       {/* Header */}
-      <header className="flex flex-col md:flex-row justify-between items-center px-6 py-3 bg-white border-b border-slate-200 z-30 shrink-0 gap-4">
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="w-8 h-8 bg-slate-900 rounded flex items-center justify-center text-white font-bold shrink-0">
+      <header className="flex flex-col md:flex-row justify-between items-center px-6 md:px-10 py-4 bg-white/70 backdrop-blur-xl border-b border-white/50 shadow-sm z-30 shrink-0 gap-4">
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-600/30 rounded-2xl flex items-center justify-center text-white font-black text-xl shrink-0 transform transition-transform hover:scale-105">
             {company?.name?.charAt(0).toUpperCase()}
           </div>
           <div>
-            <h2 className="m-0 text-base font-bold text-slate-900 tracking-tight">{company?.name}</h2>
-            <span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Staffguide</span>
+            <h2 className="m-0 text-xl font-extrabold text-slate-900 tracking-tight leading-none bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">{company?.name}</h2>
+            <span className="text-[11px] font-black text-blue-600 tracking-widest uppercase opacity-80">Staffguide AI</span>
           </div>
         </div>
 
-        <div className="flex gap-2 w-full md:w-auto">
+        <div className="flex gap-3 w-full md:w-auto">
           <button
-            className={`flex-1 md:flex-none px-4 py-2 rounded font-medium text-sm transition-colors border ${
+            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm border ${
               showPrep 
-                ? "bg-slate-900 text-white border-slate-900" 
-                : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+                ? "bg-slate-900 text-white border-slate-800 hover:bg-black hover:shadow-lg" 
+                : "bg-white text-slate-700 border-white/80 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200"
             }`}
             onClick={handlePrepClick}
           >
-            {showPrep ? "Tillbaka till chatt" : "Dagens prep"}
+            {showPrep ? "Gå till chatt" : "Dagens Prep"}
           </button>
           
           {company?.is_admin && (
             <button
-              className={`flex-1 md:flex-none px-4 py-2 rounded font-medium text-sm transition-colors border ${
+              className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm border ${
                 showAdmin 
-                  ? "bg-slate-900 text-white border-slate-900" 
-                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+                  ? "bg-blue-600 text-white border-blue-500 shadow-blue-500/30 hover:bg-blue-700" 
+                  : "bg-white text-slate-700 border-white/80 hover:bg-slate-100 hover:text-slate-900"
               }`}
               onClick={handleAdminClick}
             >
-              {showAdmin ? "Tillbaka" : "Admin"}
+              {showAdmin ? "Tillbaka" : "Admin Dashboard"}
             </button>
           )}
           
           <button
-            className="flex-none px-4 py-2 bg-white hover:bg-red-50 text-red-600 font-medium border border-slate-300 hover:border-red-200 rounded transition-colors text-sm"
+            className="flex-none px-6 py-2.5 bg-red-50/50 hover:bg-red-500 hover:text-white text-red-600 font-bold border border-red-100/50 hover:border-red-500 rounded-xl transition-all shadow-sm text-sm"
             onClick={logout}
           >
             Logga ut
@@ -1402,42 +1409,45 @@ const prepProgressPercent = visiblePrepTasks.length > 0
 
       {/* Admin Password Prompt Overlay */}
       {adminPasswordPrompt && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex flex-col justify-center items-center p-6 animate-in fade-in" onClick={closeAdminPasswordPrompt}>
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-slate-900 mb-1">Admin-lösenord krävs</h3>
-            <p className="text-slate-500 mb-6 text-sm">Ange administratörslösenord för att fortsätta.</p>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex flex-col justify-center items-center p-6 animate-in fade-in" onClick={closeAdminPasswordPrompt}>
+          <div className="bg-white/90 backdrop-blur-2xl border border-white rounded-3xl shadow-[0_10px_60px_-15px_rgba(0,0,0,0.3)] p-10 max-w-sm w-full animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+            <div className="w-16 h-16 bg-blue-100/50 text-blue-600 rounded-2xl flex items-center justify-center mb-6 text-3xl shadow-inner mx-auto">
+              🔒
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 mb-2 text-center">Admin Access</h3>
+            <p className="text-slate-500 mb-8 text-sm font-medium text-center">Ange krögar-lösenordet för att komma åt inställningarna.</p>
             
             <input
               type="password"
-              placeholder="Lösenord..."
+              placeholder="Skriv lösenord..."
               value={adminPassword}
               onChange={e => setAdminPassword(e.target.value)}
               onKeyDown={e => e.key === "Enter" && !adminLoading && verifyAdminPassword()}
               disabled={adminLoading}
               autoFocus
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded focus:border-slate-500 focus:ring-1 focus:ring-slate-500 outline-none transition-all placeholder:text-slate-400 mb-4 font-mono text-sm"
+              className="w-full px-5 py-4 bg-slate-50/50 border-2 border-slate-100 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 focus:bg-white outline-none transition-all placeholder:text-slate-400 mb-6 font-mono text-center text-lg shadow-inner font-bold text-slate-800"
             />
             
             {adminPasswordError && (
-              <p className="text-red-600 text-sm font-medium mb-4">
+              <p className="text-red-600 text-sm font-bold mb-6 text-center bg-red-50 p-3 rounded-xl">
                 {adminPasswordError}
               </p>
             )}
             
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-3">
               <button
-                className="flex-1 py-2 bg-slate-900 hover:bg-black text-white font-semibold rounded text-sm transition-all disabled:opacity-50"
+                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl text-base transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 disabled:opacity-50 hover:-translate-y-0.5"
                 onClick={verifyAdminPassword}
                 disabled={adminLoading}
               >
-                {adminLoading ? "Verifierar..." : "Logga in"}
+                {adminLoading ? "Låser upp..." : "Lås upp"}
               </button>
               <button
-                className="flex-1 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-semibold rounded text-sm transition-colors disabled:opacity-50"
+                className="w-full py-4 bg-transparent hover:bg-slate-100 text-slate-500 hover:text-slate-700 font-bold rounded-2xl text-sm transition-all disabled:opacity-50"
                 onClick={closeAdminPasswordPrompt}
                 disabled={adminLoading}
               >
-                Avbryt
+                Gå tillbaka
               </button>
             </div>
           </div>
@@ -1445,76 +1455,78 @@ const prepProgressPercent = visiblePrepTasks.length > 0
       )}
 
       {/* Main Content Area */}
-      {showAdmin ? (
-        <AdminPanel
-          token={token}
-          company={company}
-          companyDetails={companyDetails}
-          setCompanyDetails={setCompanyDetails}
-          savedCompanyDetails={savedCompanyDetails}
-          setSavedCompanyDetails={setSavedCompanyDetails}
-          lastSavedAt={lastSavedAt}
-          adminTab={adminTab}
-          handleAdminTabChange={handleAdminTabChange}
-          isTabDirty={isTabDirty}
-          adminLoading={adminLoading}
-          updateCompanyDetails={updateCompanyDetails}
-          resetCurrentTab={resetCurrentTab}
-          fetchCompanyDetails={fetchCompanyDetails}
-          recipeRows={recipeRows}
-          setRecipeRows={setRecipeRows}
-          selectedRecipeRow={selectedRecipeRow}
-          setSelectedRecipeId={setSelectedRecipeId}
-          recipeSearch={recipeSearch}
-          setRecipeSearch={setRecipeSearch}
-          visibleRecipeRows={visibleRecipeRows}
-          addRecipeRow={addRecipeRow}
-          duplicateRecipeRow={duplicateRecipeRow}
-          removeRecipeRow={removeRecipeRow}
-          updateRecipeRow={updateRecipeRow}
-          prepTemplateRows={prepTemplateRows}
-          updatePrepTemplateRow={updatePrepTemplateRow}
-          addPrepTemplateRow={addPrepTemplateRow}
-          removePrepTemplateRow={removePrepTemplateRow}
-          prepTemplateLoading={prepTemplateLoading}
-          prepTemplateDirty={prepTemplateDirty}
-          savePrepTemplate={savePrepTemplate}
-          toggleCompanyStatus={toggleCompanyStatus}
-          newPassword={newPassword}
-          setNewPassword={setNewPassword}
-          adminMessage={adminMessage}
-          updatePassword={updatePassword}
-        />
-      ) : showPrep ? (
-        <PrepStation
-          prepDate={prepDate}
-          completedPrepCount={completedPrepCount}
-          totalPrepCount={prepTasks.length}
-          filteredCompletedPrepCount={filteredCompletedPrepCount}
-          visiblePrepTasks={visiblePrepTasks}
-          setFilteredPrepTasksDone={setFilteredPrepTasksDone}
-          prepLoading={prepLoading}
-          prepBulkUpdating={prepBulkUpdating}
-          fetchPrepTasks={fetchPrepTasks}
-          prepProgressPercent={prepProgressPercent}
-          prepOnlyOpen={prepOnlyOpen}
-          setPrepOnlyOpen={setPrepOnlyOpen}
-          prepStationFilter={prepStationFilter}
-          setPrepStationFilter={setPrepStationFilter}
-          prepStations={prepStations}
-          prepError={prepError}
-          togglePrepTask={togglePrepTask}
-        />
-      ) : (
-        <Chat
-          chat={chat}
-          loading={loading}
-          question={question}
-          setQuestion={setQuestion}
-          askAI={askAI}
-          quickQuestions={quickQuestions}
-        />
-      )}
+      <div className="flex-1 w-full relative z-10 flex overflow-hidden">
+        {showAdmin ? (
+          <AdminPanel
+            token={token}
+            company={company}
+            companyDetails={companyDetails}
+            setCompanyDetails={setCompanyDetails}
+            savedCompanyDetails={savedCompanyDetails}
+            setSavedCompanyDetails={setSavedCompanyDetails}
+            lastSavedAt={lastSavedAt}
+            adminTab={adminTab}
+            handleAdminTabChange={handleAdminTabChange}
+            isTabDirty={isTabDirty}
+            adminLoading={adminLoading}
+            updateCompanyDetails={updateCompanyDetails}
+            resetCurrentTab={resetCurrentTab}
+            fetchCompanyDetails={fetchCompanyDetails}
+            recipeRows={recipeRows}
+            setRecipeRows={setRecipeRows}
+            selectedRecipeRow={selectedRecipeRow}
+            setSelectedRecipeId={setSelectedRecipeId}
+            recipeSearch={recipeSearch}
+            setRecipeSearch={setRecipeSearch}
+            visibleRecipeRows={visibleRecipeRows}
+            addRecipeRow={addRecipeRow}
+            duplicateRecipeRow={duplicateRecipeRow}
+            removeRecipeRow={removeRecipeRow}
+            updateRecipeRow={updateRecipeRow}
+            prepTemplateRows={prepTemplateRows}
+            updatePrepTemplateRow={updatePrepTemplateRow}
+            addPrepTemplateRow={addPrepTemplateRow}
+            removePrepTemplateRow={removePrepTemplateRow}
+            prepTemplateLoading={prepTemplateLoading}
+            prepTemplateDirty={prepTemplateDirty}
+            savePrepTemplate={savePrepTemplate}
+            toggleCompanyStatus={toggleCompanyStatus}
+            newPassword={newPassword}
+            setNewPassword={setNewPassword}
+            adminMessage={adminMessage}
+            updatePassword={updatePassword}
+          />
+        ) : showPrep ? (
+          <PrepStation
+            prepDate={prepDate}
+            completedPrepCount={completedPrepCount}
+            totalPrepCount={prepTasks.length}
+            filteredCompletedPrepCount={filteredCompletedPrepCount}
+            visiblePrepTasks={visiblePrepTasks}
+            setFilteredPrepTasksDone={setFilteredPrepTasksDone}
+            prepLoading={prepLoading}
+            prepBulkUpdating={prepBulkUpdating}
+            fetchPrepTasks={fetchPrepTasks}
+            prepProgressPercent={prepProgressPercent}
+            prepOnlyOpen={prepOnlyOpen}
+            setPrepOnlyOpen={setPrepOnlyOpen}
+            prepStationFilter={prepStationFilter}
+            setPrepStationFilter={setPrepStationFilter}
+            prepStations={prepStations}
+            prepError={prepError}
+            togglePrepTask={togglePrepTask}
+          />
+        ) : (
+          <Chat
+            chat={chat}
+            loading={loading}
+            question={question}
+            setQuestion={setQuestion}
+            askAI={askAI}
+            quickQuestions={quickQuestions}
+          />
+        )}
+      </div>
     </div>
   );
 }
