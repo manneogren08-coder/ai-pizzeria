@@ -782,44 +782,44 @@ export default function Home() {
   }, [recipeRows, selectedRecipeId]);
 
   const login = async () => {
-  if (!companyIdentifier.trim()) {
-    setError("Skriv in företags-id eller företagsnamn");
-    return;
-  }
-
-  if (!password.trim()) {
-    setError("Skriv in lösenord");
-    return;
-  }
-
-  setError("");
-  setLoading(true);
-
-  try {
-    const res = await fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password, companyIdentifier })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      setError(data?.error || "Fel företagskod eller lösenord");
-      setLoading(false);
+    if (!companyIdentifier.trim()) {
+      setError("Skriv in företags-id eller företagsnamn");
       return;
     }
 
-    setToken(data.token);      
-    setCompany(data.company);
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("company", JSON.stringify(data.company));
-  } catch {
-    setError("Ett fel uppstod. Försök igen.");
-  }
+    if (!password.trim()) {
+      setError("Skriv in lösenord");
+      return;
+    }
 
-  setLoading(false);
-};
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, companyIdentifier })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data?.error || "Fel företagskod eller lösenord");
+        setLoading(false);
+        return;
+      }
+
+      setToken(data.token);
+      setCompany(data.company);
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("company", JSON.stringify(data.company));
+    } catch {
+      setError("Ett fel uppstod. Försök igen.");
+    }
+
+    setLoading(false);
+  };
 
   const requestEmployeeCode = async () => {
     if (!companyIdentifier.trim()) {
@@ -937,413 +937,413 @@ export default function Home() {
       return;
     }
 
-  setChat(prev => [...prev, { from: "user", text: userMessage }]);
-  setQuestion("");
-  setLoading(true);
+    setChat(prev => [...prev, { from: "user", text: userMessage }]);
+    setQuestion("");
+    setLoading(true);
 
-  try {
-    const res = await fetch("/api/ask", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${activeToken}`
-      },
-      body: JSON.stringify({ question: userMessage, quickActionKey: options.quickActionKey || null })
-    });
+    try {
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${activeToken}`
+        },
+        body: JSON.stringify({ question: userMessage, quickActionKey: options.quickActionKey || null })
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (res.status === 401 && /ogiltig token|ingen token|session/i.test(data?.answer || "")) {
-      logout();
-      showToast("Sessionen har gått ut. Logga in igen.", "info");
-      setLoading(false);
-      return;
-    }
-
-    if (!res.ok) {
-      setChat(prev => [...prev, { from: "ai", text: data?.answer || "Ett fel uppstod. Försök igen." }]);
-      setLoading(false);
-      return;
-    }
-
-    setChat(prev => [
-      ...prev,
-      {
-        from: "ai",
-        text: formatAiAnswer(data.answer),
-        menuItems: Array.isArray(data?.menuItems) ? data.menuItems : []
+      if (res.status === 401 && /ogiltig token|ingen token|session/i.test(data?.answer || "")) {
+        logout();
+        showToast("Sessionen har gått ut. Logga in igen.", "info");
+        setLoading(false);
+        return;
       }
-    ]);
-  } catch {
-    setChat(prev => [
-      ...prev,
-      { from: "ai", text: "Ett fel uppstod. Försök igen." }
-    ]);
-  }
 
-  setLoading(false);
-};
+      if (!res.ok) {
+        setChat(prev => [...prev, { from: "ai", text: data?.answer || "Ett fel uppstod. Försök igen." }]);
+        setLoading(false);
+        return;
+      }
 
-const updatePassword = async () => {
-  if (!newPassword.trim()) {
-    showToast("Skriv in ett nytt lösenord", "error");
-    return;
-  }
+      setChat(prev => [
+        ...prev,
+        {
+          from: "ai",
+          text: formatAiAnswer(data.answer),
+          menuItems: Array.isArray(data?.menuItems) ? data.menuItems : []
+        }
+      ]);
+    } catch {
+      setChat(prev => [
+        ...prev,
+        { from: "ai", text: "Ett fel uppstod. Försök igen." }
+      ]);
+    }
 
-  setAdminMessage("");
-  setAdminLoading(true);
+    setLoading(false);
+  };
 
-  try {
-    const res = await fetch("/api/admin/update-password", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({ newPassword })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      const errorText = data.details ? `${data.error || "Fel vid uppdatering"} (${data.details})` : (data.error || "Fel vid uppdatering");
-      setAdminMessage("❌ " + errorText);
-      showToast(errorText, "error");
-      setAdminLoading(false);
+  const updatePassword = async () => {
+    if (!newPassword.trim()) {
+      showToast("Skriv in ett nytt lösenord", "error");
       return;
     }
 
-    setAdminMessage("✅ Lösenord uppdaterat!");
-    showToast("Lösenord uppdaterat", "success");
-    setNewPassword("");
-    setTimeout(() => setAdminMessage(""), 3000);
-  } catch {
-    setAdminMessage("❌ Ett fel uppstod");
-    showToast("Ett fel uppstod", "error");
-  }
+    setAdminMessage("");
+    setAdminLoading(true);
 
-  setAdminLoading(false);
-};
+    try {
+      const res = await fetch("/api/admin/update-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ newPassword })
+      });
 
-const updateCompanyDetails = async () => {
-  setAdminMessage("");
-  setAdminLoading(true);
+      const data = await res.json();
 
-  try {
-    const res = await fetch("/api/admin/update-details", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({ details: companyDetails })
-    });
+      if (!res.ok) {
+        const errorText = data.details ? `${data.error || "Fel vid uppdatering"} (${data.details})` : (data.error || "Fel vid uppdatering");
+        setAdminMessage("❌ " + errorText);
+        showToast(errorText, "error");
+        setAdminLoading(false);
+        return;
+      }
 
-    const data = await res.json();
+      setAdminMessage("✅ Lösenord uppdaterat!");
+      showToast("Lösenord uppdaterat", "success");
+      setNewPassword("");
+      setTimeout(() => setAdminMessage(""), 3000);
+    } catch {
+      setAdminMessage("❌ Ett fel uppstod");
+      showToast("Ett fel uppstod", "error");
+    }
 
-    if (!res.ok) {
-      const errorText = data.details ? `${data.error || "Fel vid uppdatering"} (${data.details})` : (data.error || "Fel vid uppdatering");
-      setAdminMessage("❌ " + errorText);
-      showToast(errorText, "error");
-      setAdminLoading(false);
+    setAdminLoading(false);
+  };
+
+  const updateCompanyDetails = async () => {
+    setAdminMessage("");
+    setAdminLoading(true);
+
+    try {
+      const res = await fetch("/api/admin/update-details", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ details: companyDetails })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const errorText = data.details ? `${data.error || "Fel vid uppdatering"} (${data.details})` : (data.error || "Fel vid uppdatering");
+        setAdminMessage("❌ " + errorText);
+        showToast(errorText, "error");
+        setAdminLoading(false);
+        return;
+      }
+
+      setAdminMessage("✅ Uppgifter uppdaterade!");
+      setSavedCompanyDetails(companyDetails);
+      setSavedRecipeRows(recipeRows);
+      setLastSavedAt(new Date());
+      const skippedColumns = Array.isArray(data?.skippedColumns) ? data.skippedColumns : [];
+      if (skippedColumns.length > 0) {
+        showToast(`Sparat, men saknade DB-kolumner: ${skippedColumns.join(", ")}`, "info");
+      } else {
+        showToast("Ändringar sparade", "success");
+      }
+      setTimeout(() => setAdminMessage(""), 3000);
+    } catch {
+      setAdminMessage("❌ Ett fel uppstod");
+      showToast("Ett fel uppstod", "error");
+    }
+
+    setAdminLoading(false);
+  };
+
+  const toggleCompanyStatus = async () => {
+    if (!confirm(`Vill du ${company.active ? 'deaktivera' : 'aktivera'} företaget?`)) {
       return;
     }
 
-    setAdminMessage("✅ Uppgifter uppdaterade!");
-    setSavedCompanyDetails(companyDetails);
-    setSavedRecipeRows(recipeRows);
-    setLastSavedAt(new Date());
-    const skippedColumns = Array.isArray(data?.skippedColumns) ? data.skippedColumns : [];
-    if (skippedColumns.length > 0) {
-      showToast(`Sparat, men saknade DB-kolumner: ${skippedColumns.join(", ")}`, "info");
+    setAdminLoading(true);
+
+    try {
+      const res = await fetch("/api/admin/toggle-status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setAdminMessage("❌ " + (data.error || "Fel vid statusändring"));
+        showToast(data.error || "Fel vid statusändring", "error");
+        setAdminLoading(false);
+        return;
+      }
+
+      // Update local company state
+      const updatedCompany = { ...company, active: !company.active };
+      setCompany(updatedCompany);
+      localStorage.setItem("company", JSON.stringify(updatedCompany));
+
+      setAdminMessage(`✅ Företaget är nu ${!company.active ? 'aktiverat' : 'deaktiverat'}`);
+      showToast(`Företaget är nu ${!company.active ? 'aktiverat' : 'deaktiverat'}`, "success");
+      setTimeout(() => setAdminMessage(""), 3000);
+    } catch {
+      setAdminMessage("❌ Ett fel uppstod");
+      showToast("Ett fel uppstod", "error");
+    }
+
+    setAdminLoading(false);
+  };
+
+  const verifyAdminPassword = async () => {
+    if (!adminPassword.trim()) {
+      setAdminPasswordError("Ange admin-lösenord");
+      return;
+    }
+
+    setAdminPasswordError("");
+    setAdminLoading(true);
+
+    try {
+      const res = await fetch("/api/admin/verify-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ adminPassword })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const errorText = data.details ? `${data.error || "Fel vid verifiering"} (${data.details})` : (data.error || "Fel vid verifiering");
+        setAdminPasswordError("❌ " + errorText);
+        showToast(errorText, "error");
+        setAdminLoading(false);
+        return;
+      }
+
+      // Success! Open admin panel
+      skipNextAdminRoutePromptRef.current = true;
+      setAdminPasswordPrompt(false);
+      setShowAdmin(true);
+      setShowPrep(false);
+      syncAdminRoute(true, adminTab);
+      fetchCompanyDetails();
+      fetchPrepTemplate();
+      setAdminPassword("");
+    } catch {
+      setAdminPasswordError("❌ Ett fel uppstod");
+      showToast("Ett fel uppstod", "error");
+    }
+
+    setAdminLoading(false);
+  };
+
+  const handleAdminClick = () => {
+    if (showAdmin) {
+      // Close admin panel
+      setShowAdmin(false);
+      syncAdminRoute(false);
     } else {
-      showToast("Ändringar sparade", "success");
+      // Show password prompt
+      setShowPrep(false);
+      setAdminPasswordPrompt(true);
+      setAdminPasswordError("");
+      setAdminPassword("");
+      syncAdminRoute(true, adminTab);
     }
-    setTimeout(() => setAdminMessage(""), 3000);
-  } catch {
-    setAdminMessage("❌ Ett fel uppstod");
-    showToast("Ett fel uppstod", "error");
-  }
+  };
 
-  setAdminLoading(false);
-};
-
-const toggleCompanyStatus = async () => {
-  if (!confirm(`Vill du ${company.active ? 'deaktivera' : 'aktivera'} företaget?`)) {
-    return;
-  }
-
-  setAdminLoading(true);
-
-  try {
-    const res = await fetch("/api/admin/toggle-status", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      }
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      setAdminMessage("❌ " + (data.error || "Fel vid statusändring"));
-      showToast(data.error || "Fel vid statusändring", "error");
-      setAdminLoading(false);
-      return;
-    }
-
-    // Update local company state
-    const updatedCompany = { ...company, active: !company.active };
-    setCompany(updatedCompany);
-    localStorage.setItem("company", JSON.stringify(updatedCompany));
-    
-    setAdminMessage(`✅ Företaget är nu ${!company.active ? 'aktiverat' : 'deaktiverat'}`);
-    showToast(`Företaget är nu ${!company.active ? 'aktiverat' : 'deaktiverat'}`, "success");
-    setTimeout(() => setAdminMessage(""), 3000);
-  } catch {
-    setAdminMessage("❌ Ett fel uppstod");
-    showToast("Ett fel uppstod", "error");
-  }
-
-  setAdminLoading(false);
-};
-
-const verifyAdminPassword = async () => {
-  if (!adminPassword.trim()) {
-    setAdminPasswordError("Ange admin-lösenord");
-    return;
-  }
-
-  setAdminPasswordError("");
-  setAdminLoading(true);
-
-  try {
-    const res = await fetch("/api/admin/verify-password", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({ adminPassword })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      const errorText = data.details ? `${data.error || "Fel vid verifiering"} (${data.details})` : (data.error || "Fel vid verifiering");
-      setAdminPasswordError("❌ " + errorText);
-      showToast(errorText, "error");
-      setAdminLoading(false);
-      return;
-    }
-
-    // Success! Open admin panel
-    skipNextAdminRoutePromptRef.current = true;
+  const closeAdminPasswordPrompt = () => {
     setAdminPasswordPrompt(false);
-    setShowAdmin(true);
-    setShowPrep(false);
-    syncAdminRoute(true, adminTab);
-    fetchCompanyDetails();
-    fetchPrepTemplate();
-    setAdminPassword("");
-  } catch {
-    setAdminPasswordError("❌ Ett fel uppstod");
-    showToast("Ett fel uppstod", "error");
-  }
-
-  setAdminLoading(false);
-};
-
-const handleAdminClick = () => {
-  if (showAdmin) {
-    // Close admin panel
-    setShowAdmin(false);
-    syncAdminRoute(false);
-  } else {
-    // Show password prompt
-    setShowPrep(false);
-    setAdminPasswordPrompt(true);
     setAdminPasswordError("");
     setAdminPassword("");
-    syncAdminRoute(true, adminTab);
-  }
-};
+    if (!showAdmin) {
+      syncAdminRoute(false);
+    }
+  };
 
-const closeAdminPasswordPrompt = () => {
-  setAdminPasswordPrompt(false);
-  setAdminPasswordError("");
-  setAdminPassword("");
-  if (!showAdmin) {
+  const handleAdminTabChange = (nextTab) => {
+    setAdminTab(nextTab);
+    syncAdminRoute(true, nextTab);
+  };
+
+  const handlePrepClick = () => {
+    const nextShowPrep = !showPrep;
+    setShowPrep(nextShowPrep);
+    setShowAdmin(false);
+    setAdminPasswordPrompt(false);
     syncAdminRoute(false);
-  }
-};
 
-const handleAdminTabChange = (nextTab) => {
-  setAdminTab(nextTab);
-  syncAdminRoute(true, nextTab);
-};
+    if (nextShowPrep) {
+      fetchPrepTasks(prepDate);
+    }
+  };
 
-const handlePrepClick = () => {
-  const nextShowPrep = !showPrep;
-  setShowPrep(nextShowPrep);
-  setShowAdmin(false);
-  setAdminPasswordPrompt(false);
-  syncAdminRoute(false);
+  const updatePrepTemplateRow = (rowIndex, field, value) => {
+    setPrepTemplateRows((prev) => prev.map((row, index) => {
+      if (index !== rowIndex) return row;
 
-  if (nextShowPrep) {
-    fetchPrepTasks(prepDate);
-  }
-};
+      if (field === "priority") {
+        return { ...row, [field]: normalizeTemplatePriority(value) };
+      }
 
-const updatePrepTemplateRow = (rowIndex, field, value) => {
-  setPrepTemplateRows((prev) => prev.map((row, index) => {
-    if (index !== rowIndex) return row;
+      if (field === "due_time") {
+        return { ...row, [field]: normalizeTemplateDueTime(value) || String(value || "").trim() };
+      }
 
-    if (field === "priority") {
-      return { ...row, [field]: normalizeTemplatePriority(value) };
+      return { ...row, [field]: value };
+    }));
+  };
+
+  const addPrepTemplateRow = () => {
+    setPrepTemplateRows((prev) => [...prev, emptyPrepTemplateRow()]);
+  };
+
+  const removePrepTemplateRow = (rowIndex) => {
+    setPrepTemplateRows((prev) => {
+      if (prev.length <= 1) {
+        return [emptyPrepTemplateRow()];
+      }
+      return prev.filter((_, index) => index !== rowIndex);
+    });
+  };
+
+  const prepTemplateDirty = serializePrepTemplateRows(prepTemplateRows) !== serializePrepTemplateRows(savedPrepTemplateRows);
+
+  const upsertRecipeRows = (nextRows) => {
+    const normalizedRows = Array.isArray(nextRows) && nextRows.length > 0 ? nextRows : [emptyRecipeRow()];
+    setRecipeRows(normalizedRows);
+    const serialized = serializeRecipesRows(normalizedRows);
+    setCompanyDetails((prev) => ({ ...prev, recipes: serialized }));
+  };
+
+  const updateRecipeRow = (recipeId, field, value) => {
+    if (!recipeId) return;
+    const nextRows = recipeRows.map((row) => {
+      if (row.id !== recipeId) return row;
+      return { ...row, [field]: value };
+    });
+    upsertRecipeRows(nextRows);
+  };
+
+  const addRecipeRow = () => {
+    const nextRow = emptyRecipeRow({ dish_name: `Rätt ${recipeRows.length + 1}` });
+    const nextRows = [...recipeRows, nextRow];
+    upsertRecipeRows(nextRows);
+    setSelectedRecipeId(nextRow.id);
+  };
+
+  const duplicateRecipeRow = () => {
+    const source = recipeRows.find((row) => row.id === selectedRecipeId);
+    if (!source) return;
+
+    const nextRow = emptyRecipeRow({
+      dish_name: source.dish_name ? `${source.dish_name} kopia` : "Ny kopia",
+      category: source.category,
+      is_active: source.is_active,
+      ingredients: source.ingredients,
+      yield: source.yield,
+      mise: source.mise,
+      cooking: source.cooking,
+      plating: source.plating,
+      allergens: source.allergens,
+      time: source.time
+    });
+
+    const nextRows = [...recipeRows, nextRow];
+    upsertRecipeRows(nextRows);
+    setSelectedRecipeId(nextRow.id);
+  };
+
+  const removeRecipeRow = (recipeId) => {
+    if (recipeRows.length <= 1) {
+      const onlyRow = emptyRecipeRow();
+      upsertRecipeRows([onlyRow]);
+      setSelectedRecipeId(onlyRow.id);
+      return;
     }
 
-    if (field === "due_time") {
-      return { ...row, [field]: normalizeTemplateDueTime(value) || String(value || "").trim() };
+    const filteredRows = recipeRows.filter((row) => row.id !== recipeId);
+    upsertRecipeRows(filteredRows);
+    setSelectedRecipeId(filteredRows[0]?.id || "");
+  };
+
+  const visibleRecipeRows = recipeRows.filter((row) => {
+    const term = recipeSearch.trim().toLowerCase();
+    if (!term) return true;
+    const haystack = `${row.dish_name} ${row.category} ${row.ingredients} ${row.yield} ${row.cooking}`.toLowerCase();
+    return haystack.includes(term);
+  });
+
+  const selectedRecipeRow = recipeRows.find((row) => row.id === selectedRecipeId) || recipeRows[0] || {
+    id: "",
+    dish_name: "",
+    category: "",
+    is_active: true,
+    ingredients: "",
+    yield: "",
+    mise: "",
+    cooking: "",
+    plating: "",
+    allergens: "",
+    time: ""
+  };
+
+  const completedPrepCount = prepTasks.filter((task) => task.is_done).length;
+  const prepStations = [...new Set(prepTasks.map((task) => String(task.station || "").trim()).filter(Boolean))];
+
+  const filteredPrepTasks = prepTasks.filter((task) => {
+    if (prepOnlyOpen && task.is_done) {
+      return false;
+    }
+    if (prepStationFilter !== "all" && String(task.station || "").trim() !== prepStationFilter) {
+      return false;
+    }
+    return true;
+  });
+
+  const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
+    if (a.is_done !== b.is_done) {
+      return a.is_done ? 1 : -1;
     }
 
-    return { ...row, [field]: value };
-  }));
-};
-
-const addPrepTemplateRow = () => {
-  setPrepTemplateRows((prev) => [...prev, emptyPrepTemplateRow()]);
-};
-
-const removePrepTemplateRow = (rowIndex) => {
-  setPrepTemplateRows((prev) => {
-    if (prev.length <= 1) {
-      return [emptyPrepTemplateRow()];
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    const aPriority = priorityOrder[String(a.priority || "medium").toLowerCase()] ?? 1;
+    const bPriority = priorityOrder[String(b.priority || "medium").toLowerCase()] ?? 1;
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
     }
-    return prev.filter((_, index) => index !== rowIndex);
-  });
-};
 
-const prepTemplateDirty = serializePrepTemplateRows(prepTemplateRows) !== serializePrepTemplateRows(savedPrepTemplateRows);
+    const aTime = dueTimeSortValue(a.due_time);
+    const bTime = dueTimeSortValue(b.due_time);
+    if (aTime !== bTime) {
+      return aTime - bTime;
+    }
 
-const upsertRecipeRows = (nextRows) => {
-  const normalizedRows = Array.isArray(nextRows) && nextRows.length > 0 ? nextRows : [emptyRecipeRow()];
-  setRecipeRows(normalizedRows);
-  const serialized = serializeRecipesRows(normalizedRows);
-  setCompanyDetails((prev) => ({ ...prev, recipes: serialized }));
-};
-
-const updateRecipeRow = (recipeId, field, value) => {
-  if (!recipeId) return;
-  const nextRows = recipeRows.map((row) => {
-    if (row.id !== recipeId) return row;
-    return { ...row, [field]: value };
-  });
-  upsertRecipeRows(nextRows);
-};
-
-const addRecipeRow = () => {
-  const nextRow = emptyRecipeRow({ dish_name: `Rätt ${recipeRows.length + 1}` });
-  const nextRows = [...recipeRows, nextRow];
-  upsertRecipeRows(nextRows);
-  setSelectedRecipeId(nextRow.id);
-};
-
-const duplicateRecipeRow = () => {
-  const source = recipeRows.find((row) => row.id === selectedRecipeId);
-  if (!source) return;
-
-  const nextRow = emptyRecipeRow({
-    dish_name: source.dish_name ? `${source.dish_name} kopia` : "Ny kopia",
-    category: source.category,
-    is_active: source.is_active,
-    ingredients: source.ingredients,
-    yield: source.yield,
-    mise: source.mise,
-    cooking: source.cooking,
-    plating: source.plating,
-    allergens: source.allergens,
-    time: source.time
+    return (a.sort_order || 0) - (b.sort_order || 0);
   });
 
-  const nextRows = [...recipeRows, nextRow];
-  upsertRecipeRows(nextRows);
-  setSelectedRecipeId(nextRow.id);
-};
-
-const removeRecipeRow = (recipeId) => {
-  if (recipeRows.length <= 1) {
-    const onlyRow = emptyRecipeRow();
-    upsertRecipeRows([onlyRow]);
-    setSelectedRecipeId(onlyRow.id);
-    return;
-  }
-
-  const filteredRows = recipeRows.filter((row) => row.id !== recipeId);
-  upsertRecipeRows(filteredRows);
-  setSelectedRecipeId(filteredRows[0]?.id || "");
-};
-
-const visibleRecipeRows = recipeRows.filter((row) => {
-  const term = recipeSearch.trim().toLowerCase();
-  if (!term) return true;
-  const haystack = `${row.dish_name} ${row.category} ${row.ingredients} ${row.yield} ${row.cooking}`.toLowerCase();
-  return haystack.includes(term);
-});
-
-const selectedRecipeRow = recipeRows.find((row) => row.id === selectedRecipeId) || recipeRows[0] || {
-  id: "",
-  dish_name: "",
-  category: "",
-  is_active: true,
-  ingredients: "",
-  yield: "",
-  mise: "",
-  cooking: "",
-  plating: "",
-  allergens: "",
-  time: ""
-};
-
-const completedPrepCount = prepTasks.filter((task) => task.is_done).length;
-const prepStations = [...new Set(prepTasks.map((task) => String(task.station || "").trim()).filter(Boolean))];
-
-const filteredPrepTasks = prepTasks.filter((task) => {
-  if (prepOnlyOpen && task.is_done) {
-    return false;
-  }
-  if (prepStationFilter !== "all" && String(task.station || "").trim() !== prepStationFilter) {
-    return false;
-  }
-  return true;
-});
-
-const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
-  if (a.is_done !== b.is_done) {
-    return a.is_done ? 1 : -1;
-  }
-
-  const priorityOrder = { high: 0, medium: 1, low: 2 };
-  const aPriority = priorityOrder[String(a.priority || "medium").toLowerCase()] ?? 1;
-  const bPriority = priorityOrder[String(b.priority || "medium").toLowerCase()] ?? 1;
-  if (aPriority !== bPriority) {
-    return aPriority - bPriority;
-  }
-
-  const aTime = dueTimeSortValue(a.due_time);
-  const bTime = dueTimeSortValue(b.due_time);
-  if (aTime !== bTime) {
-    return aTime - bTime;
-  }
-
-  return (a.sort_order || 0) - (b.sort_order || 0);
-});
-
-const filteredCompletedPrepCount = visiblePrepTasks.filter((task) => task.is_done).length;
-const prepProgressPercent = visiblePrepTasks.length > 0
-  ? Math.round((filteredCompletedPrepCount / visiblePrepTasks.length) * 100)
-  : 0;
+  const filteredCompletedPrepCount = visiblePrepTasks.filter((task) => task.is_done).length;
+  const prepProgressPercent = visiblePrepTasks.length > 0
+    ? Math.round((filteredCompletedPrepCount / visiblePrepTasks.length) * 100)
+    : 0;
 
   if (isRestoringSession) {
     return (
@@ -1785,6 +1785,33 @@ const prepProgressPercent = visiblePrepTasks.length > 0
           from { opacity: 0; transform: translateY(4px); }
           to { opacity: 1; transform: translateY(0); }
         }
+
+        /* --- Small UX polish --- */
+        input:focus, textarea:focus {
+          border-color: #2563eb !important;
+          box-shadow: 0 0 0 3px rgba(37,99,235,0.1) !important;
+          background: #fff !important;
+        }
+
+        button:hover:not(:disabled) {
+          transform: translateY(-1px);
+        }
+        button:active:not(:disabled) {
+          transform: translateY(0px);
+        }
+
+        .adminTabButton:hover {
+          background: #f1f5f9;
+        }
+
+        .adminSectionCard {
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          border-radius: 16px;
+          padding: 24px;
+          box-shadow: 0 4px 16px rgba(15,23,42,0.05);
+          margin-bottom: 16px;
+        }
       `}</style>
       {toast.visible && (
         <div
@@ -1840,7 +1867,7 @@ const prepProgressPercent = visiblePrepTasks.length > 0
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>Admin-lösenord krävs</h3>
             <p style={{ color: "#6b7280", fontSize: 14 }}>Ange admin-lösenord för att komma åt admin-panelen</p>
-            
+
             <input
               style={styles.input}
               type="password"
@@ -1851,13 +1878,13 @@ const prepProgressPercent = visiblePrepTasks.length > 0
               disabled={adminLoading}
               autoFocus
             />
-            
+
             {adminPasswordError && (
               <p style={{ color: "#dc2626", fontSize: 14, marginBottom: 12 }}>
                 {adminPasswordError}
               </p>
             )}
-            
+
             <div style={{ display: "flex", gap: 12 }}>
               <button
                 style={{ ...styles.primaryButton, flex: 1 }}
@@ -1875,7 +1902,7 @@ const prepProgressPercent = visiblePrepTasks.length > 0
               </button>
             </div>
           </div>
-            </div>
+        </div>
       )}
 
       {showAdmin ? (
@@ -1971,30 +1998,30 @@ const prepProgressPercent = visiblePrepTasks.length > 0
                 <div className="adminSectionCard">
                   <h3 style={{ marginTop: 0 }}>Företagsinformation</h3>
                   <p style={styles.helperText}>Exempel: supportmail, öppettider och eventuell stängningsinfo.</p>
-                  
+
                   <label style={styles.label}>Support E-post</label>
                   <input
                     style={styles.input}
                     type="email"
                     placeholder="t.ex. support@restaurang.se"
                     value={companyDetails.support_email || ""}
-                    onChange={e => setCompanyDetails({...companyDetails, support_email: e.target.value})}
+                    onChange={e => setCompanyDetails({ ...companyDetails, support_email: e.target.value })}
                   />
 
                   <label style={styles.label}>Öppettider</label>
                   <textarea
-                    style={{...styles.input, minHeight: 80}}
+                    style={{ ...styles.input, minHeight: 80 }}
                     placeholder="t.ex. Mån-Fre 10-22"
                     value={companyDetails.opening_hours || ""}
-                    onChange={e => setCompanyDetails({...companyDetails, opening_hours: e.target.value})}
+                    onChange={e => setCompanyDetails({ ...companyDetails, opening_hours: e.target.value })}
                   />
 
                   <label style={styles.label}>Stängningsinformation</label>
                   <textarea
-                    style={{...styles.input, minHeight: 60}}
+                    style={{ ...styles.input, minHeight: 60 }}
                     placeholder="t.ex. Stängt röda dagar"
                     value={companyDetails.closure_info || ""}
-                    onChange={e => setCompanyDetails({...companyDetails, closure_info: e.target.value})}
+                    onChange={e => setCompanyDetails({ ...companyDetails, closure_info: e.target.value })}
                   />
 
                   <div style={styles.adminActionBar}>
@@ -2020,21 +2047,21 @@ const prepProgressPercent = visiblePrepTasks.length > 0
                 <div className="adminSectionCard">
                   <h3 style={{ marginTop: 0 }}>Meny & Allergener</h3>
                   <p style={styles.helperText}>Exempel: kategori + rätt + pris + kort beskrivning.</p>
-                  
+
                   <label style={styles.label}>Meny</label>
                   <textarea
-                    style={{...styles.input, minHeight: 120}}
+                    style={{ ...styles.input, minHeight: 120 }}
                     placeholder="t.ex. Förrätt: Toast Skagen - 145 kr"
                     value={companyDetails.menu || ""}
-                    onChange={e => setCompanyDetails({...companyDetails, menu: e.target.value})}
+                    onChange={e => setCompanyDetails({ ...companyDetails, menu: e.target.value })}
                   />
 
                   <label style={styles.label}>Allergener</label>
                   <textarea
-                    style={{...styles.input, minHeight: 100}}
+                    style={{ ...styles.input, minHeight: 100 }}
                     placeholder="t.ex. Innehåller gluten, mjölk, nötter"
                     value={companyDetails.allergens || ""}
-                    onChange={e => setCompanyDetails({...companyDetails, allergens: e.target.value})}
+                    onChange={e => setCompanyDetails({ ...companyDetails, allergens: e.target.value })}
                   />
 
                   <div style={styles.prepEmptyState}>
@@ -2249,53 +2276,53 @@ const prepProgressPercent = visiblePrepTasks.length > 0
                 <div className="adminSectionCard">
                   <h3 style={{ marginTop: 0 }}>Rutiner & Regler</h3>
                   <p style={styles.helperText}>Exempel: korta punktlistor för öppning, stängning och personalsituationer.</p>
-                  
+
                   <label style={styles.label}>Arbetsrutiner</label>
                   <textarea
-                    style={{...styles.input, minHeight: 80}}
+                    style={{ ...styles.input, minHeight: 80 }}
                     placeholder="t.ex. Starta kassan, fyll på stationer"
                     value={companyDetails.routines || ""}
-                    onChange={e => setCompanyDetails({...companyDetails, routines: e.target.value})}
+                    onChange={e => setCompanyDetails({ ...companyDetails, routines: e.target.value })}
                   />
 
                   <label style={styles.label}>Öppningsrutiner</label>
                   <textarea
-                    style={{...styles.input, minHeight: 80}}
+                    style={{ ...styles.input, minHeight: 80 }}
                     placeholder="t.ex. Ugn 250°, deg ut 30 min innan"
                     value={companyDetails.opening_routine || ""}
-                    onChange={e => setCompanyDetails({...companyDetails, opening_routine: e.target.value})}
+                    onChange={e => setCompanyDetails({ ...companyDetails, opening_routine: e.target.value })}
                   />
 
                   <label style={styles.label}>Stängningsrutiner</label>
                   <textarea
-                    style={{...styles.input, minHeight: 80}}
+                    style={{ ...styles.input, minHeight: 80 }}
                     placeholder="t.ex. Stäng kassan, rengör alla ytor"
                     value={companyDetails.closing_routine || ""}
-                    onChange={e => setCompanyDetails({...companyDetails, closing_routine: e.target.value})}
+                    onChange={e => setCompanyDetails({ ...companyDetails, closing_routine: e.target.value })}
                   />
 
                   <label style={styles.label}>Beteenderegler</label>
                   <textarea
-                    style={{...styles.input, minHeight: 80}}
+                    style={{ ...styles.input, minHeight: 80 }}
                     placeholder="t.ex. Mobil endast på rast"
                     value={companyDetails.behavior_guidelines || ""}
-                    onChange={e => setCompanyDetails({...companyDetails, behavior_guidelines: e.target.value})}
+                    onChange={e => setCompanyDetails({ ...companyDetails, behavior_guidelines: e.target.value })}
                   />
 
                   <label style={styles.label}>Personalroller</label>
                   <textarea
-                    style={{...styles.input, minHeight: 80}}
+                    style={{ ...styles.input, minHeight: 80 }}
                     placeholder="t.ex. Kassa, kök, servering"
                     value={companyDetails.staff_roles || ""}
-                    onChange={e => setCompanyDetails({...companyDetails, staff_roles: e.target.value})}
+                    onChange={e => setCompanyDetails({ ...companyDetails, staff_roles: e.target.value })}
                   />
 
                   <label style={styles.label}>Personalsituationer</label>
                   <textarea
-                    style={{...styles.input, minHeight: 80}}
+                    style={{ ...styles.input, minHeight: 80 }}
                     placeholder="t.ex. Sen kollega, allergifråga, stress"
                     value={companyDetails.staff_situations || ""}
-                    onChange={e => setCompanyDetails({...companyDetails, staff_situations: e.target.value})}
+                    onChange={e => setCompanyDetails({ ...companyDetails, staff_situations: e.target.value })}
                   />
 
                   <div style={styles.adminActionBar}>
@@ -2424,7 +2451,7 @@ const prepProgressPercent = visiblePrepTasks.length > 0
                 <div className="adminSectionCard">
                   <h3 style={{ marginTop: 0 }}>Säkerhet & Åtkomst</h3>
                   <p style={styles.helperText}>Hantera åtkomst och byt lösenord vid behov.</p>
-                  
+
                   <div style={{ background: "#f3f4f6", padding: 16, borderRadius: 8, marginBottom: 20 }}>
                     <p style={{ margin: 0, fontSize: 14 }}>
                       <strong>Status:</strong> Företaget är {company.active ? "aktiverat" : "deaktiverat"}
@@ -2475,7 +2502,7 @@ const prepProgressPercent = visiblePrepTasks.length > 0
               {adminTab === "stats" && (
                 <div className="adminSectionCard">
                   <h3 style={{ marginTop: 0 }}>Statistik</h3>
-                  
+
                   <button
                     style={{ ...styles.primaryButton, marginBottom: 24, fontSize: 13 }}
                     onClick={fetchCompanyDetails}
@@ -2584,29 +2611,29 @@ const prepProgressPercent = visiblePrepTasks.length > 0
                 const dueTimeText = String(task.due_time || "").trim();
 
                 return (
-                <label key={task.id} style={styles.prepItem}>
-                  <input
-                    type="checkbox"
-                    checked={!!task.is_done}
-                    onChange={(e) => togglePrepTask(task.id, e.target.checked)}
-                    disabled={prepLoading}
-                  />
-                  <div style={styles.prepItemBody}>
-                    <span style={{
-                      ...styles.prepItemText,
-                      ...(task.is_done ? styles.prepItemDone : {})
-                    }}>
-                      {task.title}
-                    </span>
-                    <div style={styles.prepMetaRow}>
-                      <span style={{ ...styles.prepMetaChip, ...priorityMeta.style }}>
-                        Prioritet: {priorityMeta.label}
+                  <label key={task.id} style={styles.prepItem}>
+                    <input
+                      type="checkbox"
+                      checked={!!task.is_done}
+                      onChange={(e) => togglePrepTask(task.id, e.target.checked)}
+                      disabled={prepLoading}
+                    />
+                    <div style={styles.prepItemBody}>
+                      <span style={{
+                        ...styles.prepItemText,
+                        ...(task.is_done ? styles.prepItemDone : {})
+                      }}>
+                        {task.title}
                       </span>
-                      {stationText && <span style={styles.prepMetaChip}>Station: {stationText}</span>}
-                      {dueTimeText && <span style={styles.prepMetaChip}>Klar före {dueTimeText}</span>}
+                      <div style={styles.prepMetaRow}>
+                        <span style={{ ...styles.prepMetaChip, ...priorityMeta.style }}>
+                          Prioritet: {priorityMeta.label}
+                        </span>
+                        {stationText && <span style={styles.prepMetaChip}>Station: {stationText}</span>}
+                        {dueTimeText && <span style={styles.prepMetaChip}>Klar före {dueTimeText}</span>}
+                      </div>
                     </div>
-                  </div>
-                </label>
+                  </label>
                 );
               })}
             </div>
@@ -2904,14 +2931,15 @@ const styles = {
 
   input: {
     width: "100%",
-    padding: 12,
+    padding: "12px 14px",
     fontSize: 16,
     borderRadius: 10,
-    border: "1px solid #cbd5e1",
+    border: "1.5px solid #cbd5e1",
     marginBottom: 12,
     boxSizing: "border-box",
     outline: "none",
-    transition: "border-color 0.2s"
+    transition: "border-color 0.2s, box-shadow 0.2s",
+    background: "#fafbfc"
   },
 
   primaryButton: {
@@ -2923,9 +2951,10 @@ const styles = {
     border: "none",
     borderRadius: 10,
     cursor: "pointer",
-    fontWeight: 600,
-    minHeight: 46,
-    transition: "background 0.2s, transform 0.1s"
+    fontWeight: 700,
+    minHeight: 48,
+    transition: "background 0.2s, transform 0.1s, box-shadow 0.2s",
+    boxShadow: "0 2px 8px rgba(37,99,235,0.18)"
   },
 
   error: {
@@ -3007,11 +3036,13 @@ const styles = {
     background: "#ffffff",
     border: "1px solid #bfdbfe",
     color: "#1d4ed8",
-    padding: "9px 14px",
+    padding: "10px 18px",
     borderRadius: 999,
     cursor: "pointer",
     fontWeight: 700,
-    transition: "background 0.2s, transform 0.15s"
+    fontSize: 14,
+    transition: "background 0.2s, transform 0.15s, box-shadow 0.2s",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
   },
 
   chatArea: {
@@ -3133,12 +3164,12 @@ const styles = {
     background: "#eff6ff",
     color: "#1e40af",
     borderRadius: 10,
-    padding: "10px 14px",
-    fontSize: 13,
+    padding: "12px 18px",
+    fontSize: 14,
     cursor: "pointer",
     fontWeight: 700,
     transition: "transform 0.15s, box-shadow 0.2s, background 0.2s",
-    boxShadow: "none"
+    boxShadow: "0 1px 3px rgba(37,99,235,0.08)"
   },
 
   inputArea: {
@@ -3151,24 +3182,29 @@ const styles = {
 
   chatInput: {
     flex: 1,
-    padding: 12,
+    padding: "14px 16px",
     fontSize: 16,
-    borderRadius: 10,
-    border: "1px solid #cbd5e1",
+    borderRadius: 12,
+    border: "1.5px solid #cbd5e1",
     marginRight: 12,
-    boxSizing: "border-box"
+    boxSizing: "border-box",
+    outline: "none",
+    background: "#fafbfc",
+    transition: "border-color 0.2s, box-shadow 0.2s"
   },
 
   sendButton: {
     background: "#2563eb",
     color: "#fff",
     border: "none",
-    padding: "0 20px",
-    borderRadius: 10,
+    padding: "0 24px",
+    borderRadius: 12,
     cursor: "pointer",
     fontWeight: 700,
-    minHeight: 46,
-    boxShadow: "none"
+    fontSize: 15,
+    minHeight: 48,
+    boxShadow: "0 2px 8px rgba(37,99,235,0.18)",
+    transition: "background 0.2s, transform 0.1s, box-shadow 0.2s"
   },
 
   prepPanel: {
@@ -3276,10 +3312,12 @@ const styles = {
     display: "flex",
     alignItems: "flex-start",
     gap: 10,
-    padding: "12px 12px",
+    padding: "14px 14px",
     background: "#f9fafb",
-    borderRadius: 10,
-    border: "1px solid #e5e7eb"
+    borderRadius: 12,
+    border: "1px solid #e5e7eb",
+    transition: "border-color 0.15s, box-shadow 0.15s",
+    cursor: "pointer"
   },
 
   prepItemBody: {
@@ -3526,8 +3564,8 @@ const styles = {
   adminContent: {
     flex: 1,
     minHeight: 0,
-    padding: 24,
-    maxWidth: 800,
+    padding: "24px 32px",
+    maxWidth: 960,
     margin: "0 auto",
     width: "100%",
     boxSizing: "border-box",
@@ -3579,8 +3617,9 @@ const styles = {
     border: "1px solid #bfdbfe",
     borderRadius: 10,
     cursor: "pointer",
-    fontWeight: 600,
-    minHeight: 44
+    fontWeight: 700,
+    minHeight: 48,
+    transition: "background 0.15s, transform 0.1s"
   },
 
   adminMessage: {
