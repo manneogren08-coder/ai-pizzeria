@@ -324,6 +324,14 @@ export default function Home() {
   const [savedRecipeRows, setSavedRecipeRows] = useState([emptyRecipeRow()]);
   const [selectedRecipeId, setSelectedRecipeId] = useState("");
   const [recipeSearch, setRecipeSearch] = useState("");
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    restaurant: "",
+    email: "",
+    message: ""
+  });
+  const [contactSubmitting, setContactSubmitting] = useState(false);
+  const [contactMessage, setContactMessage] = useState("");
   const chatAreaRef = useRef(null);
   const toastTimerRef = useRef(null);
   const skipNextAdminRoutePromptRef = useRef(false);
@@ -1184,6 +1192,41 @@ export default function Home() {
     syncAdminRoute(true, nextTab);
   };
 
+  const handleContactSubmit = async (e) => {
+    e.preventDefault();
+    if (!contactForm.name.trim() || !contactForm.email.trim() || !contactForm.message.trim()) {
+      setContactMessage("Fyll i alla obligatoriska fält");
+      return;
+    }
+
+    setContactSubmitting(true);
+    setContactMessage("");
+
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(contactForm)
+      });
+
+      if (res.ok) {
+        setContactMessage("Tack för ditt meddelande! Vi återkommer snart.");
+        setContactForm({ name: "", restaurant: "", email: "", message: "" });
+      } else {
+        setContactMessage("Något gick fel. Försök igen senare.");
+      }
+    } catch {
+      setContactMessage("Något gick fel. Försök igen senare.");
+    }
+
+    setContactSubmitting(false);
+  };
+
+  const handleContactChange = (field, value) => {
+    setContactForm(prev => ({ ...prev, [field]: value }));
+    setContactMessage("");
+  };
+
   const handlePrepClick = () => {
     const nextShowPrep = !showPrep;
     setShowPrep(nextShowPrep);
@@ -1464,6 +1507,34 @@ export default function Home() {
               padding: 18px !important;
               border-radius: 14px !important;
             }
+
+            .featuresGrid {
+              grid-template-columns: 1fr !important;
+              gap: 12px !important;
+            }
+
+            .featureCard {
+              padding: 16px !important;
+            }
+
+            .contactSection {
+              padding: 20px 16px !important;
+            }
+
+            .ctaButtons {
+              flex-direction: column;
+              gap: 8px !important;
+            }
+
+            .ctaButtonPrimary,
+            .ctaButtonSecondary {
+              width: 100%;
+            }
+
+            .footerLinks {
+              flex-direction: column;
+              gap: 8px !important;
+            }
           }
         `}</style>
 
@@ -1667,6 +1738,129 @@ export default function Home() {
               ))}
             </div>
           </section>
+
+          <section style={styles.featuresSection}>
+            <h2 style={styles.featuresTitle}>Allt din personal behöver på ett ställe</h2>
+            <div style={styles.featuresGrid}>
+              <div style={styles.featureCard}>
+                <div style={styles.featureIcon}>🤖</div>
+                <h3 style={styles.featureTitle}>AI-guide för personal</h3>
+                <p style={styles.featureDescription}>Stängningsrutiner, allergener och dagliga rutiner direkt i mobilen. Personalen får snabba, korrekta svar utan att behöva fråga köket.</p>
+              </div>
+              <div style={styles.featureCard}>
+                <div style={styles.featureIcon}>📋</div>
+                <h3 style={styles.featureTitle}>Mise en place</h3>
+                <p style={styles.featureDescription}>Dagens uppgifter strukturerade och prioriterade. Se vad som måste göras, när och av vem. Full kontroll på förberedelserna.</p>
+              </div>
+              <div style={styles.featureCard}>
+                <div style={styles.featureIcon}>🍽️</div>
+                <h3 style={styles.featureTitle}>Receptbank och meny</h3>
+                <p style={styles.featureDescription}>Alla recept och menyer i realtid. Uppdatera en gång så ser hela teamet ändringarna direkt.</p>
+              </div>
+              <div style={styles.featureCard}>
+                <div style={styles.featureIcon}>📊</div>
+                <h3 style={styles.featureTitle}>Chefsdashboard</h3>
+                <p style={styles.featureDescription}>Full kontroll över personal, rutiner och innehåll. Se vad som fungerar och uppdatera enkelt på ett ställe.</p>
+              </div>
+            </div>
+          </section>
+
+          <section style={styles.contactSection}>
+            <h2 style={styles.contactTitle}>Intresserad? Hör av dig</h2>
+            <form style={styles.contactForm} onSubmit={handleContactSubmit}>
+              <input
+                style={styles.contactInput}
+                type="text"
+                placeholder="Namn *"
+                value={contactForm.name}
+                onChange={(e) => handleContactChange("name", e.target.value)}
+                disabled={contactSubmitting}
+                required
+              />
+              <input
+                style={styles.contactInput}
+                type="text"
+                placeholder="Restaurangnamn"
+                value={contactForm.restaurant}
+                onChange={(e) => handleContactChange("restaurant", e.target.value)}
+                disabled={contactSubmitting}
+              />
+              <input
+                style={styles.contactInput}
+                type="email"
+                placeholder="E-post *"
+                value={contactForm.email}
+                onChange={(e) => handleContactChange("email", e.target.value)}
+                disabled={contactSubmitting}
+                required
+              />
+              <textarea
+                style={styles.contactTextarea}
+                placeholder="Meddelande *"
+                value={contactForm.message}
+                onChange={(e) => handleContactChange("message", e.target.value)}
+                disabled={contactSubmitting}
+                required
+              />
+              {contactMessage && (
+                <p style={{ color: contactMessage.includes("Tack") ? "#059669" : "#dc2626", fontSize: 14, textAlign: "center" }}>
+                  {contactMessage}
+                </p>
+              )}
+              <button
+                style={styles.primaryButton}
+                type="submit"
+                disabled={contactSubmitting}
+              >
+                {contactSubmitting ? "Skickar..." : "Skicka"}
+              </button>
+            </form>
+          </section>
+
+          <section style={styles.ctaSection}>
+            <h2 style={styles.ctaTitle}>Redo att effektivisera din restaurang?</h2>
+            <div style={styles.ctaButtons}>
+              <button
+                style={styles.ctaButtonPrimary}
+                onClick={() => {
+                  setLoginMode("company");
+                  setError("");
+                  requestAnimationFrame(() => {
+                    const field = document.querySelector('input[placeholder="Företags-id eller företagsnamn"]');
+                    if (field && typeof field.focus === "function") {
+                      field.focus();
+                    }
+                  });
+                }}
+              >
+                Kom igång nu
+              </button>
+              <button
+                style={styles.ctaButtonSecondary}
+                onClick={() => {
+                  setLoginMode("company");
+                  setError("");
+                  requestAnimationFrame(() => {
+                    const field = document.querySelector('input[placeholder="Företags-id eller företagsnamn"]');
+                    if (field && typeof field.focus === "function") {
+                      field.focus();
+                    }
+                  });
+                }}
+              >
+                Boka demo
+              </button>
+            </div>
+          </section>
+
+          <footer style={styles.footer}>
+            <div style={styles.footerLogo}>STAFFGUIDE</div>
+            <div style={styles.footerLinks}>
+              <a href="mailto:hej@staffguide.se" style={styles.footerLink}>staffguide.se@gmail.com</a>
+              <a href="/privacy" style={styles.footerLink}>Integritetspolicy</a>
+            </div>
+            <p style={styles.footerText}>© 2026 Staffguide. Alla rättigheter reserverade.</p>
+          </footer>
         </div>
       </div>
     );
@@ -2026,7 +2220,7 @@ export default function Home() {
 
                   <div style={styles.adminActionBar}>
                     <button
-                      style={{ ...styles.secondaryButton, flex: 1 }}
+                      style={{ ...styles.destructiveButton, flex: 1 }}
                       onClick={resetCurrentTab}
                       disabled={!isTabDirty("info") || adminLoading}
                     >
@@ -2078,7 +2272,7 @@ export default function Home() {
 
                   <div style={styles.adminActionBar}>
                     <button
-                      style={{ ...styles.secondaryButton, flex: 1 }}
+                      style={{ ...styles.destructiveButton, flex: 1 }}
                       onClick={resetCurrentTab}
                       disabled={!isTabDirty("menu") || adminLoading}
                     >
@@ -2255,7 +2449,7 @@ export default function Home() {
 
                   <div style={styles.adminActionBar}>
                     <button
-                      style={{ ...styles.secondaryButton, flex: 1 }}
+                      style={{ ...styles.destructiveButton, flex: 1 }}
                       onClick={resetCurrentTab}
                       disabled={!isTabDirty("recipes") || adminLoading}
                     >
@@ -2327,7 +2521,7 @@ export default function Home() {
 
                   <div style={styles.adminActionBar}>
                     <button
-                      style={{ ...styles.secondaryButton, flex: 1 }}
+                      style={{ ...styles.destructiveButton, flex: 1 }}
                       onClick={resetCurrentTab}
                       disabled={!isTabDirty("routines") || adminLoading}
                     >
@@ -2546,21 +2740,30 @@ export default function Home() {
                   onClick={() => setFilteredPrepTasksDone(true)}
                   disabled={prepLoading || prepBulkUpdating}
                 >
-                  Markera synliga klara
+                  <div>
+                    <div>Markera synliga klara</div>
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Bockar av alla uppgifter i nuvarande vy</div>
+                  </div>
                 </button>
                 <button
                   style={{ ...styles.secondaryButton, padding: "10px 14px", fontSize: 14 }}
                   onClick={() => setFilteredPrepTasksDone(false)}
                   disabled={prepLoading || prepBulkUpdating}
                 >
-                  Återställ synliga
+                  <div>
+                    <div>Återställ synliga</div>
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Avmarkerar alla klarmarkeringar</div>
+                  </div>
                 </button>
                 <button
                   style={{ ...styles.secondaryButton, padding: "10px 14px", fontSize: 14 }}
                   onClick={() => fetchPrepTasks(prepDate)}
                   disabled={prepLoading || prepBulkUpdating}
                 >
-                  {prepLoading ? "Laddar..." : "Uppdatera"}
+                  <div>
+                    <div>{prepLoading ? "Laddar..." : "Uppdatera"}</div>
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Hämtar senaste uppgifter från servern</div>
+                  </div>
                 </button>
               </div>
             </div>
@@ -2611,12 +2814,31 @@ export default function Home() {
                 const dueTimeText = String(task.due_time || "").trim();
 
                 return (
-                  <label key={task.id} style={styles.prepItem}>
+                  <label 
+                    key={task.id} 
+                    style={{
+                      ...styles.prepItem,
+                      ...(task.is_done ? { opacity: 0.5, background: "#f1f5f9" } : {})
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!task.is_done) {
+                        e.currentTarget.style.background = "#f0f9ff";
+                        e.currentTarget.style.borderColor = "#bfdbfe";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!task.is_done) {
+                        e.currentTarget.style.background = "#f9fafb";
+                        e.currentTarget.style.borderColor = "#e5e7eb";
+                      }
+                    }}
+                  >
                     <input
                       type="checkbox"
                       checked={!!task.is_done}
                       onChange={(e) => togglePrepTask(task.id, e.target.checked)}
                       disabled={prepLoading}
+                      style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
                     />
                     <div style={styles.prepItemBody}>
                       <span style={{
@@ -2731,7 +2953,7 @@ const styles = {
     minHeight: "100vh",
     position: "relative",
     overflow: "hidden",
-    background: "linear-gradient(145deg, #ffffff 0%, #f8fbff 52%, #eff6ff 100%)"
+    background: "linear-gradient(180deg, #ffffff 0%, #f0f9ff 35%, #e0f2fe 100%)"
   },
 
   landingBackground: {
@@ -2768,11 +2990,11 @@ const styles = {
     display: "inline-block",
     background: "#2563eb",
     color: "#ffffff",
-    padding: "6px 12px",
+    padding: "8px 16px",
     borderRadius: 999,
-    fontSize: 11,
+    fontSize: 12,
     letterSpacing: "0.09em",
-    fontWeight: 700,
+    fontWeight: 800,
     marginBottom: 12
   },
 
@@ -2808,18 +3030,20 @@ const styles = {
     padding: "10px 16px",
     fontWeight: 700,
     cursor: "pointer",
-    minHeight: 44
+    minHeight: 44,
+    fontSize: 15
   },
 
   heroCtaSecondary: {
-    border: "1px solid #bfdbfe",
-    background: "#fff",
-    color: "#1d4ed8",
+    border: "2px solid #2563eb",
+    background: "transparent",
+    color: "#2563eb",
     borderRadius: 10,
     padding: "10px 16px",
     fontWeight: 700,
     cursor: "pointer",
-    minHeight: 44
+    minHeight: 44,
+    fontSize: 15
   },
 
   heroMetaRow: {
@@ -3004,6 +3228,204 @@ const styles = {
     color: "#475569",
     fontSize: 14,
     lineHeight: 1.5
+  },
+
+  featuresSection: {
+    marginTop: 32,
+    marginBottom: 32
+  },
+
+  featuresTitle: {
+    margin: "0 0 20px",
+    fontSize: 28,
+    color: "#0f172a",
+    fontWeight: 800,
+    letterSpacing: "-0.02em",
+    textAlign: "center"
+  },
+
+  featuresGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 16,
+    maxWidth: 900,
+    margin: "0 auto"
+  },
+
+  featureCard: {
+    background: "#ffffff",
+    border: "1px solid #dbeafe",
+    borderRadius: 16,
+    padding: 20,
+    boxShadow: "0 4px 16px rgba(37,99,235,0.06)",
+    transition: "transform 0.2s, box-shadow 0.2s"
+  },
+
+  featureIcon: {
+    width: 48,
+    height: 48,
+    background: "#eff6ff",
+    borderRadius: 12,
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+    fontSize: 24,
+    color: "#2563eb"
+  },
+
+  featureTitle: {
+    margin: "0 0 8px",
+    fontSize: 18,
+    color: "#0f172a",
+    fontWeight: 700,
+    lineHeight: 1.3
+  },
+
+  featureDescription: {
+    margin: 0,
+    color: "#475569",
+    fontSize: 14,
+    lineHeight: 1.5
+  },
+
+  contactSection: {
+    maxWidth: 600,
+    margin: "0 auto 32px",
+    background: "rgba(255, 255, 255, 0.92)",
+    border: "1px solid #dbeafe",
+    borderRadius: 20,
+    padding: "28px 24px",
+    backdropFilter: "blur(5px)"
+  },
+
+  contactTitle: {
+    margin: "0 0 20px",
+    fontSize: 24,
+    color: "#0f172a",
+    fontWeight: 700,
+    textAlign: "center"
+  },
+
+  contactForm: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 16
+  },
+
+  contactInput: {
+    width: "100%",
+    padding: "12px 14px",
+    fontSize: 15,
+    borderRadius: 10,
+    border: "1.5px solid #cbd5e1",
+    boxSizing: "border-box",
+    outline: "none",
+    transition: "border-color 0.2s, box-shadow 0.2s",
+    background: "#fafbfc"
+  },
+
+  contactTextarea: {
+    width: "100%",
+    padding: "12px 14px",
+    fontSize: 15,
+    borderRadius: 10,
+    border: "1.5px solid #cbd5e1",
+    boxSizing: "border-box",
+    outline: "none",
+    transition: "border-color 0.2s, box-shadow 0.2s",
+    background: "#fafbfc",
+    minHeight: 100,
+    resize: "vertical",
+    fontFamily: "inherit"
+  },
+
+  ctaSection: {
+    textAlign: "center",
+    padding: "40px 20px",
+    background: "linear-gradient(145deg, #eff6ff 0%, #dbeafe 100%)",
+    borderRadius: 20,
+    margin: "0 auto 32px",
+    maxWidth: 800
+  },
+
+  ctaTitle: {
+    margin: "0 0 20px",
+    fontSize: 26,
+    color: "#0f172a",
+    fontWeight: 800,
+    letterSpacing: "-0.02em"
+  },
+
+  ctaButtons: {
+    display: "flex",
+    gap: 12,
+    justifyContent: "center",
+    flexWrap: "wrap"
+  },
+
+  ctaButtonPrimary: {
+    border: "none",
+    background: "#2563eb",
+    color: "#fff",
+    borderRadius: 10,
+    padding: "12px 24px",
+    fontWeight: 700,
+    cursor: "pointer",
+    minHeight: 48,
+    fontSize: 16,
+    transition: "background 0.2s, transform 0.1s, box-shadow 0.2s",
+    boxShadow: "0 2px 8px rgba(37,99,235,0.18)"
+  },
+
+  ctaButtonSecondary: {
+    border: "2px solid #2563eb",
+    background: "transparent",
+    color: "#2563eb",
+    borderRadius: 10,
+    padding: "12px 24px",
+    fontWeight: 700,
+    cursor: "pointer",
+    minHeight: 48,
+    fontSize: 16,
+    transition: "background 0.2s, transform 0.1s, box-shadow 0.2s"
+  },
+
+  footer: {
+    background: "#ffffff",
+    border: "1px solid #dbeafe",
+    borderRadius: 20,
+    padding: "24px 20px",
+    textAlign: "center",
+    color: "#475569"
+  },
+
+  footerLogo: {
+    fontSize: 18,
+    fontWeight: 800,
+    color: "#2563eb",
+    marginBottom: 8
+  },
+
+  footerLinks: {
+    display: "flex",
+    justifyContent: "center",
+    gap: 20,
+    flexWrap: "wrap",
+    marginBottom: 8
+  },
+
+  footerLink: {
+    color: "#2563eb",
+    textDecoration: "none",
+    fontSize: 14,
+    fontWeight: 600
+  },
+
+  footerText: {
+    fontSize: 13,
+    color: "#64748b",
+    margin: 0
   },
 
   appContainer: {
@@ -3316,7 +3738,7 @@ const styles = {
     background: "#f9fafb",
     borderRadius: 12,
     border: "1px solid #e5e7eb",
-    transition: "border-color 0.15s, box-shadow 0.15s",
+    transition: "border-color 0.15s, box-shadow 0.15s, background 0.15s",
     cursor: "pointer"
   },
 
@@ -3350,15 +3772,15 @@ const styles = {
   },
 
   prepPriorityHigh: {
-    background: "#fee2e2",
-    color: "#991b1b",
-    border: "1px solid #fecaca"
+    background: "#FEE2E2",
+    color: "#DC2626",
+    border: "1px solid #FECACA"
   },
 
   prepPriorityMedium: {
-    background: "#fef3c7",
-    color: "#92400e",
-    border: "1px solid #fde68a"
+    background: "#FEF3C7",
+    color: "#D97706",
+    border: "1px solid #FDE68A"
   },
 
   prepPriorityLow: {
@@ -3620,6 +4042,20 @@ const styles = {
     fontWeight: 700,
     minHeight: 48,
     transition: "background 0.15s, transform 0.1s"
+  },
+
+  destructiveButton: {
+    width: "auto",
+    padding: 12,
+    fontSize: 15,
+    background: "#f8fafc",
+    color: "#64748b",
+    border: "2px solid #e2e8f0",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontWeight: 600,
+    minHeight: 48,
+    transition: "background 0.15s, transform 0.1s, border-color 0.15s"
   },
 
   adminMessage: {
