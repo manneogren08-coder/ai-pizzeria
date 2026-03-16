@@ -1,9 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 import bcrypt from "bcrypt";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+const supabaseAdmin = createServiceClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 const rateLimitStore = new Map();
@@ -28,7 +34,7 @@ function consumeRateLimit(key, maxRequests) {
   return existing.count > maxRequests;
 }
 
-async function getCompanyByIdentifierAndPassword(companyIdentifier, password) {
+async function getCompanyByIdentifier(companyIdentifier) {
   const normalizedIdentifier = String(companyIdentifier || "").trim();
   if (!normalizedIdentifier) return null;
 
@@ -54,13 +60,50 @@ async function getCompanyByIdentifierAndPassword(companyIdentifier, password) {
 
   for (const company of companies) {
     if (!company.password_hash) continue;
-    const match = await bcrypt.compare(password, company.password_hash);
-    if (match) {
-      return company;
-    }
+    // We don't need to verify password for employee login
+    return company;
   }
 
   return null;
+}
+
+async function getStaffByEmailAndCompany(email, companyId) {
+  const { data: staff, error } = await supabase
+    .from("restaurant_staff")
+    .select("company_id, name, email, companies!inner(id, name)")
+    .eq("email", email.toLowerCase())
+    .eq("company_id", companyId)
+    .single();
+
+  if (error) {
+    console.error("Staff lookup error:", error);
+    return null;
+  }
+
+  return staff;
+}
+
+async function getStaffByEmail(email) {
+  console.log("DEBUG: Supabase client config:", {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "present" : "missing",
+    serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ? "present" : "missing"
+  });
+  
+  const { data, error } = await supabaseAdmin
+    .from("restaurant_staff")
+    .select("*")
+    .eq("email", email)
+    .maybeSingle();
+
+  console.log("RAW Supabase response:", { data, error });
+  
+  if (error) {
+    console.error("Staff lookup error:", error);
+    return null;
+  }
+
+  return data;
 }
 
 function generateOtpCode() {
@@ -155,32 +198,33 @@ export default async function handler(req, res) {
 
   try {
     const clientIP = getClientIP(req);
-    const password = String(req.body?.password || "").trim();
-    const companyIdentifier = String(req.body?.companyIdentifier || "").trim();
     const email = String(req.body?.email || "").trim().toLowerCase();
     const name = String(req.body?.name || "").trim();
-
-    if (!password) {
-      return res.status(400).json({ error: "Saknar restaurangens lösenord" });
-    }
-
-    if (!companyIdentifier) {
-      return res.status(400).json({ error: "Skriv in företags-id eller företagsnamn" });
-    }
 
     if (!email || !email.includes("@")) {
       return res.status(400).json({ error: "Ange en giltig e-post" });
     }
 
-    const accountLimitKey = `employee-request:${companyIdentifier.toLowerCase()}:${email}`;
+    if (!name) {
+      return res.status(400).json({ error: "Ange ditt namn" });
+    }
+
+    const accountLimitKey = `employee-request:${email}`;
     if (consumeRateLimit(`employee-request-ip:${clientIP}`, MAX_REQUESTS_PER_IP) || consumeRateLimit(accountLimitKey, MAX_REQUESTS_PER_ACCOUNT)) {
       return res.status(429).json({ error: "För många kodförsök. Vänta några minuter och försök igen." });
     }
 
-    const company = await getCompanyByIdentifierAndPassword(companyIdentifier, password);
-    if (!company) {
-      return res.status(401).json({ error: "Fel restauranglösenord" });
+    // Check if staff member exists in restaurant_staff table (no company_id filter - we'll find the first match)
+    console.log("DEBUG: Looking for staff with email:", email);
+    const staff = await getStaffByEmail(email);
+    console.log("DEBUG: Staff lookup result:", { staff });
+    
+    if (!staff) {
+      console.log("DEBUG: Staff not found, returning 401 error");
+      return res.status(401).json({ error: "Din e-post är inte registrerad. Kontakta din chef." });
     }
+
+    console.log("DEBUG: Staff found:", { company_id: staff.company_id, email: staff.email, name: staff.name });
 
     const loginCode = generateOtpCode();
     const loginCodeHash = await bcrypt.hash(loginCode, 10);
@@ -190,7 +234,7 @@ export default async function handler(req, res) {
       .from("employee_accounts")
       .upsert(
         {
-          company_id: String(company.id),
+          company_id: String(staff.company_id),
           email,
           display_name: name,
           one_time_code_hash: loginCodeHash,
@@ -207,7 +251,7 @@ export default async function handler(req, res) {
     const emailResult = await sendOtpEmail({
       to: email,
       code: loginCode,
-      companyName: company.name
+      companyName: staff.name || staff.companies?.name || "Ditt företag"
     });
 
     if (!emailResult.sent && process.env.NODE_ENV === "production") {
@@ -217,7 +261,7 @@ export default async function handler(req, res) {
 
     // In development, we expose fallback code if email integration is not fully configured yet.
     if (!emailResult.sent) {
-      console.log(`[Employee OTP Fallback] ${email} (${company.name}): ${loginCode}`);
+      console.log(`[Employee OTP Fallback] ${email} (${staff.name || staff.companies?.name || "Ditt företag"}): ${loginCode}`);
     }
 
     return res.status(200).json({

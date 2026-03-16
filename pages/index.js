@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 
-const ADMIN_TABS = ["info", "menu", "recipes", "routines", "prep", "security", "stats"];
+const ADMIN_TABS = ["info", "menu", "recipes", "routines", "prep", "staff", "security", "stats"];
 
 function getTodayDateString() {
   const now = new Date();
@@ -43,8 +43,8 @@ function dueTimeSortValue(dueTime) {
 
 function normalizeTemplatePriority(value) {
   const normalized = String(value || "").trim().toLowerCase();
-  if (["high", "hog", "hög", "h"].includes(normalized)) return "high";
-  if (["low", "lag", "låg", "l"].includes(normalized)) return "low";
+  if (["high", "hög", "hög", "h"].includes(normalized)) return "high";
+  if (["low", "låg", "låg", "l"].includes(normalized)) return "low";
   return "medium";
 }
 
@@ -291,6 +291,7 @@ export default function Home() {
   const [employeeEmail, setEmployeeEmail] = useState("");
   const [employeeName, setEmployeeName] = useState("");
   const [employeeCode, setEmployeeCode] = useState("");
+  const [employeeLoginStep, setEmployeeLoginStep] = useState("request");
   const [company, setCompany] = useState(null);
   const [isRestoringSession, setIsRestoringSession] = useState(true);
   const [question, setQuestion] = useState("");
@@ -320,6 +321,10 @@ export default function Home() {
   const [prepBulkUpdating, setPrepBulkUpdating] = useState(false);
   const [prepOnlyOpen, setPrepOnlyOpen] = useState(false);
   const [prepStationFilter, setPrepStationFilter] = useState("all");
+  const [staffList, setStaffList] = useState([]);
+  const [staffLoading, setStaffLoading] = useState(false);
+  const [newStaffEmail, setNewStaffEmail] = useState("");
+  const [newStaffName, setNewStaffName] = useState("");
   const [recipeRows, setRecipeRows] = useState([emptyRecipeRow()]);
   const [savedRecipeRows, setSavedRecipeRows] = useState([emptyRecipeRow()]);
   const [selectedRecipeId, setSelectedRecipeId] = useState("");
@@ -727,6 +732,12 @@ export default function Home() {
   }, [chat, loading]);
 
   useEffect(() => {
+    if (showAdmin && adminTab === "staff") {
+      fetchStaffList();
+    }
+  }, [showAdmin, adminTab]);
+
+  useEffect(() => {
     if (!router.isReady || !company?.is_admin) {
       return;
     }
@@ -830,18 +841,19 @@ export default function Home() {
   };
 
   const requestEmployeeCode = async () => {
-    if (!companyIdentifier.trim()) {
-      setError("Skriv in företags-id eller företagsnamn");
-      return;
-    }
-
-    if (!password.trim()) {
-      setError("Skriv in restaurangens lösenord");
-      return;
-    }
-
     if (!employeeEmail.trim()) {
-      setError("Skriv in e-post");
+      setError("Ange din e-postadress");
+      return;
+    }
+
+    if (!employeeName.trim()) {
+      setError("Ange ditt namn");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(employeeEmail.trim())) {
+      setError("Ange en giltig e-postadress");
       return;
     }
 
@@ -853,10 +865,8 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          companyIdentifier,
-          password,
-          email: employeeEmail,
-          name: employeeName
+          email: employeeEmail.trim().toLowerCase(),
+          name: employeeName.trim()
         })
       });
 
@@ -868,6 +878,9 @@ export default function Home() {
         return;
       }
 
+      setEmployeeLoginStep("code");
+      setError("");
+      setEmployeeCode("");
       const debugHint = data?.debugCode ? ` Testkod: ${data.debugCode}` : "";
       showToast(`Kod skickad till ${employeeEmail}.${debugHint}`, "info");
     } catch {
@@ -878,23 +891,13 @@ export default function Home() {
   };
 
   const loginWithEmployeeCode = async () => {
-    if (!companyIdentifier.trim()) {
-      setError("Skriv in företags-id eller företagsnamn");
-      return;
-    }
-
-    if (!password.trim()) {
-      setError("Skriv in restaurangens lösenord");
-      return;
-    }
-
     if (!employeeEmail.trim()) {
-      setError("Skriv in e-post");
+      setError("Ange din e-postadress");
       return;
     }
 
     if (!employeeCode.trim()) {
-      setError("Skriv in engångskod eller demo");
+      setError("Ange engångskoden");
       return;
     }
 
@@ -902,30 +905,37 @@ export default function Home() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/employee/verify-code", {
+      const res = await fetch("/api/employee/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          companyIdentifier,
-          password,
-          email: employeeEmail,
-          code: employeeCode
+          email: employeeEmail.trim().toLowerCase(),
+          code: employeeCode.trim()
         })
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data?.error || "Kunde inte logga in med kod");
+        setError(data?.error || "Felaktig kod");
         setLoading(false);
         return;
       }
 
-      setToken(data.token);
-      setCompany(data.company);
       localStorage.setItem("token", data.token);
       localStorage.setItem("company", JSON.stringify(data.company));
+      setCompany(data.company);
+      setEmployeeLoginStep("request");
+      setEmployeeEmail("");
+      setEmployeeName("");
       setEmployeeCode("");
+      
+      // Debug logging
+      console.log("DEBUG: Login successful - Company data:", data.company);
+      console.log("DEBUG: Stored company:", JSON.parse(localStorage.getItem("company")));
+      console.log("DEBUG: Stored token:", localStorage.getItem("token"));
+      
+      showToast(`Inloggad som ${data.company.name}`, "success");
     } catch {
       setError("Ett fel uppstod. Försök igen.");
     }
@@ -1225,6 +1235,98 @@ export default function Home() {
   const handleContactChange = (field, value) => {
     setContactForm(prev => ({ ...prev, [field]: value }));
     setContactMessage("");
+  };
+
+  const fetchStaffList = async () => {
+    if (!token || !company) return;
+    
+    setStaffLoading(true);
+    try {
+      const res = await fetch("/api/admin/staff", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setStaffList(data.staff || []);
+      } else {
+        console.error("Failed to fetch staff list");
+      }
+    } catch (err) {
+      console.error("Staff list fetch error:", err);
+    } finally {
+      setStaffLoading(false);
+    }
+  };
+
+  const addStaffMember = async () => {
+    if (!token || !company) return;
+    
+    if (!newStaffEmail.trim()) {
+      showToast("Ange e-postadress", "error");
+      return;
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newStaffEmail.trim())) {
+      showToast("Ange en giltig e-postadress", "error");
+      return;
+    }
+    
+    try {
+      const res = await fetch("/api/admin/staff", {
+        method: "POST",
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email: newStaffEmail.trim().toLowerCase(),
+          name: newStaffName.trim() || null
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        showToast("Personal tillagd", "success");
+        setNewStaffEmail("");
+        setNewStaffName("");
+        fetchStaffList();
+      } else {
+        showToast(data.error || "Kunde inte lägga till personal", "error");
+      }
+    } catch (err) {
+      console.error("Add staff error:", err);
+      showToast("Kunde inte lägga till personal", "error");
+    }
+  };
+
+  const removeStaffMember = async (staffId) => {
+    if (!token || !company) return;
+    
+    if (!confirm("Är du säker på att du vill ta bort denna person?")) {
+      return;
+    }
+    
+    try {
+      const res = await fetch(`/api/admin/staff/${staffId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        showToast("Personal borttagen", "success");
+        fetchStaffList();
+      } else {
+        showToast(data.error || "Kunde inte ta bort personal", "error");
+      }
+    } catch (err) {
+      console.error("Remove staff error:", err);
+      showToast("Kunde inte ta bort personal", "error");
+    }
   };
 
   const handlePrepClick = () => {
@@ -1649,68 +1751,87 @@ export default function Home() {
                 />
               )}
 
-              <input
-                style={styles.input}
-                className="chatInput"
-                type="password"
-                placeholder="Restaurangens lösenord"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key !== "Enter" || loading) return;
-                  if (loginMode === "company") {
-                    login();
-                  } else {
-                    loginWithEmployeeCode();
-                  }
-                }}
-                disabled={loading}
-              />
+              {loginMode === "company" && (
+                <input
+                  style={styles.input}
+                  className="chatInput"
+                  type="password"
+                  placeholder="Restaurangens lösenord"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key !== "Enter" || loading) return;
+                    if (loginMode === "company") {
+                      login();
+                    } else {
+                      loginWithEmployeeCode();
+                    }
+                  }}
+                  disabled={loading}
+                />
+              )}
 
               {loginMode === "employee" && (
                 <>
-                  <input
-                    style={styles.input}
-                    className="chatInput"
-                    type="text"
-                    placeholder="Din e-post"
-                    value={employeeEmail}
-                    onChange={e => setEmployeeEmail(e.target.value)}
-                    disabled={loading}
-                  />
+                  {employeeLoginStep === "request" ? (
+                    <>
+                      <input
+                        style={styles.input}
+                        className="chatInput"
+                        type="email"
+                        placeholder="Din e-post"
+                        value={employeeEmail}
+                        onChange={e => setEmployeeEmail(e.target.value)}
+                        disabled={loading}
+                      />
 
-                  <input
-                    style={styles.input}
-                    className="chatInput"
-                    type="text"
-                    placeholder="Namn (valfritt vid första kodbegäran)"
-                    value={employeeName}
-                    onChange={e => setEmployeeName(e.target.value)}
-                    disabled={loading}
-                  />
+                      <input
+                        style={styles.input}
+                        className="chatInput"
+                        type="text"
+                        placeholder="Ditt namn"
+                        value={employeeName}
+                        onChange={e => setEmployeeName(e.target.value)}
+                        disabled={loading}
+                      />
 
-                  <input
-                    style={styles.input}
-                    className="chatInput"
-                    type="text"
-                    placeholder="Engångskod eller demo"
-                    value={employeeCode}
-                    onChange={e => setEmployeeCode(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && !loading && loginWithEmployeeCode()}
-                    disabled={loading}
-                  />
+                      <button
+                        style={{ ...styles.secondaryButton, width: "100%", marginBottom: 10 }}
+                        onClick={requestEmployeeCode}
+                        disabled={loading}
+                      >
+                        {loading ? "Skickar kod..." : "Skicka engångskod"}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <input
+                        style={styles.input}
+                        className="chatInput"
+                        type="text"
+                        placeholder="Engångskod"
+                        value={employeeCode}
+                        onChange={e => setEmployeeCode(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && !loading && loginWithEmployeeCode()}
+                        disabled={loading}
+                        autoFocus
+                      />
 
-                  <p style={styles.employeeLoginHint}>
-                    Obs: <code>demo</code> fungerar endast lokalt i development.
-                  </p>
+                      {process.env.NODE_ENV === "development" && (
+                        <p style={styles.employeeLoginHint}>
+                          Obs: <code>demo</code> fungerar endast lokalt i development.
+                        </p>
+                      )}
 
-                  <button
-                    style={{ ...styles.secondaryButton, width: "100%", marginBottom: 10 }}
-                    onClick={requestEmployeeCode}
-                    disabled={loading}
-                  >
-                    {loading ? "Skickar kod..." : "Skicka engångskod"}
-                  </button>
+                      <button
+                        style={{ ...styles.secondaryButton, width: "100%", marginBottom: 10 }}
+                        onClick={() => setEmployeeLoginStep("request")}
+                        disabled={loading}
+                      >
+                        Tillbaka
+                      </button>
+                    </>
+                  )}
                 </>
               )}
 
@@ -2158,6 +2279,16 @@ export default function Home() {
               >
                 Prep-mall
                 {prepTemplateDirty && <span style={styles.tabDirtyDot}>●</span>}
+              </button>
+              <button
+                style={{
+                  ...styles.adminTab,
+                  ...(adminTab === "staff" ? styles.adminTabActive : {})
+                }}
+                className="adminTabButton"
+                onClick={() => handleAdminTabChange("staff")}
+              >
+                Personal
               </button>
               <button
                 style={{
@@ -2637,6 +2768,102 @@ export default function Home() {
                     >
                       {prepTemplateLoading ? "Sparar..." : "Spara prep-mall"}
                     </button>
+                  </div>
+                </div>
+              )}
+
+              {adminTab === "staff" && (
+                <div className="adminSectionCard">
+                  <h3 style={{ marginTop: 0 }}>Personalhantering</h3>
+                  <p style={styles.helperText}>
+                    Hantera anställda som kan logga in med e-post och engångskod.
+                  </p>
+
+                  {/* Add new staff */}
+                  <div style={{ background: "#f8fafc", padding: 20, borderRadius: 12, marginBottom: 24 }}>
+                    <h4 style={{ margin: "0 0 16px", fontSize: 16, color: "#374151" }}>Lägg till ny personal</h4>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                      <input
+                        style={styles.input}
+                        type="email"
+                        placeholder="E-postadress *"
+                        value={newStaffEmail}
+                        onChange={e => setNewStaffEmail(e.target.value)}
+                        disabled={staffLoading}
+                      />
+                      <input
+                        style={styles.input}
+                        type="text"
+                        placeholder="Namn (valfritt)"
+                        value={newStaffName}
+                        onChange={e => setNewStaffName(e.target.value)}
+                        disabled={staffLoading}
+                      />
+                    </div>
+                    <button
+                      style={styles.primaryButton}
+                      onClick={addStaffMember}
+                      disabled={staffLoading}
+                    >
+                      {staffLoading ? "Lägger till..." : "Lägg till personal"}
+                    </button>
+                  </div>
+
+                  {/* Staff list */}
+                  <div>
+                    <h4 style={{ margin: "0 0 16px", fontSize: 16, color: "#374151" }}>Registrerad personal ({staffList.length})</h4>
+                    {staffLoading ? (
+                      <p style={{ textAlign: "center", color: "#6b7280", padding: 20 }}>Laddar...</p>
+                    ) : staffList.length === 0 ? (
+                      <p style={{ textAlign: "center", color: "#6b7280", padding: 20 }}>Ingen personal registrerad</p>
+                    ) : (
+                      <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                          <thead>
+                            <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                              <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#374151" }}>Namn</th>
+                              <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#374151" }}>E-post</th>
+                              <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#374151" }}>Tillagd datum</th>
+                              <th style={{ padding: "12px 16px", textAlign: "right", fontSize: 14, fontWeight: 600, color: "#374151" }}>Åtgärd</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {staffList.map((staff) => (
+                              <tr key={staff.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                                <td style={{ padding: "12px 16px", color: "#374151" }}>
+                                  {staff.name || <span style={{ color: "#9ca3af", fontStyle: "italic" }}>Ej namngiven</span>}
+                                </td>
+                                <td style={{ padding: "12px 16px", color: "#2563eb", fontSize: 14 }}>{staff.email}</td>
+                                <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: 14 }}>
+                                  {new Date(staff.created_at).toLocaleDateString("sv-SE")}
+                                </td>
+                                <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                                  <button
+                                    style={{
+                                      background: "#fef2f2",
+                                      color: "#dc2626",
+                                      border: "1px solid #fecaca",
+                                      borderRadius: 6,
+                                      padding: "6px 12px",
+                                      fontSize: 13,
+                                      fontWeight: 600,
+                                      cursor: "pointer",
+                                      transition: "background 0.15s"
+                                    }}
+                                    onClick={() => removeStaffMember(staff.id)}
+                                    disabled={staffLoading}
+                                    onMouseOver={(e) => e.target.style.background = "#fee2e2"}
+                                    onMouseOut={(e) => e.target.style.background = "#fef2f2"}
+                                  >
+                                    Ta bort
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
