@@ -57,7 +57,8 @@ function toTemplateTasks(templateText) {
         title,
         priority: normalizePriority(parts[1]),
         station: String(parts[2] || "").trim().slice(0, 60),
-        due_time: normalizeDueTime(parts[3])
+        due_time: normalizeDueTime(parts[3]),
+        assigned_to: String(parts[4] || "").trim() || null
       };
     })
     .filter((task) => Boolean(task.title))
@@ -69,7 +70,7 @@ async function ensureTasksForDay(supabase, companyId, prepDate) {
 
   const { data: existingTasks, error: existingError } = await supabase
     .from("prep_tasks")
-    .select("id, title, priority, station, due_time, is_done, sort_order")
+    .select("id, title, priority, station, due_time, is_done, sort_order, assigned_to")
     .eq("company_id", companyKey)
     .eq("prep_date", prepDate)
     .order("sort_order", { ascending: true })
@@ -107,7 +108,8 @@ async function ensureTasksForDay(supabase, companyId, prepDate) {
     station: task.station,
     due_time: task.due_time,
     is_done: false,
-    sort_order: index
+    sort_order: index,
+    assigned_to: task.assigned_to
   }));
 
   const { error: insertError } = await supabase
@@ -143,31 +145,36 @@ export default async function handler(req, res) {
 
   try {
     const supabase = getSupabaseAdminClient();
+
     if (!supabase) {
       return res.status(500).json({ error: "Servern saknar SUPABASE_SERVICE_ROLE_KEY" });
     }
 
     const token = extractAuthToken(req);
+    
     if (!token) {
       return res.status(401).json({ error: "Missing token" });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const companyId = decoded.companyId;
+    const tokenType = decoded.type;
 
     if (!companyId) {
       return res.status(401).json({ error: "Invalid token" });
     }
 
-    const prepDate = normalizePrepDate(req.query.date);
+    const targetDate = typeof req.query?.date === "string" ? req.query.date : normalizePrepDate(new Date());
 
-    const { tasks, generatedFromTemplate } = await ensureTasksForDay(supabase, companyId, prepDate);
+    const { tasks, generatedFromTemplate } = await ensureTasksForDay(supabase, companyId, targetDate);
 
-    return res.status(200).json({
-      tasks,
-      prepDate,
+    const response = {
+      prepDate: targetDate,
+      tasks: Array.isArray(tasks) ? tasks : (tasks.tasks || []),
       generatedFromTemplate
-    });
+    };
+
+    return res.status(200).json(response);
   } catch (err) {
     if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
       return res.status(401).json({ error: "Din session har gått ut. Logga in igen." });

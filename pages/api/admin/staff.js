@@ -16,15 +16,21 @@ export default async function handler(req, res) {
 
     const token = extractAuthToken(req);
     
+    console.log("DEBUG: Extracted token:", token ? token.substring(0, 50) + "..." : "null");
+    
     if (!token) {
+      console.log("DEBUG: No token found in request");
       return res.status(401).json({ error: "Missing token" });
     }
 
     // Verify JWT token
+    console.log("DEBUG: Verifying JWT token...");
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("DEBUG: Decoded token:", decoded);
     const companyId = decoded.companyId;
 
     if (!companyId) {
+      console.log("DEBUG: No companyId in decoded token");
       return res.status(401).json({ error: "Invalid token" });
     }
 
@@ -41,17 +47,22 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
       try {
+        console.log("DEBUG: Fetching staff with companyId:", companyId);
+        
         const { data: staff, error: staffError } = await supabase
           .from("restaurant_staff")
           .select("id, name, email, created_at")
           .eq("company_id", companyId)
           .order("created_at", { ascending: false });
 
+        console.log("DEBUG: Supabase response:", { staff, staffError });
+
         if (staffError) {
           console.error("Staff fetch error:", staffError);
           return res.status(500).json({ error: "Kunde inte hämta personal" });
         }
 
+        console.log("DEBUG: Returning staff:", staff || []);
         res.status(200).json({ staff: staff || [] });
       } catch (err) {
         console.error("Staff GET error:", err);

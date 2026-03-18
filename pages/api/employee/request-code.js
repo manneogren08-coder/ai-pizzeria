@@ -76,7 +76,6 @@ async function getStaffByEmailAndCompany(email, companyId) {
     .single();
 
   if (error) {
-    console.error("Staff lookup error:", error);
     return null;
   }
 
@@ -84,22 +83,13 @@ async function getStaffByEmailAndCompany(email, companyId) {
 }
 
 async function getStaffByEmail(email) {
-  console.log("DEBUG: Supabase client config:", {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "present" : "missing",
-    serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ? "present" : "missing"
-  });
-  
   const { data, error } = await supabaseAdmin
     .from("restaurant_staff")
-    .select("*")
+    .select("*, companies(id, name)")
     .eq("email", email)
     .maybeSingle();
 
-  console.log("RAW Supabase response:", { data, error });
-  
   if (error) {
-    console.error("Staff lookup error:", error);
     return null;
   }
 
@@ -215,16 +205,11 @@ export default async function handler(req, res) {
     }
 
     // Check if staff member exists in restaurant_staff table (no company_id filter - we'll find the first match)
-    console.log("DEBUG: Looking for staff with email:", email);
     const staff = await getStaffByEmail(email);
-    console.log("DEBUG: Staff lookup result:", { staff });
     
     if (!staff) {
-      console.log("DEBUG: Staff not found, returning 401 error");
       return res.status(401).json({ error: "Din e-post är inte registrerad. Kontakta din chef." });
     }
-
-    console.log("DEBUG: Staff found:", { company_id: staff.company_id, email: staff.email, name: staff.name });
 
     const loginCode = generateOtpCode();
     const loginCodeHash = await bcrypt.hash(loginCode, 10);
@@ -255,7 +240,6 @@ export default async function handler(req, res) {
     });
 
     if (!emailResult.sent && process.env.NODE_ENV === "production") {
-      console.error("OTP email send failed:", emailResult);
       return res.status(502).json({ error: getOtpSendErrorMessage(emailResult) });
     }
 
@@ -273,7 +257,6 @@ export default async function handler(req, res) {
         : {})
     });
   } catch (err) {
-    console.error("Employee request-code error:", err);
     return res.status(500).json({ error: "Serverfel" });
   }
 }

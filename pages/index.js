@@ -68,7 +68,8 @@ function emptyPrepTemplateRow() {
     title: "",
     priority: "medium",
     station: "",
-    due_time: ""
+    due_time: "",
+    assigned_to: ""
   };
 }
 
@@ -86,7 +87,8 @@ function parsePrepTemplateText(templateText) {
         title: parts[0] || "",
         priority: normalizeTemplatePriority(parts[1]),
         station: String(parts[2] || "").trim(),
-        due_time: normalizeTemplateDueTime(parts[3])
+        due_time: normalizeTemplateDueTime(parts[3]),
+        assigned_to: String(parts[4] || "").trim()
       };
     })
     .filter((row) => row.title);
@@ -100,10 +102,11 @@ function serializePrepTemplateRows(rows) {
       title: String(row?.title || "").trim(),
       priority: normalizeTemplatePriority(row?.priority),
       station: String(row?.station || "").trim(),
-      due_time: normalizeTemplateDueTime(row?.due_time)
+      due_time: normalizeTemplateDueTime(row?.due_time),
+      assigned_to: String(row?.assigned_to || "").trim()
     }))
     .filter((row) => row.title)
-    .map((row) => [row.title, row.priority, row.station, row.due_time].join(" | "))
+    .map((row) => [row.title, row.priority, row.station, row.due_time, row.assigned_to].join(" | "))
     .join("\n");
 }
 
@@ -234,6 +237,14 @@ function serializeRecipesRows(rows) {
     .join("\n\n");
 }
 
+function parseJwt(token) {
+  try {
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch (e) {
+    return null;
+  }
+}
+
 export default function Home() {
   const router = useRouter();
   const emptyDetails = {
@@ -321,6 +332,7 @@ export default function Home() {
   const [prepBulkUpdating, setPrepBulkUpdating] = useState(false);
   const [prepOnlyOpen, setPrepOnlyOpen] = useState(false);
   const [prepStationFilter, setPrepStationFilter] = useState("all");
+  const [showMyPrepTasks, setShowMyPrepTasks] = useState(false);
   const [staffList, setStaffList] = useState([]);
   const [staffLoading, setStaffLoading] = useState(false);
   const [newStaffEmail, setNewStaffEmail] = useState("");
@@ -549,6 +561,7 @@ export default function Home() {
     if (!token) return;
 
     const requestedDate = typeof targetDate === "string" ? targetDate : getTodayDateString();
+    
     setPrepLoading(true);
     setPrepError("");
 
@@ -569,14 +582,18 @@ export default function Home() {
       }
 
       setPrepDate(data?.prepDate || requestedDate);
-      setPrepTasks(Array.isArray(data?.tasks) ? data.tasks : []);
-    } catch {
+      
+      // Extract tasks correctly from API response
+      const tasks = data.tasks || [];
+      
+      setPrepTasks(tasks);
+    } catch (err) {
       setPrepError("Kunde inte hämta dagens prep.");
       setPrepTasks([]);
+    } finally {
+      setPrepLoading(false);
     }
-
-    setPrepLoading(false);
-  }, [token]);
+  }, [token, showMyPrepTasks]);
 
   const savePrepTemplate = async () => {
     if (!token || prepTemplateLoading) return;
@@ -617,6 +634,34 @@ export default function Home() {
     }
 
     setPrepTemplateLoading(false);
+  };
+
+  const assignPrepTask = async (taskId, assignedTo) => {
+    if (!token) return;
+    
+    try {
+      const res = await fetch("/api/prep/assign", {
+        method: "POST",
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ taskId, assignedTo })
+      });
+      
+      if (res.ok) {
+        // Update local state to reflect the change
+        setPrepTasks(prev => prev.map(task => 
+          task.id === taskId ? { ...task, assigned_to: assignedTo } : task
+        ));
+        showToast("Uppgift tilldelad", "success");
+      } else {
+        const data = await res.json();
+        showToast(data.error || "Kunde inte uppdatera tilldelning", "error");
+      }
+    } catch (err) {
+      showToast("Kunde inte uppdatera tilldelning", "error");
+    }
   };
 
   const togglePrepTask = async (taskId, isDone) => {
@@ -732,10 +777,23 @@ export default function Home() {
   }, [chat, loading]);
 
   useEffect(() => {
-    if (showAdmin && adminTab === "staff") {
+    if (showAdmin && (adminTab === "staff" || adminTab === "prep")) {
       fetchStaffList();
     }
   }, [showAdmin, adminTab]);
+
+  useEffect(() => {
+    // Load showMyPrepTasks from localStorage
+    const saved = localStorage.getItem("showMyPrepTasks");
+    if (saved !== null) {
+      setShowMyPrepTasks(JSON.parse(saved));
+    }
+  }, []);
+
+  useEffect(() => {
+    // Save showMyPrepTasks to localStorage
+    localStorage.setItem("showMyPrepTasks", JSON.stringify(showMyPrepTasks));
+  }, [showMyPrepTasks]);
 
   useEffect(() => {
     if (!router.isReady || !company?.is_admin) {
@@ -1238,7 +1296,21 @@ export default function Home() {
   };
 
   const fetchStaffList = async () => {
-    if (!token || !company) return;
+    console.log("DEBUG: Starting fetchStaffList");
+    console.log("DEBUG: Token exists:", !!token);
+    console.log("DEBUG: Token value:", token ? token.substring(0, 50) + "..." : "null");
+    console.log("DEBUG: Company exists:", !!company);
+    
+    if (!token || !company) {
+      console.log("DEBUG: Missing token or company, returning early");
+      return;
+    }
+    
+    console.log("DEBUG: Fetching staff list with token and company:", { 
+      hasToken: !!token, 
+      companyId: company.id,
+      companyName: company.name 
+    });
     
     setStaffLoading(true);
     try {
@@ -1246,11 +1318,19 @@ export default function Home() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
+      console.log("DEBUG: Staff API response status:", res.status);
+      console.log("DEBUG: Staff API response headers:", Object.fromEntries(res.headers.entries()));
+      
       if (res.ok) {
         const data = await res.json();
+        console.log("DEBUG: Staff API response:", data);
+        console.log("DEBUG: Setting staff list:", data.staff || []);
         setStaffList(data.staff || []);
+        console.log("DEBUG: Staff list state after setting:", data.staff || []);
       } else {
-        console.error("Failed to fetch staff list");
+        console.error("Failed to fetch staff list, status:", res.status);
+        const errorText = await res.text();
+        console.error("Error response body:", errorText);
       }
     } catch (err) {
       console.error("Staff list fetch error:", err);
@@ -1461,10 +1541,44 @@ export default function Home() {
     if (prepStationFilter !== "all" && String(task.station || "").trim() !== prepStationFilter) {
       return false;
     }
+    // Get current user email from JWT token
+    let currentUserEmail = null;
+    if (token) {
+      try {
+        const decoded = parseJwt(token);
+        currentUserEmail = decoded?.email || null;
+      } catch (err) {
+        console.error("JWT decode error:", err);
+      }
+    }
+    
+    // When "Visa mina uppgifter" is enabled, show only tasks assigned to current user
+    if (showMyPrepTasks && (!task.assigned_to || task.assigned_to !== currentUserEmail)) {
+      return false;
+    }
     return true;
   });
 
   const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
+    // First, prioritize tasks assigned to current user
+    let currentUserEmail = null;
+    if (token) {
+      try {
+        const decoded = parseJwt(token);
+        currentUserEmail = decoded?.email || null;
+      } catch (err) {
+        console.error("JWT decode error:", err);
+      }
+    }
+    
+    const aIsAssignedToMe = a.assigned_to === currentUserEmail;
+    const bIsAssignedToMe = b.assigned_to === currentUserEmail;
+    
+    if (aIsAssignedToMe !== bIsAssignedToMe) {
+      return aIsAssignedToMe ? -1 : 1;
+    }
+    
+    // Then sort by completion status
     if (a.is_done !== b.is_done) {
       return a.is_done ? 1 : -1;
     }
@@ -1472,17 +1586,22 @@ export default function Home() {
     const priorityOrder = { high: 0, medium: 1, low: 2 };
     const aPriority = priorityOrder[String(a.priority || "medium").toLowerCase()] ?? 1;
     const bPriority = priorityOrder[String(b.priority || "medium").toLowerCase()] ?? 1;
+
     if (aPriority !== bPriority) {
       return aPriority - bPriority;
     }
 
-    const aTime = dueTimeSortValue(a.due_time);
-    const bTime = dueTimeSortValue(b.due_time);
-    if (aTime !== bTime) {
-      return aTime - bTime;
+    const aDueTime = String(a.due_time || "").trim();
+    const bDueTime = String(b.due_time || "").trim();
+
+    if (aDueTime && bDueTime) {
+      return aDueTime.localeCompare(bDueTime);
     }
 
-    return (a.sort_order || 0) - (b.sort_order || 0);
+    if (aDueTime) return -1;
+    if (bDueTime) return 1;
+
+    return 0;
   });
 
   const filteredCompletedPrepCount = visiblePrepTasks.filter((task) => task.is_done).length;
@@ -2684,6 +2803,7 @@ export default function Home() {
                           <th style={styles.prepTemplateTh}>Stress</th>
                           <th style={styles.prepTemplateTh}>Station</th>
                           <th style={styles.prepTemplateTh}>Klar tid</th>
+                          <th style={styles.prepTemplateTh}>Tilldelad till</th>
                           <th style={styles.prepTemplateTh}>Ta bort</th>
                         </tr>
                       </thead>
@@ -2728,6 +2848,21 @@ export default function Home() {
                                 onChange={(e) => updatePrepTemplateRow(index, "due_time", e.target.value)}
                                 disabled={prepTemplateLoading}
                               />
+                            </td>
+                            <td style={styles.prepTemplateTd}>
+                              <select
+                                style={styles.prepTemplateSelect}
+                                value={row.assigned_to || ""}
+                                onChange={(e) => updatePrepTemplateRow(index, "assigned_to", e.target.value)}
+                                disabled={prepTemplateLoading}
+                              >
+                                <option value="">Ej tilldelad</option>
+                                {staffList.map((staff) => (
+                                  <option key={staff.id} value={staff.email}>
+                                    {staff.name || staff.email}
+                                  </option>
+                                ))}
+                              </select>
                             </td>
                             <td style={styles.prepTemplateTd}>
                               <button
@@ -2962,6 +3097,15 @@ export default function Home() {
                 </p>
               </div>
               <div style={styles.prepHeaderActions} className="prepHeaderActionsMobile">
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={showMyPrepTasks}
+                    onChange={(e) => setShowMyPrepTasks(e.target.checked)}
+                    style={{ margin: 0 }}
+                  />
+                  <span style={{ fontSize: 14 }}>Visa mina uppgifter</span>
+                </label>
                 <button
                   style={{ ...styles.secondaryButton, padding: "10px 14px", fontSize: 14 }}
                   onClick={() => setFilteredPrepTasksDone(true)}
@@ -3045,7 +3189,8 @@ export default function Home() {
                     key={task.id} 
                     style={{
                       ...styles.prepItem,
-                      ...(task.is_done ? { opacity: 0.5, background: "#f1f5f9" } : {})
+                      ...(task.is_done ? { opacity: 0.5, background: "#f1f5f9" } : {}),
+                      ...(task.assigned_to && !task.is_done ? { borderLeft: "3px solid #2563EB" } : {})
                     }}
                     onMouseEnter={(e) => {
                       if (!task.is_done) {
@@ -3068,18 +3213,35 @@ export default function Home() {
                       style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
                     />
                     <div style={styles.prepItemBody}>
-                      <span style={{
-                        ...styles.prepItemText,
-                        ...(task.is_done ? styles.prepItemDone : {})
-                      }}>
-                        {task.title}
-                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                        <span style={{
+                          ...styles.prepItemText,
+                          ...(task.is_done ? styles.prepItemDone : {})
+                        }}>
+                          {task.title}
+                        </span>
+                        {task.assigned_to && !task.is_done && (
+                          <span style={{
+                            background: "#2563EB",
+                            color: "white",
+                            fontSize: 11,
+                            padding: "2px 6px",
+                            borderRadius: 4,
+                            fontWeight: 500
+                          }}>
+                            Tilldelad till dig
+                          </span>
+                        )}
+                      </div>
                       <div style={styles.prepMetaRow}>
                         <span style={{ ...styles.prepMetaChip, ...priorityMeta.style }}>
                           Prioritet: {priorityMeta.label}
                         </span>
                         {stationText && <span style={styles.prepMetaChip}>Station: {stationText}</span>}
                         {dueTimeText && <span style={styles.prepMetaChip}>Klar före {dueTimeText}</span>}
+                        {task.assigned_to && (
+                          <span style={styles.prepMetaChip}>Tilldelad: {task.assigned_to}</span>
+                        )}
                       </div>
                     </div>
                   </label>

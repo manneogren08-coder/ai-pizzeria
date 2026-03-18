@@ -50,7 +50,8 @@ function toTemplateTasks(templateText) {
         title,
         priority: normalizePriority(parts[1]),
         station: String(parts[2] || "").trim().slice(0, 60),
-        due_time: normalizeDueTime(parts[3])
+        due_time: normalizeDueTime(parts[3]),
+        assigned_to: String(parts[4] || "").trim()
       };
     })
     .filter((task) => Boolean(task.title))
@@ -175,7 +176,8 @@ export default async function handler(req, res) {
           station: task.station,
           due_time: task.due_time,
           is_done: false,
-          sort_order: index
+          sort_order: index,
+          assigned_to: task.assigned_to || null
         }));
 
         const { error: insertError } = await supabase
