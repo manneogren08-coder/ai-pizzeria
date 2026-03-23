@@ -860,7 +860,7 @@ export default function Home() {
 
   const login = async () => {
     if (!companyIdentifier.trim()) {
-      setError("Skriv in företags-id eller företagsnamn");
+      setError("Skriv in restaurangens namn");
       return;
     }
 
@@ -1725,7 +1725,7 @@ export default function Home() {
             }
 
             .loginCard {
-              padding: 18px !important;
+              padding: "25px 18px 18px" !important;
               border-radius: 14px !important;
             }
 
@@ -1785,9 +1785,14 @@ export default function Home() {
                     setLoginMode("company");
                     setError("");
                     requestAnimationFrame(() => {
-                      const field = document.querySelector('input[placeholder="Företags-id eller företagsnamn"]');
+                      const field = document.querySelector('input[placeholder="Restaurangens namn"]');
                       if (field && typeof field.focus === "function") {
                         field.focus();
+                      }
+                      // Auto-scroll to login section
+                      const loginSection = document.getElementById('login-section');
+                      if (loginSection) {
+                        loginSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       }
                     });
                   }}
@@ -1801,6 +1806,17 @@ export default function Home() {
                   onClick={() => {
                     setLoginMode("employee");
                     setError("");
+                    requestAnimationFrame(() => {
+                      const field = document.querySelector('input[placeholder="Din e-post"]');
+                      if (field && typeof field.focus === "function") {
+                        field.focus();
+                      }
+                      // Auto-scroll to login section
+                      const loginSection = document.getElementById('login-section');
+                      if (loginSection) {
+                        loginSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    });
                   }}
                 >
                   Personal-login
@@ -1823,7 +1839,7 @@ export default function Home() {
               </div>
             </section>
 
-            <section style={styles.loginCard} className="loginCard">
+            <div id="login-section" style={styles.loginCard} className="loginCard">
               <h2 style={{ marginBottom: 6, color: "#0f172a" }}>Intern personalguide</h2>
               <p style={styles.subtitle}>Välj inloggningssätt</p>
 
@@ -1863,7 +1879,7 @@ export default function Home() {
                   style={styles.input}
                   className="chatInput"
                   type="text"
-                  placeholder="Företags-id eller företagsnamn"
+                  placeholder="Restaurangens namn"
                   value={companyIdentifier}
                   onChange={e => setCompanyIdentifier(e.target.value)}
                   disabled={loading}
@@ -1964,15 +1980,18 @@ export default function Home() {
               >
                 {loading ? "Loggar in..." : loginMode === "company" ? "Logga in" : "Logga in med kod"}
               </button>
-            </section>
+            </div>
           </div>
 
           <section style={styles.faqSection}>
             <h3 style={styles.faqTitle}>Vanliga frågor</h3>
             <div className="faqGrid" style={styles.faqGrid}>
-              {landingFaqs.map((item) => (
+              {landingFaqs.map((item, index) => (
                 <details key={item.question} style={styles.faqItem}>
-                  <summary style={styles.faqSummary}>{item.question}</summary>
+                  <summary 
+                    className={`faqSummary faq-${index}`} 
+                    style={styles.faqSummary}
+                  >{item.question}</summary>
                   <p style={styles.faqAnswer}>{item.answer}</p>
                 </details>
               ))}
@@ -2005,7 +2024,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section style={styles.contactSection}>
+          <section id="contact-section" style={styles.contactSection}>
             <h2 style={styles.contactTitle}>Intresserad? Hör av dig</h2>
             <form style={styles.contactForm} onSubmit={handleContactSubmit}>
               <input
@@ -2066,9 +2085,14 @@ export default function Home() {
                   setLoginMode("company");
                   setError("");
                   requestAnimationFrame(() => {
-                    const field = document.querySelector('input[placeholder="Företags-id eller företagsnamn"]');
+                    const field = document.querySelector('input[placeholder="Restaurangens namn"]');
                     if (field && typeof field.focus === "function") {
                       field.focus();
+                    }
+                    // Auto-scroll to login section
+                    const loginSection = document.getElementById('login-section');
+                    if (loginSection) {
+                      loginSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
                   });
                 }}
@@ -2078,14 +2102,10 @@ export default function Home() {
               <button
                 style={styles.ctaButtonSecondary}
                 onClick={() => {
-                  setLoginMode("company");
-                  setError("");
-                  requestAnimationFrame(() => {
-                    const field = document.querySelector('input[placeholder="Företags-id eller företagsnamn"]');
-                    if (field && typeof field.focus === "function") {
-                      field.focus();
-                    }
-                  });
+                  const contactSection = document.getElementById('contact-section');
+                  if (contactSection) {
+                    contactSection.scrollIntoView({ behavior: 'smooth' });
+                  }
                 }}
               >
                 Boka demo
@@ -3220,7 +3240,12 @@ export default function Home() {
                         }}>
                           {task.title}
                         </span>
-                        {task.assigned_to && !task.is_done && (
+                        {(() => {
+                          const decoded = parseJwt(token);
+                          const isEmployee = decoded?.type === 'employee';
+                          const currentUserEmail = decoded?.email || null;
+                          return task.assigned_to && !task.is_done && isEmployee && task.assigned_to === currentUserEmail;
+                        })() && (
                           <span style={{
                             background: "#2563EB",
                             color: "white",
@@ -3480,7 +3505,7 @@ const styles = {
 
   loginCard: {
     background: "#ffffff",
-    padding: 30,
+    padding: "35px 30px 30px",
     borderRadius: 16,
     width: "100%",
     maxWidth: 430,
@@ -3522,16 +3547,19 @@ const styles = {
     border: "1px solid #d1d5db",
     background: "#fff",
     color: "#374151",
-    borderRadius: 10,
-    padding: "10px 12px",
-    fontWeight: 600,
-    cursor: "pointer"
+    padding: "10px 16px",
+    borderRadius: 8,
+    fontSize: 15,
+    fontWeight: 500,
+    cursor: "pointer",
+    transition: "all 0.2s ease-in-out"
   },
 
   loginModeButtonActive: {
     background: "#2563eb",
     color: "#fff",
-    borderColor: "#2563eb"
+    borderColor: "#2563eb",
+    transition: "all 0.2s ease-in-out"
   },
 
   employeeLoginHint: {
@@ -3609,7 +3637,25 @@ const styles = {
     fontWeight: 700,
     color: "#1e3a8a",
     fontSize: 15,
-    lineHeight: 1.35
+    lineHeight: 1.35,
+    listStyle: "none",
+    position: "relative",
+    paddingLeft: "25px",
+    transition: "all 0.2s ease-in-out",
+    "&::before": {
+      content: '"+"',
+      position: "absolute",
+      left: 0,
+      top: "50%",
+      transform: "translateY(-50%)",
+      fontSize: "18px",
+      fontWeight: "bold",
+      color: "#2563eb",
+      transition: "transform 0.2s ease-in-out"
+    },
+    "&::-webkit-details-marker": {
+      display: "none"
+    }
   },
 
   faqAnswer: {
@@ -3647,7 +3693,8 @@ const styles = {
     borderRadius: 16,
     padding: 20,
     boxShadow: "0 4px 16px rgba(37,99,235,0.06)",
-    transition: "transform 0.2s, box-shadow 0.2s"
+    transition: "transform 0.2s, box-shadow 0.2s",
+    overflow: "hidden"
   },
 
   featureIcon: {
@@ -3675,7 +3722,8 @@ const styles = {
     margin: 0,
     color: "#475569",
     fontSize: 14,
-    lineHeight: 1.5
+    lineHeight: 1.5,
+    wordWrap: "break-word"
   },
 
   contactSection: {
