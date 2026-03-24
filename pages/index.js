@@ -1736,6 +1736,9 @@ export default function Home() {
 
             .featureCard {
               padding: 16px !important;
+              overflow: hidden !important;
+              word-wrap: break-word !important;
+              hyphens: auto !important;
             }
 
             .contactSection {
@@ -1755,6 +1758,30 @@ export default function Home() {
             .footerLinks {
               flex-direction: column;
               gap: 8px !important;
+            }
+
+            .appHeaderActions {
+              flex-direction: row !important;
+              gap: 6px !important;
+              flex-wrap: wrap !important;
+            }
+
+            .logoutButton {
+              padding: "8px 12px" !important;
+              font-size: 12px !important;
+              border-radius: 6px !important;
+              min-width: auto !important;
+              flex: 1 !important;
+              white-space: nowrap !important;
+            }
+
+            .chatAreaMobile {
+              padding: 8px !important;
+            }
+
+            .emptyStateCard {
+              margin: "0 auto" !important;
+              padding: "10px 14px" !important;
             }
           }
         `}</style>
