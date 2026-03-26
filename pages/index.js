@@ -593,7 +593,7 @@ export default function Home() {
     } finally {
       setPrepLoading(false);
     }
-  }, [token, showMyPrepTasks]);
+  }, [token]);
 
   const savePrepTemplate = async () => {
     if (!token || prepTemplateLoading) return;
@@ -1739,6 +1739,13 @@ export default function Home() {
               overflow: hidden !important;
               word-wrap: break-word !important;
               hyphens: auto !important;
+            }
+
+            .featureTitle {
+              word-wrap: break-word !important;
+              overflow-wrap: break-word !important;
+              hyphens: auto !important;
+              max-width: 100% !important;
             }
 
             .contactSection {
@@ -3742,7 +3749,8 @@ const styles = {
     fontSize: 18,
     color: "#0f172a",
     fontWeight: 700,
-    lineHeight: 1.3
+    lineHeight: 1.3,
+    wordWrap: "break-word"
   },
 
   featureDescription: {
