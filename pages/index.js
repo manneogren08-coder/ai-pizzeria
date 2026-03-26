@@ -2052,7 +2052,7 @@ export default function Home() {
               </div>
               <div style={styles.featureCard}>
                 <div style={styles.featureIcon}>📊</div>
-                <h3 style={styles.featureTitle}>Chefsdashboard</h3>
+                <h3 style={styles.featureTitle}>Chefs-dashboard</h3>
                 <p style={styles.featureDescription}>Full kontroll över personal, rutiner och innehåll. Se vad som fungerar och uppdatera enkelt på ett ställe.</p>
               </div>
             </div>
