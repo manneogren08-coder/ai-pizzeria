@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
+import { canAccessPrep, getRoleDescription } from "../lib/roles.js";
 
 const ADMIN_TABS = ["info", "menu", "recipes", "routines", "prep", "staff", "security", "stats"];
 
@@ -300,10 +301,12 @@ export default function Home() {
   const [companyIdentifier, setCompanyIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [employeeEmail, setEmployeeEmail] = useState("");
-  const [employeeName, setEmployeeName] = useState("");
   const [employeeCode, setEmployeeCode] = useState("");
   const [employeeLoginStep, setEmployeeLoginStep] = useState("request");
+  const [codeRequestTime, setCodeRequestTime] = useState(null);
+  const [showLoginButton, setShowLoginButton] = useState(false);
   const [company, setCompany] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [isRestoringSession, setIsRestoringSession] = useState(true);
   const [question, setQuestion] = useState("");
   const [chat, setChat] = useState([]);
@@ -337,6 +340,7 @@ export default function Home() {
   const [staffLoading, setStaffLoading] = useState(false);
   const [newStaffEmail, setNewStaffEmail] = useState("");
   const [newStaffName, setNewStaffName] = useState("");
+  const [newStaffRole, setNewStaffRole] = useState("member");
   const [recipeRows, setRecipeRows] = useState([emptyRecipeRow()]);
   const [savedRecipeRows, setSavedRecipeRows] = useState([emptyRecipeRow()]);
   const [selectedRecipeId, setSelectedRecipeId] = useState("");
@@ -376,11 +380,22 @@ export default function Home() {
   }, [router]);
 
   const logout = useCallback(() => {
+    // Clear all user data
     setCompany(null);
-    setToken("");
+    setUserRole(null);
     setChat([]);
+    
+    // Clear all admin-related states to prevent access after logout
+    setShowAdmin(false);
+    setAdminPasswordPrompt(false);
+    setAdminPassword("");
+    setAdminTab("info");
+    
+    // Clear localStorage
     localStorage.removeItem("token");
     localStorage.removeItem("company");
+    
+    // Sync admin route to false
     syncAdminRoute(false);
   }, [syncAdminRoute]);
 
@@ -593,7 +608,7 @@ export default function Home() {
     } finally {
       setPrepLoading(false);
     }
-  }, [token]);
+  }, [token, showPrep]);
 
   const savePrepTemplate = async () => {
     if (!token || prepTemplateLoading) return;
@@ -782,6 +797,40 @@ export default function Home() {
     }
   }, [showAdmin, adminTab]);
 
+  // Timer for showing login button after 30 seconds
+  useEffect(() => {
+    if (codeRequestTime && employeeLoginStep === "request") {
+      const timer = setTimeout(() => {
+        setShowLoginButton(true);
+      }, 30000); // 30 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [codeRequestTime, employeeLoginStep]);
+
+  // Role-based admin access control - prevents admin panel from showing for non-admin users
+  useEffect(() => {
+    if (company && token) {
+      try {
+        // Check if current user should have admin access
+        const shouldHaveAdminAccess = company.is_admin;
+        
+        // If admin panel is showing but user shouldn't have access, hide it
+        if (showAdmin && !shouldHaveAdminAccess) {
+          setShowAdmin(false);
+          setAdminPasswordPrompt(false);
+          syncAdminRoute(false);
+          showToast("Admin-åtkomst kräver administratörsrättigheter", "info");
+        }
+      } catch (err) {
+        // If token is invalid, hide admin
+        setShowAdmin(false);
+        setAdminPasswordPrompt(false);
+        syncAdminRoute(false);
+      }
+    }
+  }, [company?.is_admin, showAdmin, token]);
+
   useEffect(() => {
     // Load showMyPrepTasks from localStorage
     const saved = localStorage.getItem("showMyPrepTasks");
@@ -889,6 +938,14 @@ export default function Home() {
 
       setToken(data.token);
       setCompany(data.company);
+      setUserRole(data.company.role || (data.company.is_admin ? 'owner' : 'member'));
+      
+      // Clear admin states when new user logs in to prevent cross-user access
+      setShowAdmin(false);
+      setAdminPasswordPrompt(false);
+      setAdminPassword("");
+      setAdminTab("info");
+      
       localStorage.setItem("token", data.token);
       localStorage.setItem("company", JSON.stringify(data.company));
     } catch {
@@ -901,11 +958,6 @@ export default function Home() {
   const requestEmployeeCode = async () => {
     if (!employeeEmail.trim()) {
       setError("Ange din e-postadress");
-      return;
-    }
-
-    if (!employeeName.trim()) {
-      setError("Ange ditt namn");
       return;
     }
 
@@ -923,8 +975,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: employeeEmail.trim().toLowerCase(),
-          name: employeeName.trim()
+          email: employeeEmail.trim().toLowerCase()
         })
       });
 
@@ -936,11 +987,19 @@ export default function Home() {
         return;
       }
 
-      setEmployeeLoginStep("code");
-      setError("");
-      setEmployeeCode("");
-      const debugHint = data?.debugCode ? ` Testkod: ${data.debugCode}` : "";
-      showToast(`Kod skickad till ${employeeEmail}.${debugHint}`, "info");
+      if (res.ok) {
+        setEmployeeLoginStep("code");
+        setCodeRequestTime(Date.now());
+        setShowLoginButton(false);
+        setEmployeeCode("");
+        setError("");
+        const debugHint = data?.debugCode ? ` Testkod: ${data.debugCode}` : "";
+        showToast(`Kod skickad till ${employeeEmail}.${debugHint}`, "info");
+      } else {
+        setError("Ett fel uppstod. Försök igen.");
+      }
+
+      setLoading(false);
     } catch {
       setError("Ett fel uppstod. Försök igen.");
     }
@@ -983,10 +1042,19 @@ export default function Home() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("company", JSON.stringify(data.company));
       setCompany(data.company);
+      setUserRole(data.company.role || 'member');
+      
+      // Clear admin states when employee logs in to prevent access issues
+      setShowAdmin(false);
+      setAdminPasswordPrompt(false);
+      setAdminPassword("");
+      setAdminTab("info");
+      
       setEmployeeLoginStep("request");
       setEmployeeEmail("");
-      setEmployeeName("");
       setEmployeeCode("");
+      setCodeRequestTime(null);
+      setShowLoginButton(false);
       
       // Debug logging
       console.log("DEBUG: Login successful - Company data:", data.company);
@@ -1362,7 +1430,8 @@ export default function Home() {
         },
         body: JSON.stringify({
           email: newStaffEmail.trim().toLowerCase(),
-          name: newStaffName.trim() || null
+          name: newStaffName.trim() || null,
+          role: newStaffRole
         })
       });
       
@@ -1372,6 +1441,7 @@ export default function Home() {
         showToast("Personal tillagd", "success");
         setNewStaffEmail("");
         setNewStaffName("");
+        setNewStaffRole("member");
         fetchStaffList();
       } else {
         showToast(data.error || "Kunde inte lägga till personal", "error");
@@ -1409,13 +1479,54 @@ export default function Home() {
     }
   };
 
+  // Helper function to get staff name by email
+  const getStaffNameByEmail = (email) => {
+    const staff = staffList.find(s => s.email === email);
+    return staff ? (staff.name || email) : email;
+  };
+
+  const updateStaffRole = async (staffId, newRole) => {
+    if (!token || !company) return;
+    
+    try {
+      const res = await fetch("/api/admin/staff", {
+        method: "PUT",
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ id: staffId, role: newRole })
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        showToast("Roll uppdaterad", "success");
+        fetchStaffList();
+      } else {
+        showToast(data.error || "Kunde inte uppdatera roll", "error");
+      }
+    } catch (err) {
+      console.error("Update staff role error:", err);
+      showToast("Kunde inte uppdatera roll", "error");
+    }
+  };
+
   const handlePrepClick = () => {
     const nextShowPrep = !showPrep;
+    
+    // Check if user has permission to access prep
+    if (nextShowPrep && !canAccessPrep(userRole)) {
+      showToast("Du har inte behörighet att se Mise en place", "error");
+      return;
+    }
+    
     setShowPrep(nextShowPrep);
     setShowAdmin(false);
     setAdminPasswordPrompt(false);
     syncAdminRoute(false);
 
+    // Always fetch tasks when opening prep view
     if (nextShowPrep) {
       fetchPrepTasks(prepDate);
     }
@@ -1864,11 +1975,15 @@ export default function Home() {
               </div>
 
               <div className="heroPulse" style={styles.heroVisualCard}>
-                <p style={styles.heroVisualTitle}>Dagens prep</p>
+                <p style={styles.heroVisualTitle}>Mise en place / Dagens Prepp</p>
+                <p style={{ ...styles.helperText, margin: "0 0 12px 0", fontSize: 13 }}>
+                  Chefer och anställda kan redigera när som helst "ifall anställda fått behörigheten"
+                </p>
                 <ul style={styles.heroVisualList}>
-                  <li>Degjäsning kontrollerad 09:00</li>
-                  <li>Allergenlista verifierad inför lunch</li>
-                  <li>Specialsås uppdaterad i receptbanken</li>
+                  <li>🥔 Koka potatis för kvällen</li>
+                  <li>🥪 Fyll på bakverk i disken</li>
+                  <li>🍽 Ta disken och sortera bestick</li>
+                  <li>🧹 Dammsug golvet i köket</li>
                 </ul>
               </div>
             </section>
@@ -1954,20 +2069,10 @@ export default function Home() {
                         disabled={loading}
                       />
 
-                      <input
-                        style={styles.input}
-                        className="chatInput"
-                        type="text"
-                        placeholder="Ditt namn"
-                        value={employeeName}
-                        onChange={e => setEmployeeName(e.target.value)}
-                        disabled={loading}
-                      />
-
                       <button
                         style={{ ...styles.secondaryButton, width: "100%", marginBottom: 10 }}
                         onClick={requestEmployeeCode}
-                        disabled={loading}
+                        disabled={loading || employeeLoginStep === "code"}
                       >
                         {loading ? "Skickar kod..." : "Skicka engångskod"}
                       </button>
@@ -1986,15 +2091,13 @@ export default function Home() {
                         autoFocus
                       />
 
-                      {process.env.NODE_ENV === "development" && (
-                        <p style={styles.employeeLoginHint}>
-                          Obs: <code>demo</code> fungerar endast lokalt i development.
-                        </p>
-                      )}
-
                       <button
                         style={{ ...styles.secondaryButton, width: "100%", marginBottom: 10 }}
-                        onClick={() => setEmployeeLoginStep("request")}
+                        onClick={() => {
+                          setEmployeeLoginStep("request");
+                          setCodeRequestTime(null);
+                          setShowLoginButton(false);
+                        }}
                         disabled={loading}
                       >
                         Tillbaka
@@ -2006,14 +2109,16 @@ export default function Home() {
 
               {error && <p style={styles.error}>{error}</p>}
 
-              <button
-                style={styles.primaryButton}
-                className="primaryButton"
-                onClick={loginMode === "company" ? login : loginWithEmployeeCode}
-                disabled={loading}
-              >
-                {loading ? "Loggar in..." : loginMode === "company" ? "Logga in" : "Logga in med kod"}
-              </button>
+              {!(loginMode === "employee" && employeeLoginStep === "request") && (
+                <button
+                  style={styles.primaryButton}
+                  className="primaryButton"
+                  onClick={loginMode === "company" ? login : loginWithEmployeeCode}
+                  disabled={loading}
+                >
+                  {loading ? "Loggar in..." : "Logga in"}
+                </button>
+              )}
             </div>
           </div>
 
@@ -2314,11 +2419,11 @@ export default function Home() {
       )}
       <header style={styles.header} className="appHeader">
         <div>
-          <h2 style={{ margin: 0 }}>{company.name}</h2>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{company.name}</h2>
           <span style={styles.headerSub}>STAFFGUIDE</span>
         </div>
 
-        <div style={{ display: "flex", gap: 12 }} className="appHeaderActions">
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }} className="appHeaderActions">
           <button
             style={{
               ...styles.logoutButton,
@@ -2971,7 +3076,7 @@ export default function Home() {
                   {/* Add new staff */}
                   <div style={{ background: "#f8fafc", padding: 20, borderRadius: 12, marginBottom: 24 }}>
                     <h4 style={{ margin: "0 0 16px", fontSize: 16, color: "#374151" }}>Lägg till ny personal</h4>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
                       <input
                         style={styles.input}
                         type="email"
@@ -2988,6 +3093,17 @@ export default function Home() {
                         onChange={e => setNewStaffName(e.target.value)}
                         disabled={staffLoading}
                       />
+                      <select
+                        style={styles.input}
+                        value={newStaffRole}
+                        onChange={e => setNewStaffRole(e.target.value)}
+                        disabled={staffLoading}
+                      >
+                        <option value="owner">Owner</option>
+                        <option value="admin">Admin</option>
+                        <option value="editor">Editor</option>
+                        <option value="member">Member</option>
+                      </select>
                     </div>
                     <button
                       style={styles.primaryButton}
@@ -3012,6 +3128,7 @@ export default function Home() {
                             <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
                               <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#374151" }}>Namn</th>
                               <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#374151" }}>E-post</th>
+                              <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#374151" }}>Roll</th>
                               <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#374151" }}>Tillagd datum</th>
                               <th style={{ padding: "12px 16px", textAlign: "right", fontSize: 14, fontWeight: 600, color: "#374151" }}>Åtgärd</th>
                             </tr>
@@ -3023,6 +3140,29 @@ export default function Home() {
                                   {staff.name || <span style={{ color: "#9ca3af", fontStyle: "italic" }}>Ej namngiven</span>}
                                 </td>
                                 <td style={{ padding: "12px 16px", color: "#2563eb", fontSize: 14 }}>{staff.email}</td>
+                                <td style={{ padding: "12px 16px" }}>
+                                  <select
+                                    value={staff.role || 'member'}
+                                    onChange={(e) => updateStaffRole(staff.id, e.target.value)}
+                                    style={{
+                                      padding: "6px 8px",
+                                      borderRadius: 6,
+                                      border: "1px solid #d1d5db",
+                                      fontSize: 13,
+                                      color: "#374151",
+                                      backgroundColor: "#ffffff",
+                                      cursor: "pointer"
+                                    }}
+                                  >
+                                    <option value="owner">Owner</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="editor">Editor</option>
+                                    <option value="member">Member</option>
+                                  </select>
+                                  <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4, lineHeight: 1.3 }}>
+                                    {getRoleDescription(staff.role || 'member')}
+                                  </div>
+                                </td>
                                 <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: 14 }}>
                                   {new Date(staff.created_at).toLocaleDateString("sv-SE")}
                                 </td>
@@ -3299,7 +3439,7 @@ export default function Home() {
                         {stationText && <span style={styles.prepMetaChip}>Station: {stationText}</span>}
                         {dueTimeText && <span style={styles.prepMetaChip}>Klar före {dueTimeText}</span>}
                         {task.assigned_to && (
-                          <span style={styles.prepMetaChip}>Tilldelad: {task.assigned_to}</span>
+                          <span style={styles.prepMetaChip}>Tilldelad: {getStaffNameByEmail(task.assigned_to)}</span>
                         )}
                       </div>
                     </div>

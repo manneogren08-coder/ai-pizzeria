@@ -43,6 +43,43 @@ const answerCacheMap = new Map();
 const MAX_REQUESTS = 30;
 const WINDOW_MS = 60 * 1000;
 
+// Cache cleanup to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  let cleaned = 0;
+  
+  // Clean rate limit map
+  for (const [key, data] of rateLimitMap.entries()) {
+    if (now - data.start > WINDOW_MS) {
+      rateLimitMap.delete(key);
+      cleaned++;
+    }
+  }
+  
+  // Clean answer cache (older than 10 minutes)
+  for (const [key, data] of answerCacheMap.entries()) {
+    if (now - data.createdAt > 10 * 60 * 1000) {
+      answerCacheMap.delete(key);
+      cleaned++;
+    }
+  }
+  
+  // Force cleanup if maps get too large
+  if (rateLimitMap.size > 1000) {
+    rateLimitMap.clear();
+    cleaned++;
+  }
+  
+  if (answerCacheMap.size > 1000) {
+    answerCacheMap.clear();
+    cleaned++;
+  }
+  
+  if (cleaned > 0) {
+    console.log(`Cache cleanup: removed ${cleaned} entries`);
+  }
+}, 5 * 60 * 1000); // Run every 5 minutes
+
 function extractEmbeddedOpeningRoutine(routinesText) {
   if (typeof routinesText !== "string") {
     return { cleanedRoutines: "", openingRoutine: "" };
