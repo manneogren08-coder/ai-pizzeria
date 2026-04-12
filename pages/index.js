@@ -1061,7 +1061,9 @@ export default function Home() {
       const role = data.company.role || 'member';
       console.log("DEBUG: Employee login - Setting role:", role, "from data.company:", data.company);
       console.log("DEBUG: staffData role would be:", data.company.role);
+      console.log("DEBUG: Employee login successful - about to set userRole");
       setUserRole(role);
+      console.log("DEBUG: Employee login - userRole set successfully");
       
       // Clear admin states when employee logs in to prevent access issues
       setShowAdmin(false);
