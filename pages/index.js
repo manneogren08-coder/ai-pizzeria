@@ -1033,6 +1033,7 @@ export default function Home() {
 
     try {
       console.log("DEBUG: About to call verify-code API");
+      console.log("DEBUG: Employee login step:", employeeLoginStep);
       console.log("DEBUG: Email:", employeeEmail.trim().toLowerCase());
       console.log("DEBUG: Code:", employeeCode.trim());
       
