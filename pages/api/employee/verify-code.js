@@ -126,6 +126,12 @@ export default async function handler(req, res) {
     console.log("DEBUG: Employee backend - email:", email);
     console.log("DEBUG: Employee backend - staffData:", staffData);
     console.log("DEBUG: Employee backend - staffError:", staffError);
+    
+    // Log what we're sending back to frontend
+    const responseRole = staffData?.role || 'member';
+    console.log("DEBUG: Employee backend - Sending role to frontend:", responseRole);
+    console.log("DEBUG: Employee backend - staffData?.role:", staffData?.role);
+    console.log("DEBUG: Employee backend - fallback role:", 'member');
 
     const isDevEnv = process.env.NODE_ENV !== "production";
 

@@ -1032,16 +1032,17 @@ export default function Home() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/employee/login", {
+      const res = await fetch("/api/employee/verify-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: employeeEmail.trim().toLowerCase(),
-          code: employeeCode.trim()
-        })
+        body: JSON.stringify({ email: employeeEmail.trim().toLowerCase(), code: employeeCode.trim() })
       });
 
+      console.log("DEBUG: Frontend - verify-code response status:", res.status);
+      console.log("DEBUG: Frontend - verify-code response ok:", res.ok);
+
       const data = await res.json();
+      console.log("DEBUG: Frontend - verify-code response data:", data);
 
       if (!res.ok) {
         setError(data?.error || "Felaktig kod");
