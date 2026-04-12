@@ -1032,6 +1032,10 @@ export default function Home() {
     setLoading(true);
 
     try {
+      console.log("DEBUG: About to call verify-code API");
+      console.log("DEBUG: Email:", employeeEmail.trim().toLowerCase());
+      console.log("DEBUG: Code:", employeeCode.trim());
+      
       const res = await fetch("/api/employee/verify-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
