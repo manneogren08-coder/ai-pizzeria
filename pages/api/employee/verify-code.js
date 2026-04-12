@@ -122,6 +122,11 @@ export default async function handler(req, res) {
       .eq("email", email)
       .maybeSingle();
 
+    console.log("DEBUG: Employee backend - company_id:", String(company.id));
+    console.log("DEBUG: Employee backend - email:", email);
+    console.log("DEBUG: Employee backend - staffData:", staffData);
+    console.log("DEBUG: Employee backend - staffError:", staffError);
+
     const isDevEnv = process.env.NODE_ENV !== "production";
 
     if (code.toLowerCase() === "demo") {

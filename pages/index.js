@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
-import { canAccessPrep, getRoleDescription } from "../lib/roles.js";
+import { canAccessPrep, canViewPrep, canEditPrep, canAccessAdminTab, getRoleDescription } from "../lib/roles.js";
 
 const ADMIN_TABS = ["info", "menu", "recipes", "routines", "prep", "staff", "security", "stats"];
 
@@ -797,6 +797,13 @@ export default function Home() {
     }
   }, [showAdmin, adminTab]);
 
+  useEffect(() => {
+    // Also fetch staff list when prep view is opened
+    if (showPrep && token && staffList.length === 0) {
+      fetchStaffList();
+    }
+  }, [showPrep, token, staffList.length]);
+
   // Timer for showing login button after 30 seconds
   useEffect(() => {
     if (codeRequestTime && employeeLoginStep === "request") {
@@ -938,7 +945,10 @@ export default function Home() {
 
       setToken(data.token);
       setCompany(data.company);
-      setUserRole(data.company.role || (data.company.is_admin ? 'owner' : 'member'));
+      const role = data.company.role || (data.company.is_admin ? 'owner' : 'member');
+      console.log("DEBUG: Company login - Setting role:", role, "from data:", data.company);
+      console.log("DEBUG: staffData role from backend:", data.company.role);
+      setUserRole(role);
       
       // Clear admin states when new user logs in to prevent cross-user access
       setShowAdmin(false);
@@ -1042,7 +1052,10 @@ export default function Home() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("company", JSON.stringify(data.company));
       setCompany(data.company);
-      setUserRole(data.company.role || 'member');
+      const role = data.company.role || 'member';
+      console.log("DEBUG: Employee login - Setting role:", role, "from data.company:", data.company);
+      console.log("DEBUG: staffData role would be:", data.company.role);
+      setUserRole(role);
       
       // Clear admin states when employee logs in to prevent access issues
       setShowAdmin(false);
@@ -1515,8 +1528,8 @@ export default function Home() {
   const handlePrepClick = () => {
     const nextShowPrep = !showPrep;
     
-    // Check if user has permission to access prep
-    if (nextShowPrep && !canAccessPrep(userRole)) {
+    // Check if user has permission to view prep
+    if (nextShowPrep && !canViewPrep(userRole)) {
       showToast("Du har inte behörighet att se Mise en place", "error");
       return;
     }
@@ -2514,80 +2527,94 @@ export default function Home() {
                 Företagsinfo
                 {isTabDirty("info") && <span style={styles.tabDirtyDot}>●</span>}
               </button>
-              <button
-                style={{
-                  ...styles.adminTab,
-                  ...(adminTab === "menu" ? styles.adminTabActive : {})
-                }}
-                className="adminTabButton"
-                onClick={() => handleAdminTabChange("menu")}
-              >
-                Meny & Allergener
-                {isTabDirty("menu") && <span style={styles.tabDirtyDot}>●</span>}
-              </button>
-              <button
-                style={{
-                  ...styles.adminTab,
-                  ...(adminTab === "recipes" ? styles.adminTabActive : {})
-                }}
-                className="adminTabButton"
-                onClick={() => handleAdminTabChange("recipes")}
-              >
-                Receptbyggare
-                {isTabDirty("recipes") && <span style={styles.tabDirtyDot}>●</span>}
-              </button>
-              <button
-                style={{
-                  ...styles.adminTab,
-                  ...(adminTab === "routines" ? styles.adminTabActive : {})
-                }}
-                className="adminTabButton"
-                onClick={() => handleAdminTabChange("routines")}
-              >
-                Rutiner & Regler
-                {isTabDirty("routines") && <span style={styles.tabDirtyDot}>●</span>}
-              </button>
-              <button
-                style={{
-                  ...styles.adminTab,
-                  ...(adminTab === "prep" ? styles.adminTabActive : {})
-                }}
-                className="adminTabButton"
-                onClick={() => handleAdminTabChange("prep")}
-              >
-                Prep-mall
-                {prepTemplateDirty && <span style={styles.tabDirtyDot}>●</span>}
-              </button>
-              <button
-                style={{
-                  ...styles.adminTab,
-                  ...(adminTab === "staff" ? styles.adminTabActive : {})
-                }}
-                className="adminTabButton"
-                onClick={() => handleAdminTabChange("staff")}
-              >
-                Personal
-              </button>
-              <button
-                style={{
-                  ...styles.adminTab,
-                  ...(adminTab === "security" ? styles.adminTabActive : {})
-                }}
-                className="adminTabButton"
-                onClick={() => handleAdminTabChange("security")}
-              >
-                Säkerhet
-              </button>
-              <button
-                style={{
-                  ...styles.adminTab,
-                  ...(adminTab === "stats" ? styles.adminTabActive : {})
-                }}
-                className="adminTabButton"
-                onClick={() => handleAdminTabChange("stats")}
-              >
-                Statistik
-              </button>
+              {canAccessAdminTab(userRole, "menu") && (
+                <button
+                  style={{
+                    ...styles.adminTab,
+                    ...(adminTab === "menu" ? styles.adminTabActive : {})
+                  }}
+                  className="adminTabButton"
+                  onClick={() => handleAdminTabChange("menu")}
+                >
+                  Meny & Allergener
+                  {isTabDirty("menu") && <span style={styles.tabDirtyDot}>●</span>}
+                </button>
+              )}
+              {canAccessAdminTab(userRole, "recipes") && (
+                <button
+                  style={{
+                    ...styles.adminTab,
+                    ...(adminTab === "recipes" ? styles.adminTabActive : {})
+                  }}
+                  className="adminTabButton"
+                  onClick={() => handleAdminTabChange("recipes")}
+                >
+                  Receptbyggare
+                  {isTabDirty("recipes") && <span style={styles.tabDirtyDot}>●</span>}
+                </button>
+              )}
+              {canAccessAdminTab(userRole, "routines") && (
+                <button
+                  style={{
+                    ...styles.adminTab,
+                    ...(adminTab === "routines" ? styles.adminTabActive : {})
+                  }}
+                  className="adminTabButton"
+                  onClick={() => handleAdminTabChange("routines")}
+                >
+                  Rutiner & Regler
+                  {isTabDirty("routines") && <span style={styles.tabDirtyDot}>●</span>}
+                </button>
+              )}
+              {canAccessAdminTab(userRole, "prep") && (
+                <button
+                  style={{
+                    ...styles.adminTab,
+                    ...(adminTab === "prep" ? styles.adminTabActive : {})
+                  }}
+                  className="adminTabButton"
+                  onClick={() => handleAdminTabChange("prep")}
+                >
+                  Prep-mall
+                  {prepTemplateDirty && <span style={styles.tabDirtyDot}>●</span>}
+                </button>
+              )}
+              {canAccessAdminTab(userRole, "staff") && (
+                <button
+                  style={{
+                    ...styles.adminTab,
+                    ...(adminTab === "staff" ? styles.adminTabActive : {})
+                  }}
+                  className="adminTabButton"
+                  onClick={() => handleAdminTabChange("staff")}
+                >
+                  Personal
+                </button>
+              )}
+              {canAccessAdminTab(userRole, "security") && (
+                <button
+                  style={{
+                    ...styles.adminTab,
+                    ...(adminTab === "security" ? styles.adminTabActive : {})
+                  }}
+                  className="adminTabButton"
+                  onClick={() => handleAdminTabChange("security")}
+                >
+                  Säkerhet
+                </button>
+              )}
+              {canAccessAdminTab(userRole, "stats") && (
+                <button
+                  style={{
+                    ...styles.adminTab,
+                    ...(adminTab === "stats" ? styles.adminTabActive : {})
+                  }}
+                  className="adminTabButton"
+                  onClick={() => handleAdminTabChange("stats")}
+                >
+                  Statistik
+                </button>
+              )}
             </div>
 
             {/* Admin Content */}
@@ -3403,7 +3430,7 @@ export default function Home() {
                       type="checkbox"
                       checked={!!task.is_done}
                       onChange={(e) => togglePrepTask(task.id, e.target.checked)}
-                      disabled={prepLoading}
+                      disabled={prepLoading || !canEditPrep(userRole)}
                       style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
                     />
                     <div style={styles.prepItemBody}>
