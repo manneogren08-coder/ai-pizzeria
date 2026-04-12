@@ -66,6 +66,10 @@ async function getCompanyByIdentifierAndPassword(companyIdentifier, password) {
 }
 
 export default async function handler(req, res) {
+  console.log("DEBUG: verify-code API called!");
+  console.log("DEBUG: Request method:", req.method);
+  console.log("DEBUG: Request body:", req.body);
+  
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST allowed" });
   }
