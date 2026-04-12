@@ -66,10 +66,6 @@ async function getCompanyByIdentifierAndPassword(companyIdentifier, password) {
 }
 
 export default async function handler(req, res) {
-  console.log("DEBUG: verify-code API called!");
-  console.log("DEBUG: Request method:", req.method);
-  console.log("DEBUG: Request body:", req.body);
-  
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST allowed" });
   }
@@ -125,17 +121,6 @@ export default async function handler(req, res) {
       .eq("company_id", String(company.id))
       .eq("email", email)
       .maybeSingle();
-
-    console.log("DEBUG: Employee backend - company_id:", String(company.id));
-    console.log("DEBUG: Employee backend - email:", email);
-    console.log("DEBUG: Employee backend - staffData:", staffData);
-    console.log("DEBUG: Employee backend - staffError:", staffError);
-    
-    // Log what we're sending back to frontend
-    const responseRole = staffData?.role || 'member';
-    console.log("DEBUG: Employee backend - Sending role to frontend:", responseRole);
-    console.log("DEBUG: Employee backend - staffData?.role:", staffData?.role);
-    console.log("DEBUG: Employee backend - fallback role:", 'member');
 
     const isDevEnv = process.env.NODE_ENV !== "production";
 

@@ -1032,22 +1032,13 @@ export default function Home() {
     setLoading(true);
 
     try {
-      console.log("DEBUG: About to call verify-code API");
-      console.log("DEBUG: Employee login step:", employeeLoginStep);
-      console.log("DEBUG: Email:", employeeEmail.trim().toLowerCase());
-      console.log("DEBUG: Code:", employeeCode.trim());
-      
       const res = await fetch("/api/employee/verify-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: employeeEmail.trim().toLowerCase(), code: employeeCode.trim() })
       });
 
-      console.log("DEBUG: Frontend - verify-code response status:", res.status);
-      console.log("DEBUG: Frontend - verify-code response ok:", res.ok);
-
       const data = await res.json();
-      console.log("DEBUG: Frontend - verify-code response data:", data);
 
       if (!res.ok) {
         setError(data?.error || "Felaktig kod");
@@ -1059,11 +1050,7 @@ export default function Home() {
       localStorage.setItem("company", JSON.stringify(data.company));
       setCompany(data.company);
       const role = data.company.role || 'member';
-      console.log("DEBUG: Employee login - Setting role:", role, "from data.company:", data.company);
-      console.log("DEBUG: staffData role would be:", data.company.role);
-      console.log("DEBUG: Employee login successful - about to set userRole");
       setUserRole(role);
-      console.log("DEBUG: Employee login - userRole set successfully");
       
       // Clear admin states when employee logs in to prevent access issues
       setShowAdmin(false);
