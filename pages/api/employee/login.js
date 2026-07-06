@@ -198,7 +198,8 @@ export default async function handler(req, res) {
       token,
       company: {
         id: staff.company_id,
-        name: staff.companies?.name || "Ditt företag"
+        name: staff.companies?.name || "Ditt företag",
+        role: staff.role
       }
     });
 

@@ -278,20 +278,20 @@ export default function Home() {
 
   const landingFaqs = [
     {
-      question: "Hur snabbt kommer en ny medarbetare igång?",
-      answer: "Ofta samma dag. Lägg in rutiner, recept och allergener i admin så kan personalen fråga AI-guiden direkt i mobilen."
+      question: "Vad är StaffGuide?",
+      answer: "Ett internt verktyg som hjälper restauranger och företag att samla rutiner, recept och information på ett ställe."
     },
     {
-      question: "Fungerar det för både kök och servering?",
-      answer: "Ja. Ni kan använda samma konto men olika innehåll: köksrutiner, service-scripts, allergenstöd och öppning/stängning."
+      question: "Hur snabbt kommer vi igång?",
+      answer: "Vanligtvis kan ni börja använda systemet inom några dagar efter onboarding."
     },
     {
-      question: "Kan vi styra vad personalen ser?",
-      answer: "Ja. Innehållet hämtas från er adminpanel. Uppdaterar ni text där slår det igenom i svaren direkt efter sparning."
+      question: "Behöver vi teknisk kunskap?",
+      answer: "Nej, vi sätter upp allt åt er."
     },
     {
-      question: "Är sidan bra på iPad och telefon?",
-      answer: "Ja. Gränssnittet är byggt mobile-first med tydliga kort, stora klickytor och enkel navigering under service."
+      question: "Kan vi anpassa innehållet?",
+      answer: "Ja, all information är helt anpassningsbar för ert företag."
     }
   ];
 
@@ -352,6 +352,7 @@ export default function Home() {
   const chatAreaRef = useRef(null);
   const toastTimerRef = useRef(null);
   const skipNextAdminRoutePromptRef = useRef(false);
+  const tokenRef = useRef("");
 
   const syncAdminRoute = useCallback((nextShowAdmin, nextTab = "info") => {
     if (!router.isReady) return;
@@ -558,17 +559,19 @@ export default function Home() {
   }, [token]);
 
   const fetchPrepTasks = useCallback(async (targetDate) => {
-    if (!token) return;
+    // Use tokenRef so this callback never has a stale token closure
+    const currentToken = tokenRef.current;
+    if (!currentToken) return;
 
     const requestedDate = typeof targetDate === "string" ? targetDate : getTodayDateString();
-    
+
     setPrepLoading(true);
     setPrepError("");
 
     try {
       const res = await fetch(`/api/prep/day?date=${encodeURIComponent(requestedDate)}`, {
         headers: {
-          "Authorization": `Bearer ${token}`
+          "Authorization": `Bearer ${currentToken}`
         }
       });
 
@@ -582,10 +585,10 @@ export default function Home() {
       }
 
       setPrepDate(data?.prepDate || requestedDate);
-      
+
       // Extract tasks correctly from API response
       const tasks = data.tasks || [];
-      
+
       setPrepTasks(tasks);
     } catch (err) {
       setPrepError("Kunde inte hämta dagens prep.");
@@ -593,7 +596,7 @@ export default function Home() {
     } finally {
       setPrepLoading(false);
     }
-  }, [token]);
+  }, []); // stable – reads token via tokenRef, never goes stale
 
   const savePrepTemplate = async () => {
     if (!token || prepTemplateLoading) return;
@@ -638,20 +641,20 @@ export default function Home() {
 
   const assignPrepTask = async (taskId, assignedTo) => {
     if (!token) return;
-    
+
     try {
       const res = await fetch("/api/prep/assign", {
         method: "POST",
-        headers: { 
+        headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({ taskId, assignedTo })
       });
-      
+
       if (res.ok) {
         // Update local state to reflect the change
-        setPrepTasks(prev => prev.map(task => 
+        setPrepTasks(prev => prev.map(task =>
           task.id === taskId ? { ...task, assigned_to: assignedTo } : task
         ));
         showToast("Uppgift tilldelad", "success");
@@ -746,6 +749,11 @@ export default function Home() {
     setPrepBulkUpdating(false);
   };
 
+  // Keep tokenRef in sync so fetchPrepTasks never has a stale closure
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
+
   useEffect(() => {
     const savedToken = localStorage.getItem("token");
     const savedCompany = localStorage.getItem("company");
@@ -759,6 +767,7 @@ export default function Home() {
     }
 
     try {
+      tokenRef.current = savedToken;
       setToken(savedToken);
       setCompany(JSON.parse(savedCompany));
     } catch {
@@ -777,7 +786,13 @@ export default function Home() {
   }, [chat, loading]);
 
   useEffect(() => {
-    if (showAdmin && (adminTab === "staff" || adminTab === "prep")) {
+    if (showAdmin && adminTab === "staff") {
+      fetchStaffList();
+    }
+  }, [showAdmin, adminTab]);
+
+  useEffect(() => {
+    if (showAdmin && adminTab === "prep") {
       fetchStaffList();
     }
   }, [showAdmin, adminTab]);
@@ -834,9 +849,9 @@ export default function Home() {
   ]);
 
   useEffect(() => {
-    if (!showPrep || !token) return;
+    if (!showPrep || !tokenRef.current) return;
     fetchPrepTasks(prepDate);
-  }, [showPrep, token, prepDate, fetchPrepTasks]);
+  }, [showPrep, token, prepDate, fetchPrepTasks]); // token kept in deps to re-run if token arrives after showPrep=true
 
   useEffect(() => {
     return () => {
@@ -887,10 +902,16 @@ export default function Home() {
         return;
       }
 
+      // Set role to 'owner' for company login
+      const companyWithOwner = {
+        ...data.company,
+        role: 'owner'
+      };
+
       setToken(data.token);
-      setCompany(data.company);
+      setCompany(companyWithOwner);
       localStorage.setItem("token", data.token);
-      localStorage.setItem("company", JSON.stringify(data.company));
+      localStorage.setItem("company", JSON.stringify(companyWithOwner));
     } catch {
       setError("Ett fel uppstod. Försök igen.");
     }
@@ -987,12 +1008,12 @@ export default function Home() {
       setEmployeeEmail("");
       setEmployeeName("");
       setEmployeeCode("");
-      
+
       // Debug logging
       console.log("DEBUG: Login successful - Company data:", data.company);
       console.log("DEBUG: Stored company:", JSON.parse(localStorage.getItem("company")));
       console.log("DEBUG: Stored token:", localStorage.getItem("token"));
-      
+
       showToast(`Inloggad som ${data.company.name}`, "success");
     } catch {
       setError("Ett fel uppstod. Försök igen.");
@@ -1300,31 +1321,32 @@ export default function Home() {
     console.log("DEBUG: Token exists:", !!token);
     console.log("DEBUG: Token value:", token ? token.substring(0, 50) + "..." : "null");
     console.log("DEBUG: Company exists:", !!company);
-    
+
     if (!token || !company) {
       console.log("DEBUG: Missing token or company, returning early");
       return;
     }
-    
-    console.log("DEBUG: Fetching staff list with token and company:", { 
-      hasToken: !!token, 
+
+    console.log("DEBUG: Fetching staff list with token and company:", {
+      hasToken: !!token,
       companyId: company.id,
-      companyName: company.name 
+      companyName: company.name
     });
-    
+
     setStaffLoading(true);
     try {
       const res = await fetch("/api/admin/staff", {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       console.log("DEBUG: Staff API response status:", res.status);
       console.log("DEBUG: Staff API response headers:", Object.fromEntries(res.headers.entries()));
-      
+
       if (res.ok) {
         const data = await res.json();
         console.log("DEBUG: Staff API response:", data);
         console.log("DEBUG: Setting staff list:", data.staff || []);
+        console.log("DEBUG: Staff roles:", data.staff?.map(s => ({ id: s.id, email: s.email, role: s.role })) || []);
         setStaffList(data.staff || []);
         console.log("DEBUG: Staff list state after setting:", data.staff || []);
       } else {
@@ -1341,22 +1363,22 @@ export default function Home() {
 
   const addStaffMember = async () => {
     if (!token || !company) return;
-    
+
     if (!newStaffEmail.trim()) {
       showToast("Ange e-postadress", "error");
       return;
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newStaffEmail.trim())) {
       showToast("Ange en giltig e-postadress", "error");
       return;
     }
-    
+
     try {
       const res = await fetch("/api/admin/staff", {
         method: "POST",
-        headers: { 
+        headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
         },
@@ -1365,9 +1387,9 @@ export default function Home() {
           name: newStaffName.trim() || null
         })
       });
-      
+
       const data = await res.json();
-      
+
       if (res.ok) {
         showToast("Personal tillagd", "success");
         setNewStaffEmail("");
@@ -1384,19 +1406,19 @@ export default function Home() {
 
   const removeStaffMember = async (staffId) => {
     if (!token || !company) return;
-    
+
     if (!confirm("Är du säker på att du vill ta bort denna person?")) {
       return;
     }
-    
+
     try {
       const res = await fetch(`/api/admin/staff/${staffId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       const data = await res.json();
-      
+
       if (res.ok) {
         showToast("Personal borttagen", "success");
         fetchStaffList();
@@ -1416,6 +1438,7 @@ export default function Home() {
     setAdminPasswordPrompt(false);
     syncAdminRoute(false);
 
+    // Fetch immediately on open – tokenRef guarantees we always have the latest token
     if (nextShowPrep) {
       fetchPrepTasks(prepDate);
     }
@@ -1457,6 +1480,68 @@ export default function Home() {
     setRecipeRows(normalizedRows);
     const serialized = serializeRecipesRows(normalizedRows);
     setCompanyDetails((prev) => ({ ...prev, recipes: serialized }));
+  };
+
+  // Permission checking functions based on user role
+  const hasPermission = (permission) => {
+    if (!company) return false;
+
+    const userRole = company.role || 'member';
+
+    switch (permission) {
+      case 'view_admin':
+        return ['owner', 'admin', 'editor'].includes(userRole);
+      case 'manage_staff':
+        return ['owner', 'admin'].includes(userRole);
+      case 'manage_security':
+        return ['owner'].includes(userRole);
+      case 'view_prep':
+        return ['owner', 'admin', 'editor', 'member'].includes(userRole);
+      case 'manage_prep':
+        return ['owner', 'admin', 'editor', 'member'].includes(userRole);
+      case 'access_ai':
+        return ['owner', 'admin', 'editor', 'member'].includes(userRole);
+      default:
+        return false;
+    }
+  };
+
+  const updateStaffRole = async (staffId, role) => {
+    if (!token || !company) return;
+
+    // Debug logging
+    console.log("DEBUG: Updating staff role:", { staffId, role });
+
+    if (!staffId) {
+      console.error("DEBUG: staffId is undefined or null");
+      showToast("Staff ID är obligatoriskt", "error");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/staff/${staffId}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ role: role.trim() })
+      });
+
+      const data = await res.json();
+
+      console.log("DEBUG: API response:", { status: res.status, data });
+
+      if (res.ok) {
+        showToast("Roll uppdaterad", "success");
+        fetchStaffList();
+      } else {
+        showToast(data.error || "Kunde inte uppdatera roll", "error");
+      }
+    } catch (err) {
+      console.error("Update staff role error:", err);
+      showToast("Kunde inte uppdatera roll", "error");
+    }
   };
 
   const updateRecipeRow = (recipeId, field, value) => {
@@ -1551,7 +1636,7 @@ export default function Home() {
         console.error("JWT decode error:", err);
       }
     }
-    
+
     // When "Visa mina uppgifter" is enabled, show only tasks assigned to current user
     if (showMyPrepTasks && (!task.assigned_to || task.assigned_to !== currentUserEmail)) {
       return false;
@@ -1570,14 +1655,14 @@ export default function Home() {
         console.error("JWT decode error:", err);
       }
     }
-    
+
     const aIsAssignedToMe = a.assigned_to === currentUserEmail;
     const bIsAssignedToMe = b.assigned_to === currentUserEmail;
-    
+
     if (aIsAssignedToMe !== bIsAssignedToMe) {
       return aIsAssignedToMe ? -1 : 1;
     }
-    
+
     // Then sort by completion status
     if (a.is_done !== b.is_done) {
       return a.is_done ? 1 : -1;
@@ -1622,6 +1707,29 @@ export default function Home() {
 
   // LOGIN PAGE
   if (!company) {
+    const scrollToLogin = (mode) => {
+      setLoginMode(mode);
+      setError("");
+      requestAnimationFrame(() => {
+        const placeholder = mode === "company" ? "Restaurangens namn" : "Din e-post";
+        const field = document.querySelector(`input[placeholder="${placeholder}"]`);
+        if (field && typeof field.focus === "function") {
+          field.focus();
+        }
+        const loginSection = document.getElementById("login-section");
+        if (loginSection) {
+          loginSection.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      });
+    };
+
+    const scrollToSection = (id) => {
+      const section = document.getElementById(id);
+      if (section) {
+        section.scrollIntoView({ behavior: "smooth" });
+      }
+    };
+
     return (
       <div style={styles.landingPage} className="landingPage">
         <style jsx>{`
@@ -1688,6 +1796,28 @@ export default function Home() {
             .landingGrid > section {
               min-width: 0;
             }
+
+            .footerGrid {
+              grid-template-columns: repeat(2, 1fr) !important;
+            }
+
+            .servicesSection,
+            .staffguideSection,
+            .socialMediaSection,
+            .hemsidorSection,
+            .loginRow,
+            .faqSection,
+            .trustSection {
+              margin-top: 48px !important;
+            }
+
+            .ctaSection {
+              margin: 48px auto 0 !important;
+            }
+
+            .siteFooter {
+              margin-top: 48px !important;
+            }
           }
 
           @media (max-width: 700px) {
@@ -1729,27 +1859,31 @@ export default function Home() {
               border-radius: 14px !important;
             }
 
-            .featuresGrid {
-              grid-template-columns: 1fr !important;
-              gap: 12px !important;
-            }
-
-            .featureCard {
-              padding: 16px !important;
-              overflow: hidden !important;
-              word-wrap: break-word !important;
-              hyphens: auto !important;
-            }
-
-            .featureTitle {
-              word-wrap: break-word !important;
-              overflow-wrap: break-word !important;
-              hyphens: auto !important;
-              max-width: 100% !important;
-            }
-
             .contactSection {
               padding: 20px 16px !important;
+              margin-bottom: 28px !important;
+            }
+
+            .servicesSection,
+            .staffguideSection,
+            .socialMediaSection,
+            .hemsidorSection,
+            .loginRow,
+            .faqSection,
+            .trustSection {
+              margin-top: 32px !important;
+            }
+
+            .faqSection {
+              margin-bottom: 28px !important;
+            }
+
+            .ctaSection {
+              margin: 32px auto 0 !important;
+            }
+
+            .siteFooter {
+              margin-top: 32px !important;
             }
 
             .ctaButtons {
@@ -1762,7 +1896,32 @@ export default function Home() {
               width: 100%;
             }
 
-            .footerLinks {
+            .ctaSection {
+              padding: 36px 20px !important;
+            }
+
+            .ctaTitle {
+              font-size: 1.5rem !important;
+            }
+
+            .trustGrid {
+              grid-template-columns: 1fr !important;
+            }
+
+            .trustTitle {
+              font-size: 1.3rem !important;
+            }
+
+            .footerGrid {
+              grid-template-columns: 1fr !important;
+              text-align: center !important;
+            }
+
+            .footerColumn {
+              align-items: center !important;
+            }
+
+            .footerBottom {
               flex-direction: column;
               gap: 8px !important;
             }
@@ -1791,7 +1950,277 @@ export default function Home() {
               padding: "10px 14px" !important;
             }
           }
+
+          :global(body) {
+            background: #05070d;
+          }
+
+          .fadeInSection {
+            animation: fadeInUp 0.7s ease both;
+          }
+
+          .landingNav {
+            animation: fadeInDown 0.7s ease both;
+          }
+
+          .heroMockupWrap {
+            animation: fadeInUp 0.7s ease 0.1s both, floatMockup 8s ease-in-out 0.8s infinite;
+          }
+
+          .loginRow {
+            animation: fadeInUp 0.7s ease 0.1s both;
+          }
+
+          @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(18px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+
+          @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-12px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+
+          @keyframes floatMockup {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0); }
+          }
+
+          .landingNavLink {
+            transition: color 0.2s ease;
+          }
+
+          .landingNavLink:hover {
+            color: #f8fafc !important;
+          }
+
+          .landingNavLoginBtn:hover {
+            background: rgba(255, 255, 255, 0.09) !important;
+            border-color: rgba(148, 163, 184, 0.5) !important;
+            transform: translateY(-1px);
+          }
+
+          .heroCtaBtn {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+          }
+
+          .heroCtaPrimaryBtn:hover {
+            background: #1d4ed8 !important;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 26px rgba(37, 99, 235, 0.35);
+          }
+
+          .heroCtaSecondaryBtn:hover {
+            background: rgba(255, 255, 255, 0.06) !important;
+            border-color: rgba(148, 163, 184, 0.5) !important;
+            transform: translateY(-2px);
+          }
+
+          .mockupWindow {
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+          }
+
+          .heroMockupWrap:hover .mockupWindow {
+            transform: translateY(-4px);
+            box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5), 0 0 50px rgba(37, 99, 235, 0.14);
+          }
+
+          .servicesSection {
+            animation: fadeInUp 0.7s ease 0.1s both;
+          }
+
+          .serviceCard {
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+          }
+
+          .serviceCard:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 22px 48px rgba(0, 0, 0, 0.4), 0 0 32px rgba(37, 99, 235, 0.14);
+            border-color: rgba(59, 130, 246, 0.4) !important;
+          }
+
+          .serviceCardButton {
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+          }
+
+          .serviceCardButton:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
+            border-color: rgba(148, 163, 184, 0.5) !important;
+            transform: translateY(-1px);
+          }
+
+          .staffguideSection {
+            animation: fadeInUp 0.7s ease 0.1s both;
+          }
+
+          .guideVisualWrap {
+            animation: fadeInUp 0.7s ease 0.1s both, floatMockupSoft 8s ease-in-out 0.8s infinite;
+          }
+
+          .guideVisualWrap .mockupWindow {
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+          }
+
+          .guideVisualWrap:hover .mockupWindow {
+            transform: translateY(-4px);
+            box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5), 0 0 50px rgba(37, 99, 235, 0.14);
+          }
+
+          @keyframes floatMockupSoft {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+            100% { transform: translateY(0); }
+          }
+
+          .socialMediaSection,
+          .hemsidorSection {
+            animation: fadeInUp 0.7s ease 0.1s both;
+          }
+
+          .trustSection,
+          .faqSection {
+            animation: fadeInUp 0.7s ease 0.1s both;
+          }
+
+          .ctaSection {
+            animation: fadeInUp 0.7s ease 0.1s both, pulse 5s ease-in-out 1s infinite;
+          }
+
+          .siteFooter {
+            animation: fadeInUp 0.7s ease both;
+          }
+
+          .ctaButtonPrimary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(37, 99, 235, 0.45);
+          }
+
+          .ctaButtonSecondary:hover {
+            background: rgba(255, 255, 255, 0.07) !important;
+            border-color: rgba(148, 163, 184, 0.5) !important;
+            transform: translateY(-2px);
+          }
+
+          .footerColLink:hover {
+            color: #e2e8f0 !important;
+          }
+
+          .contactField {
+            caret-color: #60a5fa;
+          }
+
+          .contactField::placeholder {
+            color: #64748b;
+          }
+
+          .contactField:focus {
+            border-color: rgba(59, 130, 246, 0.5) !important;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+          }
+
+          .contactSubmitButton:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(37, 99, 235, 0.35);
+          }
+
+          .faqItem:hover {
+            border-color: rgba(59, 130, 246, 0.35) !important;
+            background: rgba(255, 255, 255, 0.045) !important;
+          }
+
+          .faqItem[open] .faqAnswer {
+            animation: faqReveal 0.25s ease both;
+          }
+
+          @keyframes faqReveal {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+
+          @media (max-width: 1040px) {
+            .servicesGrid {
+              grid-template-columns: repeat(2, 1fr) !important;
+              gap: 18px !important;
+            }
+
+            .staffguideGrid {
+              grid-template-columns: 1fr !important;
+              gap: 24px !important;
+            }
+
+            .valueFeaturesGrid {
+              grid-template-columns: repeat(2, 1fr) !important;
+              gap: 16px !important;
+            }
+          }
+
+          @media (max-width: 700px) {
+            .landingNavLinks a.landingNavLink {
+              display: none;
+            }
+
+            .servicesGrid {
+              grid-template-columns: 1fr !important;
+            }
+
+            .servicesTitle {
+              font-size: 1.6rem !important;
+            }
+
+            .guideFeaturesGrid {
+              grid-template-columns: 1fr !important;
+            }
+
+            .staffguideTitle {
+              font-size: 1.6rem !important;
+            }
+
+            .valueFeaturesGrid {
+              grid-template-columns: 1fr !important;
+            }
+          }
         `}</style>
+
+        <nav style={styles.landingNav} className="landingNav">
+          <div style={styles.landingNavInner} className="landingNavInner">
+            <span style={styles.landingNavLogo}>StaffGuide</span>
+            <div style={styles.landingNavLinks} className="landingNavLinks">
+              <a
+                href="#services-section"
+                style={styles.landingNavLink}
+                className="landingNavLink"
+                onClick={(e) => { e.preventDefault(); scrollToSection("services-section"); }}
+              >
+                Social Media
+              </a>
+              <a
+                href="#services-section"
+                style={styles.landingNavLink}
+                className="landingNavLink"
+                onClick={(e) => { e.preventDefault(); scrollToSection("services-section"); }}
+              >
+                Hemsidor
+              </a>
+              <a
+                href="#contact-section"
+                style={styles.landingNavLink}
+                className="landingNavLink"
+                onClick={(e) => { e.preventDefault(); scrollToSection("contact-section"); }}
+              >
+                Kontakt
+              </a>
+              <button
+                type="button"
+                style={styles.landingNavLoginBtn}
+                className="landingNavLoginBtn"
+                onClick={() => scrollToLogin("company")}
+              >
+                Logga in
+              </button>
+            </div>
+          </div>
+        </nav>
 
         <div style={styles.landingBackground}>
           <div className="landingOrb orbA" />
@@ -1801,59 +2230,31 @@ export default function Home() {
 
         <div style={styles.landingContentWrap} className="landingContentWrap">
           <div className="landingGrid" style={styles.landingGrid}>
-            <section style={styles.heroPanel} className="heroPanel">
+            <section style={styles.heroPanel} className="heroPanel fadeInSection">
               <span style={styles.heroBadge}>STAFFGUIDE</span>
               <h1 className="heroTitle" style={styles.heroTitle}>
-                Ge personalen rätt svar direkt under service
+                Digitala lösningar som sparar tid och hjälper företag att växa.
               </h1>
               <p className="heroLead" style={styles.heroLead}>
-                Samla rutiner, recept och allergener i en enkel AI-guide. Mindre frågor i köket, snabbare onboarding och tryggare allergensvar.
+                Vi bygger smarta digitala verktyg, hemsidor och synlighet för småföretag och restauranger – så att ni kan lägga tiden på det ni gör bäst.
               </p>
 
               <div style={styles.heroCtaRow} className="heroCtaRow">
                 <button
                   type="button"
                   style={styles.heroCtaPrimary}
-                  className="heroCtaBtn"
-                  onClick={() => {
-                    setLoginMode("company");
-                    setError("");
-                    requestAnimationFrame(() => {
-                      const field = document.querySelector('input[placeholder="Restaurangens namn"]');
-                      if (field && typeof field.focus === "function") {
-                        field.focus();
-                      }
-                      // Auto-scroll to login section
-                      const loginSection = document.getElementById('login-section');
-                      if (loginSection) {
-                        loginSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }
-                    });
-                  }}
+                  className="heroCtaBtn heroCtaPrimaryBtn"
+                  onClick={() => scrollToSection("contact-section")}
                 >
-                  Kom igång nu
+                  Boka möte
                 </button>
                 <button
                   type="button"
                   style={styles.heroCtaSecondary}
-                  className="heroCtaBtn"
-                  onClick={() => {
-                    setLoginMode("employee");
-                    setError("");
-                    requestAnimationFrame(() => {
-                      const field = document.querySelector('input[placeholder="Din e-post"]');
-                      if (field && typeof field.focus === "function") {
-                        field.focus();
-                      }
-                      // Auto-scroll to login section
-                      const loginSection = document.getElementById('login-section');
-                      if (loginSection) {
-                        loginSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }
-                    });
-                  }}
+                  className="heroCtaBtn heroCtaSecondaryBtn"
+                  onClick={() => scrollToSection("services-section")}
                 >
-                  Personal-login
+                  Utforska våra tjänster
                 </button>
               </div>
 
@@ -1862,17 +2263,312 @@ export default function Home() {
                 <span style={styles.heroMetaChip}>Säkrare svar om allergener</span>
                 <span style={styles.heroMetaChip}>Byggt för iPad och mobil</span>
               </div>
-
-              <div className="heroPulse" style={styles.heroVisualCard}>
-                <p style={styles.heroVisualTitle}>Dagens prep</p>
-                <ul style={styles.heroVisualList}>
-                  <li>Degjäsning kontrollerad 09:00</li>
-                  <li>Allergenlista verifierad inför lunch</li>
-                  <li>Specialsås uppdaterad i receptbanken</li>
-                </ul>
-              </div>
             </section>
 
+            <div style={styles.heroMockupWrap} className="heroMockupWrap">
+              <div style={styles.mockupWindow} className="mockupWindow">
+                <div style={styles.mockupTopBar}>
+                  <span style={{ ...styles.mockupDot, background: "#ff5f57" }} />
+                  <span style={{ ...styles.mockupDot, background: "#febc2e" }} />
+                  <span style={{ ...styles.mockupDot, background: "#28c840" }} />
+                  <span style={styles.mockupUrlPill}>staffguide.app/dashboard</span>
+                </div>
+                <div style={styles.mockupBody}>
+                  <div style={styles.mockupSidebar}>
+                    <span style={{ ...styles.mockupSidebarIcon, background: "#2563eb" }} />
+                    <span style={styles.mockupSidebarIcon} />
+                    <span style={styles.mockupSidebarIcon} />
+                    <span style={styles.mockupSidebarIcon} />
+                  </div>
+                  <div style={styles.mockupMain}>
+                    <div style={styles.mockupMainHeader}>
+                      <span>Dagens prep</span>
+                      <span style={styles.mockupLivePill}>Live</span>
+                    </div>
+                    <div style={styles.mockupTaskRow}>
+                      <span style={styles.mockupTaskCheck}>✓</span>
+                      <span style={styles.mockupTaskText}>Degjäsning kontrollerad 09:00</span>
+                    </div>
+                    <div style={styles.mockupTaskRow}>
+                      <span style={styles.mockupTaskCheck}>✓</span>
+                      <span style={styles.mockupTaskText}>Allergenlista verifierad</span>
+                    </div>
+                    <div style={styles.mockupTaskRow}>
+                      <span style={{ ...styles.mockupTaskCheck, ...styles.mockupTaskCheckPending }}>•</span>
+                      <span style={styles.mockupTaskText}>Specialsås uppdateras</span>
+                    </div>
+                    <div style={styles.mockupChartRow}>
+                      <span style={{ ...styles.mockupChartBar, height: 14 }} />
+                      <span style={{ ...styles.mockupChartBar, height: 22 }} />
+                      <span style={{ ...styles.mockupChartBar, height: 30 }} />
+                      <span style={{ ...styles.mockupChartBar, height: 18 }} />
+                      <span style={{ ...styles.mockupChartBar, height: 26 }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <section id="services-section" style={styles.servicesSection} className="servicesSection">
+            <h2 className="servicesTitle" style={styles.servicesTitle}>Våra tjänster</h2>
+            <div style={styles.servicesGrid} className="servicesGrid">
+              <div style={styles.serviceCard} className="serviceCard">
+                <div style={styles.serviceIconWrap}>
+                  <span style={styles.serviceIcon}>🤖</span>
+                </div>
+                <h3 style={styles.serviceCardTitle}>StaffGuide</h3>
+                <p style={styles.serviceCardDesc}>
+                  AI-assistent för restauranger som hjälper personalen att hitta svar på rutiner, allergener, recept, arbetsuppgifter och intern information på några sekunder.
+                </p>
+                <div style={styles.serviceBadgeRow}>
+                  <span style={styles.serviceBadge}>AI</span>
+                  <span style={styles.serviceBadge}>Personal</span>
+                  <span style={styles.serviceBadge}>Kunskap</span>
+                  <span style={styles.serviceBadge}>Mise en place</span>
+                </div>
+                <button type="button" style={styles.serviceCardButton} className="serviceCardButton">Läs mer</button>
+              </div>
+
+              <div style={styles.serviceCard} className="serviceCard">
+                <div style={styles.serviceIconWrap}>
+                  <span style={styles.serviceIcon}>📱</span>
+                </div>
+                <h3 style={styles.serviceCardTitle}>Social Media</h3>
+                <p style={styles.serviceCardDesc}>
+                  Vi hjälper företag att skapa en professionell närvaro på sociala medier genom strategi, innehåll och löpande publicering.
+                </p>
+                <div style={styles.serviceBadgeRow}>
+                  <span style={styles.serviceBadge}>Instagram</span>
+                  <span style={styles.serviceBadge}>Facebook</span>
+                  <span style={styles.serviceBadge}>TikTok</span>
+                  <span style={styles.serviceBadge}>Innehåll</span>
+                </div>
+                <button type="button" style={styles.serviceCardButton} className="serviceCardButton">Läs mer</button>
+              </div>
+
+              <div style={styles.serviceCard} className="serviceCard">
+                <div style={styles.serviceIconWrap}>
+                  <span style={styles.serviceIcon}>🌐</span>
+                </div>
+                <h3 style={styles.serviceCardTitle}>Hemsidor</h3>
+                <p style={styles.serviceCardDesc}>
+                  Vi bygger moderna, snabba och mobilanpassade hemsidor som hjälper företag att skapa förtroende och få fler kunder.
+                </p>
+                <div style={styles.serviceBadgeRow}>
+                  <span style={styles.serviceBadge}>Responsive</span>
+                  <span style={styles.serviceBadge}>SEO</span>
+                  <span style={styles.serviceBadge}>Modern Design</span>
+                  <span style={styles.serviceBadge}>Snabb</span>
+                </div>
+                <button type="button" style={styles.serviceCardButton} className="serviceCardButton">Läs mer</button>
+              </div>
+            </div>
+          </section>
+
+          <section id="staffguide-section" style={styles.staffguideSection} className="staffguideSection">
+            <div style={styles.staffguideHeader}>
+              <h2 style={styles.staffguideTitle}>StaffGuide</h2>
+              <p style={styles.staffguideSubtitle}>
+                AI-assistenten som samlar all viktig information på ett ställe och hjälper personalen att få svar direkt.
+              </p>
+            </div>
+
+            <div style={styles.staffguideGrid} className="staffguideGrid">
+              <div style={styles.guideFeaturesGrid} className="guideFeaturesGrid">
+                <div style={styles.serviceCard} className="serviceCard">
+                  <div style={styles.serviceIconWrap}>
+                    <span style={styles.serviceIcon}>💬</span>
+                  </div>
+                  <h3 style={styles.serviceCardTitle}>AI-chat</h3>
+                  <p style={styles.serviceCardDesc}>
+                    Ställ frågor om rutiner, recept, allergener och interna instruktioner och få svar direkt.
+                  </p>
+                </div>
+
+                <div style={styles.serviceCard} className="serviceCard">
+                  <div style={styles.serviceIconWrap}>
+                    <span style={styles.serviceIcon}>📋</span>
+                  </div>
+                  <h3 style={styles.serviceCardTitle}>Mise en place</h3>
+                  <p style={styles.serviceCardDesc}>
+                    Planera dagens arbetsuppgifter och ge personalen tydliga checklistor.
+                  </p>
+                </div>
+
+                <div style={styles.serviceCard} className="serviceCard">
+                  <div style={styles.serviceIconWrap}>
+                    <span style={styles.serviceIcon}>📚</span>
+                  </div>
+                  <h3 style={styles.serviceCardTitle}>Kunskapsbank</h3>
+                  <p style={styles.serviceCardDesc}>
+                    Samla företagets rutiner, instruktioner och viktiga dokument på ett ställe.
+                  </p>
+                </div>
+
+                <div style={styles.serviceCard} className="serviceCard">
+                  <div style={styles.serviceIconWrap}>
+                    <span style={styles.serviceIcon}>👥</span>
+                  </div>
+                  <h3 style={styles.serviceCardTitle}>Personal</h3>
+                  <p style={styles.serviceCardDesc}>
+                    Bjud in medarbetare och ge rätt personer rätt behörigheter.
+                  </p>
+                </div>
+              </div>
+
+              <div style={styles.guideVisualWrap} className="guideVisualWrap">
+                <div style={styles.mockupWindow} className="mockupWindow">
+                  <div style={styles.mockupTopBar}>
+                    <span style={{ ...styles.mockupDot, background: "#ef4444" }} />
+                    <span style={{ ...styles.mockupDot, background: "#f59e0b" }} />
+                    <span style={{ ...styles.mockupDot, background: "#22c55e" }} />
+                    <span style={styles.mockupUrlPill}>staffguide.app/chat</span>
+                  </div>
+                  <div style={styles.guideChatBody}>
+                    <div style={styles.guideChatBubbleUser}>Vilka allergener finns i fredagens special?</div>
+                    <div style={styles.guideChatBubbleAI}>Gluten och mjölk. Vill du se hela receptet?</div>
+                    <div style={styles.guideChatInputRow}>
+                      <span style={styles.guideChatInputText}>Skriv din fråga...</span>
+                      <span style={styles.guideChatSendBtn}>➤</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={styles.guideStatsRow}>
+                  <div style={styles.guideStatCard}>
+                    <span style={styles.guideStatCheck}>✓</span> 250+ frågor besvarade
+                  </div>
+                  <div style={styles.guideStatCard}>
+                    <span style={styles.guideStatCheck}>✓</span> 35 aktiva medarbetare
+                  </div>
+                  <div style={styles.guideStatCard}>
+                    <span style={styles.guideStatCheck}>✓</span> 98 % svar direkt
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div style={styles.sectionDivider} />
+
+          <section id="social-media-section" style={styles.staffguideSection} className="socialMediaSection">
+            <div style={styles.staffguideHeader}>
+              <h2 style={styles.staffguideTitle}>Social Media</h2>
+              <p style={styles.staffguideSubtitle}>
+                Vi hjälper företag att växa genom professionell hantering av sociala medier.
+              </p>
+              <div style={styles.valuesRow}>
+                <span style={styles.heroMetaChip}>Strategi</span>
+                <span style={styles.heroMetaChip}>Innehållsproduktion</span>
+                <span style={styles.heroMetaChip}>Publicering</span>
+                <span style={styles.heroMetaChip}>Analys</span>
+              </div>
+            </div>
+
+            <div style={styles.valueFeaturesGrid} className="valueFeaturesGrid">
+              <div style={styles.serviceCard} className="serviceCard">
+                <div style={styles.serviceIconWrap}>
+                  <span style={styles.serviceIcon}>🎯</span>
+                </div>
+                <h3 style={styles.serviceCardTitle}>Strategi</h3>
+                <p style={styles.serviceCardDesc}>
+                  Vi tar fram en tydlig strategi anpassad efter ert varumärke och era mål.
+                </p>
+              </div>
+
+              <div style={styles.serviceCard} className="serviceCard">
+                <div style={styles.serviceIconWrap}>
+                  <span style={styles.serviceIcon}>✍️</span>
+                </div>
+                <h3 style={styles.serviceCardTitle}>Innehåll</h3>
+                <p style={styles.serviceCardDesc}>
+                  Vi skapar innehåll som känns proffsigt och stärker ert varumärke.
+                </p>
+              </div>
+
+              <div style={styles.serviceCard} className="serviceCard">
+                <div style={styles.serviceIconWrap}>
+                  <span style={styles.serviceIcon}>📅</span>
+                </div>
+                <h3 style={styles.serviceCardTitle}>Publicering</h3>
+                <p style={styles.serviceCardDesc}>
+                  Vi sköter löpande publicering så ni alltid syns där kunderna finns.
+                </p>
+              </div>
+
+              <div style={styles.serviceCard} className="serviceCard">
+                <div style={styles.serviceIconWrap}>
+                  <span style={styles.serviceIcon}>📊</span>
+                </div>
+                <h3 style={styles.serviceCardTitle}>Analys</h3>
+                <p style={styles.serviceCardDesc}>
+                  Vi följer upp resultat och optimerar för bättre räckvidd och engagemang.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <div style={styles.sectionDivider} />
+
+          <section id="hemsidor-section" style={styles.staffguideSection} className="hemsidorSection">
+            <div style={styles.staffguideHeader}>
+              <h2 style={styles.staffguideTitle}>Hemsidor</h2>
+              <p style={styles.staffguideSubtitle}>
+                Moderna hemsidor som gör att företag ser professionella ut och får fler kunder.
+              </p>
+              <div style={styles.valuesRow}>
+                <span style={styles.heroMetaChip}>Snabba</span>
+                <span style={styles.heroMetaChip}>Mobilanpassade</span>
+                <span style={styles.heroMetaChip}>SEO-optimerade</span>
+                <span style={styles.heroMetaChip}>Konverteringsfokuserade</span>
+              </div>
+            </div>
+
+            <div style={styles.valueFeaturesGrid} className="valueFeaturesGrid">
+              <div style={styles.serviceCard} className="serviceCard">
+                <div style={styles.serviceIconWrap}>
+                  <span style={styles.serviceIcon}>🎨</span>
+                </div>
+                <h3 style={styles.serviceCardTitle}>Design</h3>
+                <p style={styles.serviceCardDesc}>
+                  Vi skapar en modern design som speglar ert varumärke.
+                </p>
+              </div>
+
+              <div style={styles.serviceCard} className="serviceCard">
+                <div style={styles.serviceIconWrap}>
+                  <span style={styles.serviceIcon}>💻</span>
+                </div>
+                <h3 style={styles.serviceCardTitle}>Utveckling</h3>
+                <p style={styles.serviceCardDesc}>
+                  Vi bygger snabba, säkra och skalbara hemsidor från grunden.
+                </p>
+              </div>
+
+              <div style={styles.serviceCard} className="serviceCard">
+                <div style={styles.serviceIconWrap}>
+                  <span style={styles.serviceIcon}>🔍</span>
+                </div>
+                <h3 style={styles.serviceCardTitle}>SEO</h3>
+                <p style={styles.serviceCardDesc}>
+                  Vi optimerar er sida så att fler hittar er via sökmotorer.
+                </p>
+              </div>
+
+              <div style={styles.serviceCard} className="serviceCard">
+                <div style={styles.serviceIconWrap}>
+                  <span style={styles.serviceIcon}>📈</span>
+                </div>
+                <h3 style={styles.serviceCardTitle}>Konvertering</h3>
+                <p style={styles.serviceCardDesc}>
+                  Vi designar för att fler besökare ska bli kunder.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <div style={styles.loginRow} className="loginRow">
             <div id="login-section" style={styles.loginCard} className="loginCard">
               <h2 style={{ marginBottom: 6, color: "#0f172a" }}>Intern personalguide</h2>
               <p style={styles.subtitle}>Välj inloggningssätt</p>
@@ -2017,52 +2713,27 @@ export default function Home() {
             </div>
           </div>
 
-          <section style={styles.faqSection}>
+          <section style={styles.faqSection} className="faqSection">
             <h3 style={styles.faqTitle}>Vanliga frågor</h3>
             <div className="faqGrid" style={styles.faqGrid}>
               {landingFaqs.map((item, index) => (
-                <details key={item.question} style={styles.faqItem}>
-                  <summary 
-                    className={`faqSummary faq-${index}`} 
+                <details key={item.question} style={styles.faqItem} className="faqItem">
+                  <summary
+                    className={`faqSummary faq-${index}`}
                     style={styles.faqSummary}
                   >{item.question}</summary>
-                  <p style={styles.faqAnswer}>{item.answer}</p>
+                  <p style={styles.faqAnswer} className="faqAnswer">{item.answer}</p>
                 </details>
               ))}
             </div>
           </section>
 
-          <section style={styles.featuresSection}>
-            <h2 style={styles.featuresTitle}>Allt din personal behöver på ett ställe</h2>
-            <div style={styles.featuresGrid}>
-              <div style={styles.featureCard}>
-                <div style={styles.featureIcon}>🤖</div>
-                <h3 style={styles.featureTitle}>AI-guide för personal</h3>
-                <p style={styles.featureDescription}>Stängningsrutiner, allergener och dagliga rutiner direkt i mobilen. Personalen får snabba, korrekta svar utan att behöva fråga köket.</p>
-              </div>
-              <div style={styles.featureCard}>
-                <div style={styles.featureIcon}>📋</div>
-                <h3 style={styles.featureTitle}>Mise en place</h3>
-                <p style={styles.featureDescription}>Dagens uppgifter strukturerade och prioriterade. Se vad som måste göras, när och av vem. Full kontroll på förberedelserna.</p>
-              </div>
-              <div style={styles.featureCard}>
-                <div style={styles.featureIcon}>🍽️</div>
-                <h3 style={styles.featureTitle}>Receptbank och meny</h3>
-                <p style={styles.featureDescription}>Alla recept och menyer i realtid. Uppdatera en gång så ser hela teamet ändringarna direkt.</p>
-              </div>
-              <div style={styles.featureCard}>
-                <div style={styles.featureIcon}>📊</div>
-                <h3 style={styles.featureTitle}>Chefsdashboard</h3>
-                <p style={styles.featureDescription}>Full kontroll över personal, rutiner och innehåll. Se vad som fungerar och uppdatera enkelt på ett ställe.</p>
-              </div>
-            </div>
-          </section>
-
-          <section id="contact-section" style={styles.contactSection}>
+          <section id="contact-section" style={styles.contactSection} className="contactSection fadeInSection">
             <h2 style={styles.contactTitle}>Intresserad? Hör av dig</h2>
             <form style={styles.contactForm} onSubmit={handleContactSubmit}>
               <input
                 style={styles.contactInput}
+                className="contactField"
                 type="text"
                 placeholder="Namn *"
                 value={contactForm.name}
@@ -2072,6 +2743,7 @@ export default function Home() {
               />
               <input
                 style={styles.contactInput}
+                className="contactField"
                 type="text"
                 placeholder="Restaurangnamn"
                 value={contactForm.restaurant}
@@ -2080,6 +2752,7 @@ export default function Home() {
               />
               <input
                 style={styles.contactInput}
+                className="contactField"
                 type="email"
                 placeholder="E-post *"
                 value={contactForm.email}
@@ -2089,6 +2762,7 @@ export default function Home() {
               />
               <textarea
                 style={styles.contactTextarea}
+                className="contactField"
                 placeholder="Meddelande *"
                 value={contactForm.message}
                 onChange={(e) => handleContactChange("message", e.target.value)}
@@ -2101,7 +2775,8 @@ export default function Home() {
                 </p>
               )}
               <button
-                style={styles.primaryButton}
+                style={styles.contactSubmitButton}
+                className="contactSubmitButton"
                 type="submit"
                 disabled={contactSubmitting}
               >
@@ -2110,48 +2785,78 @@ export default function Home() {
             </form>
           </section>
 
-          <section style={styles.ctaSection}>
-            <h2 style={styles.ctaTitle}>Redo att effektivisera din restaurang?</h2>
+          <section style={styles.trustSection} className="trustSection">
+            <h2 style={styles.trustTitle}>Inte bara en idé – redan testat i verkligheten</h2>
+            <div style={styles.trustGrid} className="trustGrid">
+              <div style={{ ...styles.serviceCard, ...styles.trustCard }} className="serviceCard">
+                <div style={styles.trustCheckWrap}>✓</div>
+                <h3 style={styles.trustCardTitle}>Snabbare arbetsflöden</h3>
+              </div>
+              <div style={{ ...styles.serviceCard, ...styles.trustCard }} className="serviceCard">
+                <div style={styles.trustCheckWrap}>✓</div>
+                <h3 style={styles.trustCardTitle}>Mindre frågor till chefen</h3>
+              </div>
+              <div style={{ ...styles.serviceCard, ...styles.trustCard }} className="serviceCard">
+                <div style={styles.trustCheckWrap}>✓</div>
+                <h3 style={styles.trustCardTitle}>Bättre struktur i teamet</h3>
+              </div>
+            </div>
+          </section>
+
+          <section style={styles.ctaSection} className="ctaSection">
+            <h2 style={styles.ctaTitle}>Redo att digitalisera er verksamhet?</h2>
+            <p style={styles.ctaSubtitle}>
+              Vi hjälper företag att spara tid, minska stress och få bättre struktur i vardagen.
+            </p>
             <div style={styles.ctaButtons}>
               <button
                 style={styles.ctaButtonPrimary}
-                onClick={() => {
-                  setLoginMode("company");
-                  setError("");
-                  requestAnimationFrame(() => {
-                    const field = document.querySelector('input[placeholder="Restaurangens namn"]');
-                    if (field && typeof field.focus === "function") {
-                      field.focus();
-                    }
-                    // Auto-scroll to login section
-                    const loginSection = document.getElementById('login-section');
-                    if (loginSection) {
-                      loginSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                  });
-                }}
+                className="ctaButtonPrimary"
+                onClick={() => scrollToSection("contact-section")}
               >
-                Kom igång nu
+                Boka demo
               </button>
               <button
                 style={styles.ctaButtonSecondary}
-                onClick={() => {
-                  const contactSection = document.getElementById('contact-section');
-                  if (contactSection) {
-                    contactSection.scrollIntoView({ behavior: 'smooth' });
-                  }
-                }}
+                className="ctaButtonSecondary"
+                onClick={() => scrollToSection("contact-section")}
               >
-                Boka demo
+                Kontakta oss
               </button>
             </div>
           </section>
 
-          <footer style={styles.footer}>
-            <div style={styles.footerLogo}>STAFFGUIDE</div>
-            <div style={styles.footerLinks}>
+          <footer style={styles.footer} className="siteFooter">
+            <div style={styles.footerGrid} className="footerGrid">
+              <div style={styles.footerColumn} className="footerColumn">
+                <div style={styles.footerLogo}>StaffGuide</div>
+                <p style={styles.footerTagline}>
+                  Digitala lösningar som sparar tid och hjälper företag att växa.
+                </p>
+              </div>
+
+              <div style={styles.footerColumn} className="footerColumn">
+                <h4 style={styles.footerHeading}>Produkt</h4>
+                <a href="#staffguide-section" className="footerColLink" style={styles.footerColLink} onClick={(e) => { e.preventDefault(); scrollToSection("staffguide-section"); }}>StaffGuide</a>
+                <a href="#social-media-section" className="footerColLink" style={styles.footerColLink} onClick={(e) => { e.preventDefault(); scrollToSection("social-media-section"); }}>Social Media</a>
+                <a href="#hemsidor-section" className="footerColLink" style={styles.footerColLink} onClick={(e) => { e.preventDefault(); scrollToSection("hemsidor-section"); }}>Hemsidor</a>
+              </div>
+
+              <div style={styles.footerColumn} className="footerColumn">
+                <h4 style={styles.footerHeading}>Företag</h4>
+                <a href="#" className="footerColLink" style={styles.footerColLink} onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Om oss</a>
+                <a href="#contact-section" className="footerColLink" style={styles.footerColLink} onClick={(e) => { e.preventDefault(); scrollToSection("contact-section"); }}>Kontakt</a>
+              </div>
+
+              <div style={styles.footerColumn} className="footerColumn">
+                <h4 style={styles.footerHeading}>Juridik</h4>
+                <a href="/privacy" className="footerColLink" style={styles.footerColLink}>Integritetspolicy</a>
+                <a href="/privacy" className="footerColLink" style={styles.footerColLink}>GDPR</a>
+              </div>
+            </div>
+
+            <div style={styles.footerBottom}>
               <a href="mailto:hej@staffguide.se" style={styles.footerLink}>staffguide.se@gmail.com</a>
-              <a href="/privacy" style={styles.footerLink}>Integritetspolicy</a>
             </div>
             <p style={styles.footerText}>© 2026 Staffguide. Alla rättigheter reserverade.</p>
           </footer>
@@ -2329,7 +3034,7 @@ export default function Home() {
           >
             {showPrep ? "Tillbaka till chat" : "Dagens prep"}
           </button>
-          {company.is_admin && (
+          {hasPermission('view_admin') && (
             <button
               style={{
                 ...styles.logoutButton,
@@ -2463,16 +3168,18 @@ export default function Home() {
               >
                 Personal
               </button>
-              <button
-                style={{
-                  ...styles.adminTab,
-                  ...(adminTab === "security" ? styles.adminTabActive : {})
-                }}
-                className="adminTabButton"
-                onClick={() => handleAdminTabChange("security")}
-              >
-                Säkerhet
-              </button>
+              {hasPermission('manage_security') && (
+                <button
+                  style={{
+                    ...styles.adminTab,
+                    ...(adminTab === "security" ? styles.adminTabActive : {})
+                  }}
+                  className="adminTabButton"
+                  onClick={() => handleAdminTabChange("security")}
+                >
+                  Säkerhet
+                </button>
+              )}
               <button
                 style={{
                   ...styles.adminTab,
@@ -3012,6 +3719,7 @@ export default function Home() {
                             <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
                               <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#374151" }}>Namn</th>
                               <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#374151" }}>E-post</th>
+                              <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#374151" }}>Roll</th>
                               <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#374151" }}>Tillagd datum</th>
                               <th style={{ padding: "12px 16px", textAlign: "right", fontSize: 14, fontWeight: 600, color: "#374151" }}>Åtgärd</th>
                             </tr>
@@ -3023,6 +3731,32 @@ export default function Home() {
                                   {staff.name || <span style={{ color: "#9ca3af", fontStyle: "italic" }}>Ej namngiven</span>}
                                 </td>
                                 <td style={{ padding: "12px 16px", color: "#2563eb", fontSize: 14 }}>{staff.email}</td>
+                                <td style={{ padding: "12px 16px", color: "#374151", fontSize: 14 }}>
+                                  <select
+                                    value={staff.role || ""}
+                                    onChange={(e) => {
+                                      console.log("DEBUG: onChange triggered", { staffId: staff.id, newRole: e.target.value });
+                                      updateStaffRole(staff.id, e.target.value);
+                                    }}
+                                    style={{
+                                      padding: "6px 10px",
+                                      border: "1px solid #d1d5db",
+                                      borderRadius: 6,
+                                      fontSize: 13,
+                                      width: "100%",
+                                      maxWidth: 200,
+                                      backgroundColor: "#ffffff",
+                                      cursor: "pointer"
+                                    }}
+                                    disabled={staffLoading}
+                                  >
+                                    <option value="">Välj roll...</option>
+                                    <option value="owner">Owner</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="editor">Editor</option>
+                                    <option value="member">Member</option>
+                                  </select>
+                                </td>
                                 <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: 14 }}>
                                   {new Date(staff.created_at).toLocaleDateString("sv-SE")}
                                 </td>
@@ -3057,7 +3791,7 @@ export default function Home() {
                 </div>
               )}
 
-              {adminTab === "security" && (
+              {adminTab === "security" && hasPermission('manage_security') && (
                 <div className="adminSectionCard">
                   <h3 style={{ marginTop: 0 }}>Säkerhet & Åtkomst</h3>
                   <p style={styles.helperText}>Hantera åtkomst och byt lösenord vid behov.</p>
@@ -3239,8 +3973,8 @@ export default function Home() {
                 const dueTimeText = String(task.due_time || "").trim();
 
                 return (
-                  <label 
-                    key={task.id} 
+                  <label
+                    key={task.id}
                     style={{
                       ...styles.prepItem,
                       ...(task.is_done ? { opacity: 0.5, background: "#f1f5f9" } : {}),
@@ -3280,17 +4014,17 @@ export default function Home() {
                           const currentUserEmail = decoded?.email || null;
                           return task.assigned_to && !task.is_done && isEmployee && task.assigned_to === currentUserEmail;
                         })() && (
-                          <span style={{
-                            background: "#2563EB",
-                            color: "white",
-                            fontSize: 11,
-                            padding: "2px 6px",
-                            borderRadius: 4,
-                            fontWeight: 500
-                          }}>
-                            Tilldelad till dig
-                          </span>
-                        )}
+                            <span style={{
+                              background: "#2563EB",
+                              color: "white",
+                              fontSize: 11,
+                              padding: "2px 6px",
+                              borderRadius: 4,
+                              fontWeight: 500
+                            }}>
+                              Tilldelad till dig
+                            </span>
+                          )}
                       </div>
                       <div style={styles.prepMetaRow}>
                         <span style={{ ...styles.prepMetaChip, ...priorityMeta.style }}>
@@ -3401,7 +4135,58 @@ const styles = {
     minHeight: "100vh",
     position: "relative",
     overflow: "hidden",
-    background: "linear-gradient(180deg, #ffffff 0%, #f0f9ff 35%, #e0f2fe 100%)"
+    background: "linear-gradient(180deg, #05070d 0%, #0a0e1a 45%, #0b0f1c 100%)"
+  },
+
+  landingNav: {
+    position: "sticky",
+    top: 0,
+    zIndex: 20,
+    background: "rgba(5, 7, 13, 0.72)",
+    backdropFilter: "blur(10px)",
+    borderBottom: "1px solid rgba(148, 163, 184, 0.12)"
+  },
+
+  landingNavInner: {
+    maxWidth: 1200,
+    margin: "0 auto",
+    padding: "14px 18px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16
+  },
+
+  landingNavLogo: {
+    fontWeight: 800,
+    fontSize: 16,
+    letterSpacing: "0.01em",
+    color: "#f8fafc"
+  },
+
+  landingNavLinks: {
+    display: "flex",
+    alignItems: "center",
+    gap: 22
+  },
+
+  landingNavLink: {
+    color: "#94a3b8",
+    fontSize: 14,
+    fontWeight: 600,
+    textDecoration: "none"
+  },
+
+  landingNavLoginBtn: {
+    border: "1px solid rgba(148, 163, 184, 0.28)",
+    background: "rgba(255, 255, 255, 0.04)",
+    color: "#f8fafc",
+    borderRadius: 8,
+    padding: "8px 16px",
+    fontWeight: 700,
+    fontSize: 14,
+    cursor: "pointer",
+    transition: "background 0.2s ease, border-color 0.2s ease, transform 0.2s ease"
   },
 
   landingBackground: {
@@ -3415,82 +4200,78 @@ const styles = {
     zIndex: 1,
     maxWidth: 1200,
     margin: "0 auto",
-    padding: "30px 18px 34px"
+    padding: "56px 18px 34px"
   },
 
   landingGrid: {
     display: "grid",
-    gridTemplateColumns: "1.25fr 0.95fr",
-    gap: 26,
-    alignItems: "stretch"
+    gridTemplateColumns: "1.15fr 1fr",
+    gap: 40,
+    alignItems: "center"
   },
 
   heroPanel: {
-    background: "rgba(255, 255, 255, 0.92)",
-    border: "1px solid #dbeafe",
-    borderRadius: 24,
-    padding: 28,
-    backdropFilter: "blur(5px)",
-    boxShadow: "0 12px 30px rgba(37, 99, 235, 0.1)"
+    padding: "12px 4px"
   },
 
   heroBadge: {
     display: "inline-block",
-    background: "#2563eb",
-    color: "#ffffff",
-    padding: "8px 16px",
+    background: "rgba(37, 99, 235, 0.14)",
+    border: "1px solid rgba(59, 130, 246, 0.35)",
+    color: "#93c5fd",
+    padding: "7px 14px",
     borderRadius: 999,
     fontSize: 12,
     letterSpacing: "0.09em",
     fontWeight: 800,
-    marginBottom: 12
+    marginBottom: 20
   },
 
   heroTitle: {
-    margin: "0 0 12px",
-    fontSize: "2.5rem",
-    lineHeight: 1.08,
-    color: "#0f172a",
+    margin: "0 0 18px",
+    fontSize: "3rem",
+    lineHeight: 1.1,
+    color: "#f8fafc",
     fontWeight: 800,
     letterSpacing: "-0.02em"
   },
 
   heroLead: {
-    margin: "0 0 18px",
-    fontSize: "1.07rem",
-    lineHeight: 1.55,
-    color: "#334155",
-    maxWidth: "58ch"
+    margin: "0 0 28px",
+    fontSize: "1.13rem",
+    lineHeight: 1.6,
+    color: "#94a3b8",
+    maxWidth: "52ch"
   },
 
   heroCtaRow: {
     display: "flex",
-    gap: 10,
+    gap: 12,
     flexWrap: "wrap",
-    marginBottom: 16
+    marginBottom: 28
   },
 
   heroCtaPrimary: {
-    border: "none",
+    border: "1px solid #2563eb",
     background: "#2563eb",
     color: "#fff",
     borderRadius: 10,
-    padding: "10px 16px",
+    padding: "14px 26px",
     fontWeight: 700,
     cursor: "pointer",
-    minHeight: 44,
+    minHeight: 48,
     fontSize: 15
   },
 
   heroCtaSecondary: {
-    border: "2px solid #2563eb",
-    background: "transparent",
-    color: "#2563eb",
+    border: "1px solid rgba(148, 163, 184, 0.3)",
+    background: "rgba(255, 255, 255, 0.03)",
+    color: "#e2e8f0",
     borderRadius: 10,
-    padding: "10px 16px",
+    padding: "14px 26px",
     fontWeight: 700,
     cursor: "pointer",
-    minHeight: 44,
+    minHeight: 48,
     fontSize: 15
   },
 
@@ -3498,43 +4279,411 @@ const styles = {
     display: "flex",
     flexWrap: "wrap",
     gap: 10,
-    marginBottom: 18
+    marginBottom: 4
   },
 
   heroMetaChip: {
-    background: "#eff6ff",
-    border: "1px solid #bfdbfe",
-    color: "#1d4ed8",
+    background: "rgba(255, 255, 255, 0.03)",
+    border: "1px solid rgba(148, 163, 184, 0.18)",
+    color: "#cbd5e1",
     borderRadius: 999,
     padding: "8px 12px",
     fontSize: 13,
     fontWeight: 600
   },
 
-  heroVisualCard: {
-    background: "linear-gradient(155deg, #ffffff 0%, #eff6ff 100%)",
-    border: "1px solid #dbeafe",
-    borderRadius: 16,
-    padding: "14px 14px 12px"
+  heroMockupWrap: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center"
   },
 
-  heroVisualTitle: {
-    margin: "0 0 8px",
+  mockupWindow: {
+    width: "100%",
+    maxWidth: 420,
+    background: "linear-gradient(155deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)",
+    border: "1px solid rgba(148, 163, 184, 0.16)",
+    borderRadius: 20,
+    boxShadow: "0 24px 60px rgba(0, 0, 0, 0.45), 0 0 40px rgba(37, 99, 235, 0.08)",
+    overflow: "hidden",
+    backdropFilter: "blur(6px)"
+  },
+
+  mockupTopBar: {
+    display: "flex",
+    alignItems: "center",
+    gap: 7,
+    padding: "12px 14px",
+    borderBottom: "1px solid rgba(148, 163, 184, 0.14)"
+  },
+
+  mockupDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 999,
+    display: "inline-block"
+  },
+
+  mockupUrlPill: {
+    marginLeft: 10,
+    fontSize: 11,
+    color: "#64748b",
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(148, 163, 184, 0.14)",
+    borderRadius: 999,
+    padding: "3px 10px"
+  },
+
+  mockupBody: {
+    display: "flex",
+    minHeight: 220
+  },
+
+  mockupSidebar: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    padding: "16px 12px",
+    borderRight: "1px solid rgba(148, 163, 184, 0.12)"
+  },
+
+  mockupSidebarIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    background: "rgba(148, 163, 184, 0.16)",
+    display: "inline-block"
+  },
+
+  mockupMain: {
+    flex: 1,
+    padding: "16px 18px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 12
+  },
+
+  mockupMainHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    color: "#e2e8f0",
     fontSize: 13,
-    fontWeight: 800,
-    letterSpacing: "0.04em",
-    textTransform: "uppercase",
-    color: "#1d4ed8"
+    fontWeight: 700
   },
 
-  heroVisualList: {
-    margin: 0,
-    paddingLeft: 18,
+  mockupLivePill: {
+    fontSize: 10,
+    fontWeight: 800,
+    letterSpacing: "0.05em",
+    color: "#4ade80",
+    background: "rgba(74, 222, 128, 0.12)",
+    border: "1px solid rgba(74, 222, 128, 0.3)",
+    borderRadius: 999,
+    padding: "3px 8px"
+  },
+
+  mockupTaskRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(148, 163, 184, 0.1)",
+    borderRadius: 10,
+    padding: "8px 10px"
+  },
+
+  mockupTaskCheck: {
+    width: 18,
+    height: 18,
+    borderRadius: 999,
+    background: "rgba(37, 99, 235, 0.25)",
+    color: "#93c5fd",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 11,
+    fontWeight: 800,
+    flexShrink: 0
+  },
+
+  mockupTaskCheckPending: {
+    background: "rgba(148, 163, 184, 0.16)",
+    color: "#94a3b8"
+  },
+
+  mockupTaskText: {
+    fontSize: 12.5,
+    color: "#cbd5e1",
+    fontWeight: 500
+  },
+
+  mockupChartRow: {
+    display: "flex",
+    alignItems: "flex-end",
+    gap: 6,
+    marginTop: "auto",
+    paddingTop: 8
+  },
+
+  mockupChartBar: {
+    width: 14,
+    borderRadius: 4,
+    background: "linear-gradient(180deg, #60a5fa 0%, #2563eb 100%)",
+    display: "inline-block"
+  },
+
+  loginRow: {
+    display: "flex",
+    justifyContent: "center",
+    marginTop: 64
+  },
+
+  servicesSection: {
+    marginTop: 64
+  },
+
+  servicesTitle: {
+    margin: "0 0 36px",
+    fontSize: "2.1rem",
+    fontWeight: 800,
+    letterSpacing: "-0.01em",
+    color: "#f8fafc",
+    textAlign: "center"
+  },
+
+  servicesGrid: {
     display: "grid",
-    gap: 8,
-    color: "#334155",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 24,
+    alignItems: "stretch"
+  },
+
+  serviceCard: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+    background: "linear-gradient(155deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 100%)",
+    border: "1px solid rgba(148, 163, 184, 0.14)",
+    borderRadius: 20,
+    padding: "28px 24px",
+    boxShadow: "0 12px 30px rgba(0, 0, 0, 0.25)"
+  },
+
+  serviceIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    background: "rgba(37, 99, 235, 0.14)",
+    border: "1px solid rgba(59, 130, 246, 0.3)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 22
+  },
+
+  serviceIcon: {
+    lineHeight: 1
+  },
+
+  serviceCardTitle: {
+    margin: 0,
+    fontSize: "1.25rem",
+    fontWeight: 700,
+    color: "#f8fafc"
+  },
+
+  serviceCardDesc: {
+    margin: 0,
     fontSize: 14,
-    lineHeight: 1.45
+    lineHeight: 1.6,
+    color: "#94a3b8",
+    flex: 1
+  },
+
+  serviceBadgeRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 2
+  },
+
+  serviceBadge: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#cbd5e1",
+    background: "rgba(255, 255, 255, 0.04)",
+    border: "1px solid rgba(148, 163, 184, 0.16)",
+    borderRadius: 999,
+    padding: "5px 10px"
+  },
+
+  serviceCardButton: {
+    alignSelf: "flex-start",
+    marginTop: 8,
+    border: "1px solid rgba(148, 163, 184, 0.3)",
+    background: "rgba(255, 255, 255, 0.03)",
+    color: "#f8fafc",
+    borderRadius: 8,
+    padding: "10px 18px",
+    fontWeight: 700,
+    fontSize: 14,
+    cursor: "pointer"
+  },
+
+  staffguideSection: {
+    marginTop: 64
+  },
+
+  staffguideHeader: {
+    maxWidth: 640,
+    margin: "0 auto 40px",
+    textAlign: "center"
+  },
+
+  staffguideTitle: {
+    margin: "0 0 14px",
+    fontSize: "2.1rem",
+    fontWeight: 800,
+    letterSpacing: "-0.01em",
+    color: "#f8fafc"
+  },
+
+  staffguideSubtitle: {
+    margin: "0 auto",
+    fontSize: "1.05rem",
+    lineHeight: 1.6,
+    color: "#94a3b8"
+  },
+
+  staffguideGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 40,
+    alignItems: "center"
+  },
+
+  guideFeaturesGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, 1fr)",
+    gap: 16
+  },
+
+  guideVisualWrap: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center"
+  },
+
+  guideChatBody: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    padding: "18px 16px",
+    minHeight: 220
+  },
+
+  guideChatBubbleUser: {
+    alignSelf: "flex-end",
+    maxWidth: "78%",
+    background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+    color: "#f8fafc",
+    padding: "10px 14px",
+    borderRadius: "14px 14px 4px 14px",
+    fontSize: 12.5,
+    lineHeight: 1.5,
+    fontWeight: 600
+  },
+
+  guideChatBubbleAI: {
+    alignSelf: "flex-start",
+    maxWidth: "82%",
+    background: "rgba(255, 255, 255, 0.05)",
+    border: "1px solid rgba(148, 163, 184, 0.14)",
+    color: "#cbd5e1",
+    padding: "10px 14px",
+    borderRadius: "14px 14px 14px 4px",
+    fontSize: 12.5,
+    lineHeight: 1.55
+  },
+
+  guideChatInputRow: {
+    marginTop: "auto",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    background: "rgba(255, 255, 255, 0.03)",
+    border: "1px solid rgba(148, 163, 184, 0.14)",
+    borderRadius: 999,
+    padding: "8px 8px 8px 14px"
+  },
+
+  guideChatInputText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#64748b"
+  },
+
+  guideChatSendBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    background: "#2563eb",
+    color: "#fff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 12,
+    flexShrink: 0
+  },
+
+  guideStatsRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 12,
+    marginTop: 18,
+    width: "100%",
+    maxWidth: 420
+  },
+
+  guideStatCard: {
+    flex: "1 1 140px",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    background: "rgba(255, 255, 255, 0.04)",
+    border: "1px solid rgba(148, 163, 184, 0.14)",
+    borderRadius: 12,
+    padding: "10px 12px",
+    fontSize: 12.5,
+    fontWeight: 600,
+    color: "#cbd5e1"
+  },
+
+  guideStatCheck: {
+    color: "#4ade80",
+    fontWeight: 800
+  },
+
+  sectionDivider: {
+    height: 1,
+    maxWidth: 1100,
+    margin: "0 auto",
+    background: "linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.22), transparent)"
+  },
+
+  valuesRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 10,
+    justifyContent: "center",
+    marginTop: 18
+  },
+
+  valueFeaturesGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 20
   },
 
   loginCard: {
@@ -3613,7 +4762,7 @@ const styles = {
     marginBottom: 12,
     boxSizing: "border-box",
     outline: "none",
-    transition: "border-color 0.2s, box-shadow 0.2s",
+    transition: "border-color 0.2s ease, box-shadow 0.2s ease",
     background: "#fafbfc"
   },
 
@@ -3639,18 +4788,21 @@ const styles = {
   },
 
   faqSection: {
-    marginTop: 22,
-    background: "rgba(255, 255, 255, 0.92)",
-    border: "1px solid #dbeafe",
+    marginTop: 64,
+    marginBottom: 40,
+    background: "linear-gradient(155deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 100%)",
+    border: "1px solid rgba(148, 163, 184, 0.14)",
     borderRadius: 20,
-    padding: "20px 18px"
+    padding: "28px 24px",
+    boxShadow: "0 12px 30px rgba(0, 0, 0, 0.25)"
   },
 
   faqTitle: {
-    margin: "0 0 12px",
-    fontSize: 20,
-    color: "#0f172a",
-    letterSpacing: "-0.01em"
+    margin: "0 0 16px",
+    fontSize: "1.6rem",
+    color: "#f8fafc",
+    letterSpacing: "-0.01em",
+    fontWeight: 800
   },
 
   faqGrid: {
@@ -3660,122 +4812,49 @@ const styles = {
   },
 
   faqItem: {
-    background: "#fff",
-    border: "1px solid #dbeafe",
+    background: "rgba(255, 255, 255, 0.03)",
+    border: "1px solid rgba(148, 163, 184, 0.14)",
     borderRadius: 12,
-    padding: 12
+    padding: 12,
+    transition: "border-color 0.2s ease, background 0.2s ease"
   },
 
   faqSummary: {
     cursor: "pointer",
     fontWeight: 700,
-    color: "#1e3a8a",
+    color: "#e2e8f0",
     fontSize: 15,
     lineHeight: 1.35,
     listStyle: "none",
     position: "relative",
     paddingLeft: "25px",
-    transition: "all 0.2s ease-in-out",
-    "&::before": {
-      content: '"+"',
-      position: "absolute",
-      left: 0,
-      top: "50%",
-      transform: "translateY(-50%)",
-      fontSize: "18px",
-      fontWeight: "bold",
-      color: "#2563eb",
-      transition: "transform 0.2s ease-in-out"
-    },
-    "&::-webkit-details-marker": {
-      display: "none"
-    }
+    transition: "all 0.2s ease-in-out"
   },
 
   faqAnswer: {
     margin: "10px 0 0",
-    color: "#475569",
+    color: "#94a3b8",
     fontSize: 14,
-    lineHeight: 1.5
-  },
-
-  featuresSection: {
-    marginTop: 32,
-    marginBottom: 32
-  },
-
-  featuresTitle: {
-    margin: "0 0 20px",
-    fontSize: 28,
-    color: "#0f172a",
-    fontWeight: 800,
-    letterSpacing: "-0.02em",
-    textAlign: "center"
-  },
-
-  featuresGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 16,
-    maxWidth: 900,
-    margin: "0 auto"
-  },
-
-  featureCard: {
-    background: "#ffffff",
-    border: "1px solid #dbeafe",
-    borderRadius: 16,
-    padding: 20,
-    boxShadow: "0 4px 16px rgba(37,99,235,0.06)",
-    transition: "transform 0.2s, box-shadow 0.2s",
-    overflow: "hidden"
-  },
-
-  featureIcon: {
-    width: 48,
-    height: 48,
-    background: "#eff6ff",
-    borderRadius: 12,
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-    fontSize: 24,
-    color: "#2563eb"
-  },
-
-  featureTitle: {
-    margin: "0 0 8px",
-    fontSize: 18,
-    color: "#0f172a",
-    fontWeight: 700,
-    lineHeight: 1.3,
-    wordWrap: "break-word"
-  },
-
-  featureDescription: {
-    margin: 0,
-    color: "#475569",
-    fontSize: 14,
-    lineHeight: 1.5,
-    wordWrap: "break-word"
+    lineHeight: 1.6
   },
 
   contactSection: {
     maxWidth: 600,
-    margin: "0 auto 32px",
-    background: "rgba(255, 255, 255, 0.92)",
-    border: "1px solid #dbeafe",
+    margin: "0 auto",
+    marginBottom: 40,
+    background: "linear-gradient(155deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 100%)",
+    border: "1px solid rgba(148, 163, 184, 0.14)",
     borderRadius: 20,
     padding: "28px 24px",
+    boxShadow: "0 12px 30px rgba(0, 0, 0, 0.25)",
     backdropFilter: "blur(5px)"
   },
 
   contactTitle: {
     margin: "0 0 20px",
-    fontSize: 24,
-    color: "#0f172a",
-    fontWeight: 700,
+    fontSize: "1.6rem",
+    color: "#f8fafc",
+    fontWeight: 800,
     textAlign: "center"
   },
 
@@ -3790,11 +4869,12 @@ const styles = {
     padding: "12px 14px",
     fontSize: 15,
     borderRadius: 10,
-    border: "1.5px solid #cbd5e1",
+    border: "1px solid rgba(148, 163, 184, 0.24)",
     boxSizing: "border-box",
     outline: "none",
-    transition: "border-color 0.2s, box-shadow 0.2s",
-    background: "#fafbfc"
+    transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+    background: "rgba(255, 255, 255, 0.04)",
+    color: "#f1f5f9"
   },
 
   contactTextarea: {
@@ -3802,102 +4882,217 @@ const styles = {
     padding: "12px 14px",
     fontSize: 15,
     borderRadius: 10,
-    border: "1.5px solid #cbd5e1",
+    border: "1px solid rgba(148, 163, 184, 0.24)",
     boxSizing: "border-box",
     outline: "none",
-    transition: "border-color 0.2s, box-shadow 0.2s",
-    background: "#fafbfc",
+    transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+    background: "rgba(255, 255, 255, 0.04)",
+    color: "#f1f5f9",
     minHeight: 100,
     resize: "vertical",
     fontFamily: "inherit"
   },
 
+  contactSubmitButton: {
+    border: "none",
+    background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+    color: "#fff",
+    borderRadius: 10,
+    padding: "14px 26px",
+    fontWeight: 700,
+    fontSize: 15,
+    cursor: "pointer",
+    minHeight: 48,
+    transition: "transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease"
+  },
+
+  trustSection: {
+    marginTop: 64,
+    textAlign: "center"
+  },
+
+  trustTitle: {
+    margin: "0 0 32px",
+    fontSize: "1.6rem",
+    fontWeight: 800,
+    letterSpacing: "-0.01em",
+    color: "#f8fafc"
+  },
+
+  trustGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 20
+  },
+
+  trustCard: {
+    alignItems: "center",
+    textAlign: "center"
+  },
+
+  trustCheckWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    background: "rgba(74, 222, 128, 0.12)",
+    border: "1px solid rgba(74, 222, 128, 0.35)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 18,
+    fontWeight: 800,
+    color: "#4ade80",
+    margin: "0 auto"
+  },
+
+  trustCardTitle: {
+    margin: 0,
+    fontSize: "1.05rem",
+    fontWeight: 700,
+    color: "#f1f5f9"
+  },
+
   ctaSection: {
     textAlign: "center",
-    padding: "40px 20px",
-    background: "linear-gradient(145deg, #eff6ff 0%, #dbeafe 100%)",
+    padding: "56px 32px",
+    background: "linear-gradient(155deg, rgba(37,99,235,0.16) 0%, rgba(10,14,26,0.4) 60%, rgba(10,14,26,0.1) 100%)",
+    border: "1px solid rgba(59, 130, 246, 0.22)",
     borderRadius: 20,
-    margin: "0 auto 32px",
-    maxWidth: 800
+    margin: "64px auto 0",
+    maxWidth: 820,
+    boxShadow: "0 30px 70px rgba(0, 0, 0, 0.35), 0 0 60px rgba(37, 99, 235, 0.12)",
+    position: "relative",
+    overflow: "hidden"
   },
 
   ctaTitle: {
-    margin: "0 0 20px",
-    fontSize: 26,
-    color: "#0f172a",
+    margin: "0 0 14px",
+    fontSize: "2.1rem",
+    color: "#f8fafc",
     fontWeight: 800,
-    letterSpacing: "-0.02em"
+    letterSpacing: "-0.01em"
+  },
+
+  ctaSubtitle: {
+    margin: "0 auto 28px",
+    maxWidth: "48ch",
+    fontSize: "1.05rem",
+    lineHeight: 1.6,
+    color: "#cbd5e1"
   },
 
   ctaButtons: {
     display: "flex",
     gap: 12,
     justifyContent: "center",
-    flexWrap: "wrap"
+    flexWrap: "wrap",
+    position: "relative",
+    zIndex: 1
   },
 
   ctaButtonPrimary: {
     border: "none",
-    background: "#2563eb",
+    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
     color: "#fff",
     borderRadius: 10,
-    padding: "12px 24px",
+    padding: "14px 26px",
     fontWeight: 700,
     cursor: "pointer",
     minHeight: 48,
-    fontSize: 16,
-    transition: "background 0.2s, transform 0.1s, box-shadow 0.2s",
-    boxShadow: "0 2px 8px rgba(37,99,235,0.18)"
+    fontSize: 15,
+    transition: "transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease"
   },
 
   ctaButtonSecondary: {
-    border: "2px solid #2563eb",
-    background: "transparent",
-    color: "#2563eb",
+    border: "1px solid rgba(148, 163, 184, 0.35)",
+    background: "rgba(255, 255, 255, 0.03)",
+    color: "#f8fafc",
     borderRadius: 10,
-    padding: "12px 24px",
+    padding: "14px 26px",
     fontWeight: 700,
     cursor: "pointer",
     minHeight: 48,
-    fontSize: 16,
-    transition: "background 0.2s, transform 0.1s, box-shadow 0.2s"
+    fontSize: 15,
+    transition: "transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease"
   },
 
   footer: {
-    background: "#ffffff",
-    border: "1px solid #dbeafe",
-    borderRadius: 20,
-    padding: "24px 20px",
-    textAlign: "center",
-    color: "#475569"
+    marginTop: 64,
+    background: "rgba(255, 255, 255, 0.02)",
+    borderTop: "1px solid rgba(148, 163, 184, 0.14)",
+    padding: "32px 8px 20px",
+    color: "#94a3b8"
+  },
+
+  footerGrid: {
+    display: "grid",
+    gridTemplateColumns: "1.4fr 1fr 1fr 1fr",
+    gap: 24,
+    marginBottom: 24,
+    textAlign: "left"
+  },
+
+  footerColumn: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 10
   },
 
   footerLogo: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: 800,
-    color: "#2563eb",
-    marginBottom: 8
+    color: "#f8fafc"
   },
 
-  footerLinks: {
+  footerTagline: {
+    margin: 0,
+    fontSize: 13,
+    lineHeight: 1.6,
+    color: "#64748b",
+    maxWidth: "28ch"
+  },
+
+  footerHeading: {
+    margin: "0 0 2px",
+    fontSize: 12,
+    fontWeight: 800,
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
+    color: "#cbd5e1"
+  },
+
+  footerColLink: {
+    color: "#94a3b8",
+    textDecoration: "none",
+    fontSize: 14,
+    fontWeight: 500,
+    cursor: "pointer",
+    transition: "color 0.2s ease",
+    width: "fit-content"
+  },
+
+  footerBottom: {
     display: "flex",
     justifyContent: "center",
     gap: 20,
     flexWrap: "wrap",
+    borderTop: "1px solid rgba(148, 163, 184, 0.1)",
+    paddingTop: 18,
     marginBottom: 8
   },
 
   footerLink: {
-    color: "#2563eb",
+    color: "#60a5fa",
     textDecoration: "none",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 600
   },
 
   footerText: {
-    fontSize: 13,
+    fontSize: 12.5,
     color: "#64748b",
-    margin: 0
+    margin: 0,
+    textAlign: "center"
   },
 
   appContainer: {

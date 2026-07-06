@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx next *)",
+      "Bash(mkdir -p \"C:\\\\Users\\\\Manne\\\\Desktop\\\\ai-pizzeria\\\\.claude\")",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

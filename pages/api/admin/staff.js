@@ -34,15 +34,29 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Invalid token" });
     }
 
-    // Get company and check if admin
-    const { data: company, error: companyError } = await supabase
-      .from("companies")
-      .select("id, is_admin")
-      .eq("id", companyId)
-      .single();
+    // Check user role and permissions
+    let userRole = decoded.role;
+    
+    // Company login tokens don't have role field - treat as owner
+    if (!userRole) {
+      if (decoded.type === "company") {
+        userRole = 'owner';
+      } else {
+        // This is a staff login - get role from database
+        const { data: staff } = await supabase
+          .from("restaurant_staff")
+          .select("role")
+          .eq("email", decoded.email)
+          .eq("company_id", companyId)
+          .maybeSingle();
+        
+        userRole = staff?.role || 'member';
+      }
+    }
 
-    if (companyError || !company || !company.is_admin) {
-      return res.status(403).json({ error: "Du är inte admin" });
+    // Check permissions - only owner and admin can view staff list
+    if (!['owner', 'Admin', 'admin'].includes(userRole)) {
+      return res.status(403).json({ error: "Du har inte behörighet att se personal" });
     }
 
   if (req.method === "GET") {
@@ -51,7 +65,7 @@ export default async function handler(req, res) {
         
         const { data: staff, error: staffError } = await supabase
           .from("restaurant_staff")
-          .select("id, name, email, created_at")
+          .select("id, name, email, role, created_at")
           .eq("company_id", companyId)
           .order("created_at", { ascending: false });
 

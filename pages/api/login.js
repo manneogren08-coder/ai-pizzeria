@@ -95,7 +95,10 @@ export default async function handler(req, res) {
 
     // Skapa token
     const token = jwt.sign(
-      { companyId: data.id },
+      { 
+        companyId: data.id,
+        type: "company"
+      },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
