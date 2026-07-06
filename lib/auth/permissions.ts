@@ -92,7 +92,7 @@ export function getRolePermissions(role: UserRole): string[] {
   if (role === 'owner') {
     return ['all'];
   }
-  return ROLE_PERMISSIONS[role] || [];
+  return [...ROLE_PERMISSIONS[role]];
 }
 
 // Special permission checks for specific scenarios
@@ -136,7 +136,7 @@ export function requireSpecialPermission(
   check: keyof typeof SPECIAL_PERMISSIONS, 
   ...args: any[]
 ) {
-  const checker = SPECIAL_PERMISSIONS[check];
+  const checker = SPECIAL_PERMISSIONS[check] as (...a: any[]) => boolean;
   if (!checker(role, ...args)) {
     throw new Error(`Forbidden: Role '${role}' does not have special permission '${check}'`);
   }
