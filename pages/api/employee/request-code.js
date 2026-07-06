@@ -189,14 +189,9 @@ export default async function handler(req, res) {
   try {
     const clientIP = getClientIP(req);
     const email = String(req.body?.email || "").trim().toLowerCase();
-    const name = String(req.body?.name || "").trim();
 
-    if (!email || !email.includes("@")) {
+    if (!email) {
       return res.status(400).json({ error: "Ange en giltig e-post" });
-    }
-
-    if (!name) {
-      return res.status(400).json({ error: "Ange ditt namn" });
     }
 
     const accountLimitKey = `employee-request:${email}`;
@@ -221,7 +216,7 @@ export default async function handler(req, res) {
         {
           company_id: String(staff.company_id),
           email,
-          display_name: name,
+          display_name: staff.name || staff.companies?.name || "Anställd",
           one_time_code_hash: loginCodeHash,
           one_time_code_expires_at: expiresAt,
           updated_at: new Date().toISOString()

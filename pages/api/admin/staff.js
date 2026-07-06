@@ -3,7 +3,7 @@ import { getSupabaseAdminClient } from "../../../lib/supabase.js";
 import { extractAuthToken } from "../../../lib/auth.js";
 
 export default async function handler(req, res) {
-  if (req.method !== "GET" && req.method !== "POST" && req.method !== "DELETE") {
+  if (req.method !== "GET" && req.method !== "POST" && req.method !== "PUT" && req.method !== "DELETE") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
@@ -16,21 +16,15 @@ export default async function handler(req, res) {
 
     const token = extractAuthToken(req);
     
-    console.log("DEBUG: Extracted token:", token ? token.substring(0, 50) + "..." : "null");
-    
     if (!token) {
-      console.log("DEBUG: No token found in request");
       return res.status(401).json({ error: "Missing token" });
     }
 
     // Verify JWT token
-    console.log("DEBUG: Verifying JWT token...");
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("DEBUG: Decoded token:", decoded);
     const companyId = decoded.companyId;
 
     if (!companyId) {
-      console.log("DEBUG: No companyId in decoded token");
       return res.status(401).json({ error: "Invalid token" });
     }
 
@@ -61,22 +55,17 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
       try {
-        console.log("DEBUG: Fetching staff with companyId:", companyId);
-        
         const { data: staff, error: staffError } = await supabase
           .from("restaurant_staff")
           .select("id, name, email, role, created_at")
           .eq("company_id", companyId)
           .order("created_at", { ascending: false });
 
-        console.log("DEBUG: Supabase response:", { staff, staffError });
-
         if (staffError) {
           console.error("Staff fetch error:", staffError);
           return res.status(500).json({ error: "Kunde inte hämta personal" });
         }
 
-        console.log("DEBUG: Returning staff:", staff || []);
         res.status(200).json({ staff: staff || [] });
       } catch (err) {
         console.error("Staff GET error:", err);
@@ -84,10 +73,16 @@ export default async function handler(req, res) {
       }
     } else if (req.method === "POST") {
       try {
-        const { email, name } = req.body;
+        const { email, name, role = 'member' } = req.body;
 
         if (!email || !email.includes("@")) {
           return res.status(400).json({ error: "Ange en giltig e-postadress" });
+        }
+
+        // Validate role
+        const validRoles = ['owner', 'admin', 'editor', 'member'];
+        if (!validRoles.includes(role)) {
+          return res.status(400).json({ error: "Ogiltig roll" });
         }
 
         // Check if staff member already exists
@@ -113,7 +108,8 @@ export default async function handler(req, res) {
           .insert({
             company_id: companyId,
             email: email.toLowerCase(),
-            name: name || null
+            name: name || null,
+            role: role
           })
           .select()
           .single();
@@ -162,6 +158,67 @@ export default async function handler(req, res) {
         res.status(200).json({ success: true });
       } catch (err) {
         console.error("Staff DELETE error:", err);
+        res.status(500).json({ error: "Serverfel" });
+      }
+    } else if (req.method === "PUT") {
+      try {
+        const { id: staffId, role } = req.body;
+
+        if (!staffId) {
+          return res.status(400).json({ error: "Missing staff ID" });
+        }
+
+        if (!role) {
+          return res.status(400).json({ error: "Missing role" });
+        }
+
+        // Validate role
+        const validRoles = ['owner', 'admin', 'editor', 'member'];
+        if (!validRoles.includes(role)) {
+          return res.status(400).json({ error: "Ogiltig roll" });
+        }
+
+        // Verify staff belongs to this company
+        const { data: staff, error: staffError } = await supabase
+          .from("restaurant_staff")
+          .select("id, role")
+          .eq("id", staffId)
+          .eq("company_id", companyId)
+          .single();
+
+        if (staffError || !staff) {
+          return res.status(404).json({ error: "Personal hittades inte" });
+        }
+
+        // Prevent removing the last owner
+        if (staff.role === 'owner' && role !== 'owner') {
+          const { data: ownerCount } = await supabase
+            .from("restaurant_staff")
+            .select("id", { count: 'exact' })
+            .eq("company_id", companyId)
+            .eq("role", "owner");
+
+          if (ownerCount && ownerCount.length <= 1) {
+            return res.status(400).json({ error: "Kan inte ta bort den sista owner-rollen" });
+          }
+        }
+
+        // Update staff role
+        const { data: updatedStaff, error: updateError } = await supabase
+          .from("restaurant_staff")
+          .update({ role })
+          .eq("id", staffId)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error("Staff update error:", updateError);
+          return res.status(500).json({ error: "Kunde inte uppdatera roll" });
+        }
+
+        res.status(200).json({ staff: updatedStaff });
+      } catch (err) {
+        console.error("Staff PUT error:", err);
         res.status(500).json({ error: "Serverfel" });
       }
     }

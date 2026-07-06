@@ -114,6 +114,14 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Anställd hittades inte. Begär engångskod först." });
     }
 
+    // Get staff role from restaurant_staff table
+    const { data: staffData, error: staffError } = await supabase
+      .from("restaurant_staff")
+      .select("role")
+      .eq("company_id", String(company.id))
+      .eq("email", email)
+      .maybeSingle();
+
     const isDevEnv = process.env.NODE_ENV !== "production";
 
     if (code.toLowerCase() === "demo") {
@@ -156,6 +164,7 @@ export default async function handler(req, res) {
 
     const token = jwt.sign(
       {
+        uid: company.id,  // ← Lägg till uid för RLS
         companyId: company.id,
         employeeId: employee.id,
         employeeEmail: email,
@@ -172,7 +181,8 @@ export default async function handler(req, res) {
       company: {
         id: company.id,
         name: company.name,
-        is_admin: false,
+        role: staffData?.role || 'member',
+        is_admin: staffData?.role === 'owner' || staffData?.role === 'admin',
         active: company.active !== undefined ? company.active : true,
         query_count: company.query_count || 0,
         is_employee: true,

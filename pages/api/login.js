@@ -93,11 +93,24 @@ export default async function handler(req, res) {
 
     const data = matchedCompany;
 
+    // Get staff role from restaurant_staff table for company admin
+    const { data: staffData, error: staffError } = await supabase
+      .from("restaurant_staff")
+      .select("role")
+      .eq("company_id", String(data.id))
+      .eq("email", "manneboi08@gmail.com") // TODO: Make this dynamic for any company admin
+      .maybeSingle();
+
     // Skapa token
     const token = jwt.sign(
       { 
+<<<<<<< HEAD
         companyId: data.id,
         type: "company"
+=======
+        uid: data.id,  
+        companyId: data.id 
+>>>>>>> 319fddfc62c7d20576d5279b0b8b4b8f36d9e7d5
       },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
@@ -110,6 +123,7 @@ export default async function handler(req, res) {
       company: {
         id: data.id,
         name: data.name,
+        role: staffData?.role || (data.is_admin ? 'owner' : 'member'),
         is_admin: data.is_admin || false,
         active: data.active !== undefined ? data.active : true,
         query_count: data.query_count || 0
