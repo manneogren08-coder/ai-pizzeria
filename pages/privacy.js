@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Head from 'next/head';
 
 export default function PrivacyPolicy() {
   return (
@@ -7,6 +8,9 @@ export default function PrivacyPolicy() {
       background: 'linear-gradient(145deg, #ffffff 0%, #f8fbff 52%, #eff6ff 100%)',
       padding: '40px 20px'
     }}>
+      <Head>
+        <title>Integritetspolicy | Effexo</title>
+      </Head>
       <div style={{
         maxWidth: '800px',
         margin: '0 auto',
@@ -45,7 +49,7 @@ export default function PrivacyPolicy() {
             1. Vilken data samlar vi in?
           </h2>
           <p style={{ color: '#475569', lineHeight: 1.6, marginBottom: '15px' }}>
-            Staffguide samlar in följande typer av personuppgifter:
+            Effexo samlar in följande typer av personuppgifter:
           </p>
           <ul style={{ color: '#475569', lineHeight: 1.6, paddingLeft: '20px' }}>
             <li style={{ marginBottom: '10px' }}>
@@ -205,7 +209,7 @@ export default function PrivacyPolicy() {
             marginTop: '20px'
           }}>
             <p style={{ color: '#0f172a', fontWeight: 600, margin: '0 0 8px' }}>
-              Staffguide AB
+              Effexo AB
             </p>
             <p style={{ color: '#475569', margin: '0 0 8px' }}>
               E-post: <a href="mailto:staffguide.se@gmail.com" style={{ color: '#2563eb', textDecoration: 'none' }}>staffguide.se@gmail.com</a>

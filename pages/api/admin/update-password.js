@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     // Get company and check if admin
     const { data: company, error: companyError } = await supabase
       .from("companies")
-      .select("id, is_admin")
+      .select("id, is_admin, password_hash")
       .eq("id", companyId)
       .single();
 
@@ -40,11 +40,21 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: "Du är inte admin" });
     }
 
-    // Get new password from request
-    const { newPassword } = req.body;
+    // Get current + new password from request
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword) {
+      return res.status(400).json({ error: "Nuvarande lösenord krävs" });
+    }
 
     if (!newPassword || newPassword.trim().length < 3) {
       return res.status(400).json({ error: "Lösenord måste vara minst 3 tecken" });
+    }
+
+    const currentMatch = await bcrypt.compare(currentPassword, company.password_hash || "");
+
+    if (!currentMatch) {
+      return res.status(401).json({ error: "Fel nuvarande lösenord" });
     }
 
     // Hash new password

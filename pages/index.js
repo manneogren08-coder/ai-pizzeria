@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
+import Head from "next/head";
 import { canAccessPrep, canViewPrep, canEditPrep, canAccessAdminTab, getRoleDescription } from "../lib/roles.js";
 
 const ADMIN_TABS = ["info", "menu", "recipes", "routines", "prep", "staff", "security", "stats"];
@@ -238,14 +239,6 @@ function serializeRecipesRows(rows) {
     .join("\n\n");
 }
 
-function parseJwt(token) {
-  try {
-    return JSON.parse(atob(token.split('.')[1]));
-  } catch (e) {
-    return null;
-  }
-}
-
 export default function Home() {
   const router = useRouter();
   const emptyDetails = {
@@ -279,8 +272,12 @@ export default function Home() {
 
   const landingFaqs = [
     {
+      question: "Vad är Effexo?",
+      answer: "Effexo är företaget bakom StaffGuide och hemsidor för restauranger och småföretag."
+    },
+    {
       question: "Vad är StaffGuide?",
-      answer: "Ett internt verktyg som hjälper restauranger och företag att samla rutiner, recept och information på ett ställe."
+      answer: "StaffGuide är Effexos interna verktyg som hjälper restauranger och företag att samla rutiner, recept och information på ett ställe."
     },
     {
       question: "Hur snabbt kommer vi igång?",
@@ -318,7 +315,12 @@ export default function Home() {
   const [adminPassword, setAdminPassword] = useState("");
   const [adminPasswordError, setAdminPasswordError] = useState("");
   const [adminPasswordPrompt, setAdminPasswordPrompt] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [adminPanelCurrentPassword, setAdminPanelCurrentPassword] = useState("");
+  const [adminPanelNewPassword, setAdminPanelNewPassword] = useState("");
+  const [adminPanelConfirmPassword, setAdminPanelConfirmPassword] = useState("");
   const [adminMessage, setAdminMessage] = useState("");
   const [adminLoading, setAdminLoading] = useState(false);
   const [companyDetails, setCompanyDetails] = useState(emptyDetails);
@@ -782,9 +784,11 @@ export default function Home() {
     }
 
     try {
+      const parsedCompany = JSON.parse(savedCompany);
       tokenRef.current = savedToken;
       setToken(savedToken);
-      setCompany(JSON.parse(savedCompany));
+      setCompany(parsedCompany);
+      setUserRole(parsedCompany?.role || 'member');
     } catch {
       localStorage.removeItem("token");
       localStorage.removeItem("company");
@@ -1155,8 +1159,17 @@ export default function Home() {
   };
 
   const updatePassword = async () => {
+    if (!currentPassword.trim()) {
+      showToast("Ange nuvarande lösenord", "error");
+      return;
+    }
     if (!newPassword.trim()) {
       showToast("Skriv in ett nytt lösenord", "error");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setAdminMessage("❌ Lösenorden matchar inte.");
+      showToast("Lösenorden matchar inte.", "error");
       return;
     }
 
@@ -1170,7 +1183,7 @@ export default function Home() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ newPassword })
+        body: JSON.stringify({ currentPassword, newPassword })
       });
 
       const data = await res.json();
@@ -1185,7 +1198,64 @@ export default function Home() {
 
       setAdminMessage("✅ Lösenord uppdaterat!");
       showToast("Lösenord uppdaterat", "success");
+      setCurrentPassword("");
       setNewPassword("");
+      setConfirmPassword("");
+      setTimeout(() => setAdminMessage(""), 3000);
+    } catch {
+      setAdminMessage("❌ Ett fel uppstod");
+      showToast("Ett fel uppstod", "error");
+    }
+
+    setAdminLoading(false);
+  };
+
+  const updateAdminPanelPassword = async () => {
+    if (!adminPanelCurrentPassword.trim()) {
+      showToast("Ange nuvarande admin-lösenord", "error");
+      return;
+    }
+    if (!adminPanelNewPassword.trim()) {
+      showToast("Skriv in ett nytt admin-lösenord", "error");
+      return;
+    }
+    if (adminPanelNewPassword !== adminPanelConfirmPassword) {
+      setAdminMessage("❌ Lösenorden matchar inte.");
+      showToast("Lösenorden matchar inte.", "error");
+      return;
+    }
+
+    setAdminMessage("");
+    setAdminLoading(true);
+
+    try {
+      const res = await fetch("/api/admin/change-admin-password", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          currentPassword: adminPanelCurrentPassword,
+          newPassword: adminPanelNewPassword
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const errorText = data.details ? `${data.error || "Fel vid uppdatering"} (${data.details})` : (data.error || "Fel vid uppdatering");
+        setAdminMessage("❌ " + errorText);
+        showToast(errorText, "error");
+        setAdminLoading(false);
+        return;
+      }
+
+      setAdminMessage("✅ Admin-panelens lösenord uppdaterat!");
+      showToast("Admin-panelens lösenord uppdaterat", "success");
+      setAdminPanelCurrentPassword("");
+      setAdminPanelNewPassword("");
+      setAdminPanelConfirmPassword("");
       setTimeout(() => setAdminMessage(""), 3000);
     } catch {
       setAdminMessage("❌ Ett fel uppstod");
@@ -1696,22 +1766,18 @@ export default function Home() {
   const completedPrepCount = prepTasks.filter((task) => task.is_done).length;
   const prepStations = [...new Set(prepTasks.map((task) => String(task.station || "").trim()).filter(Boolean))];
 
+  // Reuse the employee identity already stored on `company` (set at login and restored
+  // from localStorage on refresh) instead of re-decoding the JWT, whose employee token
+  // uses `employeeEmail`/`isEmployee`, not `email`/`type`.
+  const currentUserEmail = company?.employee_email || null;
+  const isCurrentUserEmployee = !!company?.is_employee;
+
   const filteredPrepTasks = prepTasks.filter((task) => {
     if (prepOnlyOpen && task.is_done) {
       return false;
     }
     if (prepStationFilter !== "all" && String(task.station || "").trim() !== prepStationFilter) {
       return false;
-    }
-    // Get current user email from JWT token
-    let currentUserEmail = null;
-    if (token) {
-      try {
-        const decoded = parseJwt(token);
-        currentUserEmail = decoded?.email || null;
-      } catch (err) {
-        console.error("JWT decode error:", err);
-      }
     }
 
     // When "Visa mina uppgifter" is enabled, show only tasks assigned to current user
@@ -1723,16 +1789,6 @@ export default function Home() {
 
   const visiblePrepTasks = [...filteredPrepTasks].sort((a, b) => {
     // First, prioritize tasks assigned to current user
-    let currentUserEmail = null;
-    if (token) {
-      try {
-        const decoded = parseJwt(token);
-        currentUserEmail = decoded?.email || null;
-      } catch (err) {
-        console.error("JWT decode error:", err);
-      }
-    }
-
     const aIsAssignedToMe = a.assigned_to === currentUserEmail;
     const bIsAssignedToMe = b.assigned_to === currentUserEmail;
 
@@ -1770,6 +1826,87 @@ export default function Home() {
   const prepProgressPercent = visiblePrepTasks.length > 0
     ? Math.round((filteredCompletedPrepCount / visiblePrepTasks.length) * 100)
     : 0;
+
+  // "Dina uppgifter": tasks assigned to the logged-in user, closest deadline first,
+  // then not-done before done. Reuses the existing dueTimeSortValue helper.
+  const myPrepTasks = filteredPrepTasks
+    .filter((task) => currentUserEmail && task.assigned_to === currentUserEmail)
+    .slice()
+    .sort((a, b) => {
+      const aDue = dueTimeSortValue(a.due_time);
+      const bDue = dueTimeSortValue(b.due_time);
+      if (aDue !== bDue) return aDue - bDue;
+      if (a.is_done !== b.is_done) return a.is_done ? 1 : -1;
+      return 0;
+    });
+
+  // "Övriga uppgifter": everything else, keeping the existing sort order.
+  const otherPrepTasks = visiblePrepTasks.filter(
+    (task) => !(currentUserEmail && task.assigned_to === currentUserEmail)
+  );
+
+  const renderPrepTaskItem = (task) => {
+    const priorityMeta = getPriorityMeta(task.priority);
+    const stationText = String(task.station || "").trim();
+    const dueTimeText = String(task.due_time || "").trim();
+    const isAssignedToMe = isCurrentUserEmployee && task.assigned_to === currentUserEmail;
+
+    return (
+      <label
+        key={task.id}
+        style={{
+          ...styles.prepItem,
+          ...(task.is_done ? { opacity: 0.5, background: "#f1f5f9" } : {}),
+          ...(task.assigned_to && !task.is_done ? { borderLeft: "3px solid #2563EB" } : {})
+        }}
+        onMouseEnter={(e) => {
+          if (!task.is_done) {
+            e.currentTarget.style.background = "#f0f9ff";
+            e.currentTarget.style.borderColor = "#bfdbfe";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!task.is_done) {
+            e.currentTarget.style.background = "#f9fafb";
+            e.currentTarget.style.borderColor = "#e5e7eb";
+          }
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={!!task.is_done}
+          onChange={(e) => togglePrepTask(task.id, e.target.checked)}
+          disabled={prepLoading || !canEditPrep(userRole)}
+          style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+        />
+        <div style={styles.prepItemBody}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span style={{
+              ...styles.prepItemText,
+              ...(task.is_done ? styles.prepItemDone : {})
+            }}>
+              {task.title}
+            </span>
+            {isAssignedToMe && !task.is_done && (
+              <span style={styles.assignedToMeBadge}>
+                Tilldelad till dig
+              </span>
+            )}
+          </div>
+          <div style={styles.prepMetaRow}>
+            <span style={{ ...styles.prepMetaChip, ...priorityMeta.style }}>
+              Prioritet: {priorityMeta.label}
+            </span>
+            {stationText && <span style={styles.prepMetaChip}>Station: {stationText}</span>}
+            {dueTimeText && <span style={styles.prepMetaChip}>Klar före {dueTimeText}</span>}
+            {task.assigned_to && (
+              <span style={styles.prepMetaChip}>Tilldelad: {getStaffNameByEmail(task.assigned_to)}</span>
+            )}
+          </div>
+        </div>
+      </label>
+    );
+  };
 
   if (isRestoringSession) {
     return (
@@ -1809,6 +1946,12 @@ export default function Home() {
 
     return (
       <div style={styles.landingPage} className="landingPage">
+        <Head>
+          <title>Effexo | Digitala lösningar för restauranger och småföretag</title>
+          <meta name="description" content="Effexo bygger digitala lösningar som StaffGuide och hemsidor för restauranger och småföretag." />
+          <meta property="og:title" content="Effexo | Digitala lösningar för restauranger och småföretag" />
+          <meta property="og:description" content="Effexo bygger digitala lösningar som StaffGuide och hemsidor för restauranger och småföretag." />
+        </Head>
         <style jsx>{`
           .landingOrb {
             position: absolute;
@@ -1880,7 +2023,6 @@ export default function Home() {
 
             .servicesSection,
             .staffguideSection,
-            .socialMediaSection,
             .hemsidorSection,
             .loginRow,
             .faqSection,
@@ -1943,7 +2085,6 @@ export default function Home() {
 
             .servicesSection,
             .staffguideSection,
-            .socialMediaSection,
             .hemsidorSection,
             .loginRow,
             .faqSection,
@@ -2150,7 +2291,6 @@ export default function Home() {
             100% { transform: translateY(0); }
           }
 
-          .socialMediaSection,
           .hemsidorSection {
             animation: fadeInUp 0.7s ease 0.1s both;
           }
@@ -2261,16 +2401,8 @@ export default function Home() {
 
         <nav style={styles.landingNav} className="landingNav">
           <div style={styles.landingNavInner} className="landingNavInner">
-            <span style={styles.landingNavLogo}>StaffGuide</span>
+            <span style={styles.landingNavLogo}>Effexo</span>
             <div style={styles.landingNavLinks} className="landingNavLinks">
-              <a
-                href="#services-section"
-                style={styles.landingNavLink}
-                className="landingNavLink"
-                onClick={(e) => { e.preventDefault(); scrollToSection("services-section"); }}
-              >
-                Social Media
-              </a>
               <a
                 href="#services-section"
                 style={styles.landingNavLink}
@@ -2308,7 +2440,7 @@ export default function Home() {
         <div style={styles.landingContentWrap} className="landingContentWrap">
           <div className="landingGrid" style={styles.landingGrid}>
             <section style={styles.heroPanel} className="heroPanel fadeInSection">
-              <span style={styles.heroBadge}>STAFFGUIDE</span>
+              <span style={styles.heroBadge}>EFFEXO</span>
               <h1 className="heroTitle" style={styles.heroTitle}>
                 Digitala lösningar som sparar tid och hjälper företag att växa.
               </h1>
@@ -2396,30 +2528,13 @@ export default function Home() {
                 </div>
                 <h3 style={styles.serviceCardTitle}>StaffGuide</h3>
                 <p style={styles.serviceCardDesc}>
-                  AI-assistent för restauranger som hjälper personalen att hitta svar på rutiner, allergener, recept, arbetsuppgifter och intern information på några sekunder.
+                  Effexo erbjuder StaffGuide för restauranger – en AI-assistent som hjälper personalen att hitta svar på rutiner, allergener, recept, arbetsuppgifter och intern information på några sekunder.
                 </p>
                 <div style={styles.serviceBadgeRow}>
                   <span style={styles.serviceBadge}>AI</span>
                   <span style={styles.serviceBadge}>Personal</span>
                   <span style={styles.serviceBadge}>Kunskap</span>
                   <span style={styles.serviceBadge}>Mise en place</span>
-                </div>
-                <button type="button" style={styles.serviceCardButton} className="serviceCardButton">Läs mer</button>
-              </div>
-
-              <div style={styles.serviceCard} className="serviceCard">
-                <div style={styles.serviceIconWrap}>
-                  <span style={styles.serviceIcon}>📱</span>
-                </div>
-                <h3 style={styles.serviceCardTitle}>Social Media</h3>
-                <p style={styles.serviceCardDesc}>
-                  Vi hjälper företag att skapa en professionell närvaro på sociala medier genom strategi, innehåll och löpande publicering.
-                </p>
-                <div style={styles.serviceBadgeRow}>
-                  <span style={styles.serviceBadge}>Instagram</span>
-                  <span style={styles.serviceBadge}>Facebook</span>
-                  <span style={styles.serviceBadge}>TikTok</span>
-                  <span style={styles.serviceBadge}>Innehåll</span>
                 </div>
                 <button type="button" style={styles.serviceCardButton} className="serviceCardButton">Läs mer</button>
               </div>
@@ -2447,7 +2562,7 @@ export default function Home() {
             <div style={styles.staffguideHeader}>
               <h2 style={styles.staffguideTitle}>StaffGuide</h2>
               <p style={styles.staffguideSubtitle}>
-                AI-assistenten som samlar all viktig information på ett ställe och hjälper personalen att få svar direkt.
+                Effexos AI-assistent som samlar all viktig information på ett ställe och hjälper personalen att få svar direkt.
               </p>
             </div>
 
@@ -2514,74 +2629,15 @@ export default function Home() {
 
                 <div style={styles.guideStatsRow}>
                   <div style={styles.guideStatCard}>
-                    <span style={styles.guideStatCheck}>✓</span> 250+ frågor besvarade
+                    <span style={styles.guideStatCheck}>✓</span> Snabbare svar på personalens frågor
                   </div>
                   <div style={styles.guideStatCard}>
-                    <span style={styles.guideStatCheck}>✓</span> 35 aktiva medarbetare
+                    <span style={styles.guideStatCheck}>✓</span> Samla rutiner, recept och information på ett ställe
                   </div>
                   <div style={styles.guideStatCard}>
-                    <span style={styles.guideStatCheck}>✓</span> 98 % svar direkt
+                    <span style={styles.guideStatCheck}>✓</span> Minska tiden chefer lägger på att svara på samma frågor
                   </div>
                 </div>
-              </div>
-            </div>
-          </section>
-
-          <div style={styles.sectionDivider} />
-
-          <section id="social-media-section" style={styles.staffguideSection} className="socialMediaSection">
-            <div style={styles.staffguideHeader}>
-              <h2 style={styles.staffguideTitle}>Social Media</h2>
-              <p style={styles.staffguideSubtitle}>
-                Vi hjälper företag att växa genom professionell hantering av sociala medier.
-              </p>
-              <div style={styles.valuesRow}>
-                <span style={styles.heroMetaChip}>Strategi</span>
-                <span style={styles.heroMetaChip}>Innehållsproduktion</span>
-                <span style={styles.heroMetaChip}>Publicering</span>
-                <span style={styles.heroMetaChip}>Analys</span>
-              </div>
-            </div>
-
-            <div style={styles.valueFeaturesGrid} className="valueFeaturesGrid">
-              <div style={styles.serviceCard} className="serviceCard">
-                <div style={styles.serviceIconWrap}>
-                  <span style={styles.serviceIcon}>🎯</span>
-                </div>
-                <h3 style={styles.serviceCardTitle}>Strategi</h3>
-                <p style={styles.serviceCardDesc}>
-                  Vi tar fram en tydlig strategi anpassad efter ert varumärke och era mål.
-                </p>
-              </div>
-
-              <div style={styles.serviceCard} className="serviceCard">
-                <div style={styles.serviceIconWrap}>
-                  <span style={styles.serviceIcon}>✍️</span>
-                </div>
-                <h3 style={styles.serviceCardTitle}>Innehåll</h3>
-                <p style={styles.serviceCardDesc}>
-                  Vi skapar innehåll som känns proffsigt och stärker ert varumärke.
-                </p>
-              </div>
-
-              <div style={styles.serviceCard} className="serviceCard">
-                <div style={styles.serviceIconWrap}>
-                  <span style={styles.serviceIcon}>📅</span>
-                </div>
-                <h3 style={styles.serviceCardTitle}>Publicering</h3>
-                <p style={styles.serviceCardDesc}>
-                  Vi sköter löpande publicering så ni alltid syns där kunderna finns.
-                </p>
-              </div>
-
-              <div style={styles.serviceCard} className="serviceCard">
-                <div style={styles.serviceIconWrap}>
-                  <span style={styles.serviceIcon}>📊</span>
-                </div>
-                <h3 style={styles.serviceCardTitle}>Analys</h3>
-                <p style={styles.serviceCardDesc}>
-                  Vi följer upp resultat och optimerar för bättre räckvidd och engagemang.
-                </p>
               </div>
             </div>
           </section>
@@ -2896,7 +2952,7 @@ export default function Home() {
           <footer style={styles.footer} className="siteFooter">
             <div style={styles.footerGrid} className="footerGrid">
               <div style={styles.footerColumn} className="footerColumn">
-                <div style={styles.footerLogo}>StaffGuide</div>
+                <div style={styles.footerLogo}>Effexo</div>
                 <p style={styles.footerTagline}>
                   Digitala lösningar som sparar tid och hjälper företag att växa.
                 </p>
@@ -2905,7 +2961,6 @@ export default function Home() {
               <div style={styles.footerColumn} className="footerColumn">
                 <h4 style={styles.footerHeading}>Produkt</h4>
                 <a href="#staffguide-section" className="footerColLink" style={styles.footerColLink} onClick={(e) => { e.preventDefault(); scrollToSection("staffguide-section"); }}>StaffGuide</a>
-                <a href="#social-media-section" className="footerColLink" style={styles.footerColLink} onClick={(e) => { e.preventDefault(); scrollToSection("social-media-section"); }}>Social Media</a>
                 <a href="#hemsidor-section" className="footerColLink" style={styles.footerColLink} onClick={(e) => { e.preventDefault(); scrollToSection("hemsidor-section"); }}>Hemsidor</a>
               </div>
 
@@ -2925,7 +2980,7 @@ export default function Home() {
             <div style={styles.footerBottom}>
               <a href="mailto:hej@staffguide.se" style={styles.footerLink}>staffguide.se@gmail.com</a>
             </div>
-            <p style={styles.footerText}>© 2026 Staffguide. Alla rättigheter reserverade.</p>
+            <p style={styles.footerText}>© 2026 Effexo. Alla rättigheter reserverade.</p>
           </footer>
         </div>
       </div>
@@ -3903,7 +3958,15 @@ export default function Home() {
                     {company.active ? "Deaktivera företag" : "Aktivera företag"}
                   </button>
 
-                  <h4>Byt lösenord</h4>
+                  <h4>Byt lösenord (StaffGuide-inloggning)</h4>
+                  <input
+                    style={styles.input}
+                    type="password"
+                    placeholder="Nuvarande lösenord"
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                    disabled={adminLoading}
+                  />
                   <input
                     style={styles.input}
                     type="password"
@@ -3912,6 +3975,66 @@ export default function Home() {
                     onChange={e => setNewPassword(e.target.value)}
                     disabled={adminLoading}
                   />
+                  <input
+                    style={styles.input}
+                    type="password"
+                    placeholder="Bekräfta nytt lösenord"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    disabled={adminLoading}
+                  />
+                  {confirmPassword && newPassword !== confirmPassword && (
+                    <p style={{ color: "#dc2626", fontSize: 13, marginTop: -8, marginBottom: 12 }}>
+                      Lösenorden matchar inte.
+                    </p>
+                  )}
+
+                  <button
+                    style={styles.primaryButton}
+                    onClick={updatePassword}
+                    disabled={adminLoading || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+                  >
+                    {adminLoading ? "Uppdaterar..." : "Uppdatera lösenord"}
+                  </button>
+
+                  <h4 style={{ marginTop: 24 }}>Byt Admin-panelens lösenord</h4>
+                  <input
+                    style={styles.input}
+                    type="password"
+                    placeholder="Nuvarande lösenord"
+                    value={adminPanelCurrentPassword}
+                    onChange={e => setAdminPanelCurrentPassword(e.target.value)}
+                    disabled={adminLoading}
+                  />
+                  <input
+                    style={styles.input}
+                    type="password"
+                    placeholder="Nytt lösenord"
+                    value={adminPanelNewPassword}
+                    onChange={e => setAdminPanelNewPassword(e.target.value)}
+                    disabled={adminLoading}
+                  />
+                  <input
+                    style={styles.input}
+                    type="password"
+                    placeholder="Bekräfta nytt lösenord"
+                    value={adminPanelConfirmPassword}
+                    onChange={e => setAdminPanelConfirmPassword(e.target.value)}
+                    disabled={adminLoading}
+                  />
+                  {adminPanelConfirmPassword && adminPanelNewPassword !== adminPanelConfirmPassword && (
+                    <p style={{ color: "#dc2626", fontSize: 13, marginTop: -8, marginBottom: 12 }}>
+                      Lösenorden matchar inte.
+                    </p>
+                  )}
+
+                  <button
+                    style={styles.primaryButton}
+                    onClick={updateAdminPanelPassword}
+                    disabled={adminLoading || !adminPanelCurrentPassword || !adminPanelNewPassword || !adminPanelConfirmPassword || adminPanelNewPassword !== adminPanelConfirmPassword}
+                  >
+                    {adminLoading ? "Uppdaterar..." : "Uppdatera admin-lösenord"}
+                  </button>
 
                   {adminMessage && (
                     <p style={{
@@ -3921,14 +4044,6 @@ export default function Home() {
                       {adminMessage}
                     </p>
                   )}
-
-                  <button
-                    style={styles.primaryButton}
-                    onClick={updatePassword}
-                    disabled={adminLoading}
-                  >
-                    {adminLoading ? "Uppdaterar..." : "Uppdatera lösenord"}
-                  </button>
                 </div>
               )}
 
@@ -4055,81 +4170,29 @@ export default function Home() {
               </div>
             )}
 
-            <div style={styles.prepList}>
-              {visiblePrepTasks.map((task) => {
-                const priorityMeta = getPriorityMeta(task.priority);
-                const stationText = String(task.station || "").trim();
-                const dueTimeText = String(task.due_time || "").trim();
+            {!prepError && prepTasks.length > 0 && (
+              <>
+                <h4 style={styles.prepSectionTitle}>
+                  Dina uppgifter <span style={styles.prepSectionCount}>({myPrepTasks.length})</span>
+                </h4>
+                <div style={styles.prepList}>
+                  {myPrepTasks.length > 0 ? (
+                    myPrepTasks.map((task) => renderPrepTaskItem(task))
+                  ) : (
+                    <div style={styles.prepEmptyState}>Inga uppgifter tilldelade just nu.</div>
+                  )}
+                </div>
 
-                return (
-                  <label
-                    key={task.id}
-                    style={{
-                      ...styles.prepItem,
-                      ...(task.is_done ? { opacity: 0.5, background: "#f1f5f9" } : {}),
-                      ...(task.assigned_to && !task.is_done ? { borderLeft: "3px solid #2563EB" } : {})
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!task.is_done) {
-                        e.currentTarget.style.background = "#f0f9ff";
-                        e.currentTarget.style.borderColor = "#bfdbfe";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!task.is_done) {
-                        e.currentTarget.style.background = "#f9fafb";
-                        e.currentTarget.style.borderColor = "#e5e7eb";
-                      }
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!task.is_done}
-                      onChange={(e) => togglePrepTask(task.id, e.target.checked)}
-                      disabled={prepLoading || !canEditPrep(userRole)}
-                      style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
-                    />
-                    <div style={styles.prepItemBody}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                        <span style={{
-                          ...styles.prepItemText,
-                          ...(task.is_done ? styles.prepItemDone : {})
-                        }}>
-                          {task.title}
-                        </span>
-                        {(() => {
-                          const decoded = parseJwt(token);
-                          const isEmployee = decoded?.type === 'employee';
-                          const currentUserEmail = decoded?.email || null;
-                          return task.assigned_to && !task.is_done && isEmployee && task.assigned_to === currentUserEmail;
-                        })() && (
-                            <span style={{
-                              background: "#2563EB",
-                              color: "white",
-                              fontSize: 11,
-                              padding: "2px 6px",
-                              borderRadius: 4,
-                              fontWeight: 500
-                            }}>
-                              Tilldelad till dig
-                            </span>
-                          )}
-                      </div>
-                      <div style={styles.prepMetaRow}>
-                        <span style={{ ...styles.prepMetaChip, ...priorityMeta.style }}>
-                          Prioritet: {priorityMeta.label}
-                        </span>
-                        {stationText && <span style={styles.prepMetaChip}>Station: {stationText}</span>}
-                        {dueTimeText && <span style={styles.prepMetaChip}>Klar före {dueTimeText}</span>}
-                        {task.assigned_to && (
-                          <span style={styles.prepMetaChip}>Tilldelad: {getStaffNameByEmail(task.assigned_to)}</span>
-                        )}
-                      </div>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
+                <h4 style={{ ...styles.prepSectionTitle, marginTop: 24 }}>Övriga uppgifter</h4>
+                <div style={styles.prepList}>
+                  {otherPrepTasks.length > 0 ? (
+                    otherPrepTasks.map((task) => renderPrepTaskItem(task))
+                  ) : (
+                    <div style={styles.prepEmptyState}>Inga övriga uppgifter.</div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       ) : (
@@ -4543,9 +4606,11 @@ const styles = {
 
   servicesGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
+    gridTemplateColumns: "repeat(2, 1fr)",
     gap: 24,
-    alignItems: "stretch"
+    alignItems: "stretch",
+    maxWidth: 820,
+    margin: "0 auto"
   },
 
   serviceCard: {
@@ -5486,6 +5551,21 @@ const styles = {
     gap: 8
   },
 
+  prepSectionTitle: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    margin: "0 0 10px",
+    fontSize: 15,
+    fontWeight: 700,
+    color: "#0f172a"
+  },
+
+  prepSectionCount: {
+    fontWeight: 600,
+    color: "#64748b"
+  },
+
   prepItem: {
     display: "flex",
     alignItems: "flex-start",
@@ -5525,6 +5605,21 @@ const styles = {
     background: "#eef2ff",
     color: "#3730a3",
     border: "1px solid #c7d2fe"
+  },
+
+  assignedToMeBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    flexShrink: 0,
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: 0.2,
+    padding: "3px 9px",
+    borderRadius: 999,
+    background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+    color: "#ffffff",
+    boxShadow: "0 1px 4px rgba(37, 99, 235, 0.35)",
+    whiteSpace: "nowrap"
   },
 
   prepPriorityHigh: {

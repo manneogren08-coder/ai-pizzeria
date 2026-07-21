@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { setAuthCookie } from "../../../lib/auth.js";
@@ -6,6 +7,11 @@ import { setAuthCookie } from "../../../lib/auth.js";
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+const supabaseAdmin = createServiceClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 const rateLimitStore = new Map();
@@ -30,39 +36,33 @@ function consumeRateLimit(key, maxRequests) {
   return existing.count > maxRequests;
 }
 
-async function getCompanyByIdentifierAndPassword(companyIdentifier, password) {
-  const normalizedIdentifier = String(companyIdentifier || "").trim();
-  if (!normalizedIdentifier) return null;
+async function getStaffByEmail(email) {
+  const { data, error } = await supabaseAdmin
+    .from("restaurant_staff")
+    .select("*, companies(id, name)")
+    .eq("email", email)
+    .maybeSingle();
 
-  const cleanIdentifier = normalizedIdentifier.replace(/[%,]/g, "");
-  const isNumericId = /^\d+$/.test(cleanIdentifier);
-
-  let query = supabase
-    .from("companies")
-    .select("id, name, password_hash, active, query_count, support_email")
-    .eq("active", true);
-
-  if (isNumericId) {
-    query = query.eq("id", Number(cleanIdentifier));
-  } else {
-    query = query.or(`name.ilike.%${cleanIdentifier}%,support_email.ilike.%${cleanIdentifier}%`);
-  }
-
-  const { data: companies, error } = await query.limit(20);
-
-  if (error || !Array.isArray(companies)) {
+  if (error) {
     return null;
   }
 
-  for (const company of companies) {
-    if (!company.password_hash) continue;
-    const match = await bcrypt.compare(password, company.password_hash);
-    if (match) {
-      return company;
-    }
+  return data;
+}
+
+async function getCompanyById(companyId) {
+  const { data: company, error } = await supabase
+    .from("companies")
+    .select("id, name, active, query_count")
+    .eq("id", companyId)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (error) {
+    return null;
   }
 
-  return null;
+  return company;
 }
 
 export default async function handler(req, res) {
@@ -72,18 +72,8 @@ export default async function handler(req, res) {
 
   try {
     const clientIP = getClientIP(req);
-    const password = String(req.body?.password || "").trim();
-    const companyIdentifier = String(req.body?.companyIdentifier || "").trim();
     const email = String(req.body?.email || "").trim().toLowerCase();
     const code = String(req.body?.code || "").trim();
-
-    if (!password) {
-      return res.status(400).json({ error: "Saknar restaurangens lösenord" });
-    }
-
-    if (!companyIdentifier) {
-      return res.status(400).json({ error: "Skriv in företags-id eller företagsnamn" });
-    }
 
     if (!email || !email.includes("@")) {
       return res.status(400).json({ error: "Ange en giltig e-post" });
@@ -93,14 +83,19 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Saknar kod" });
     }
 
-    const accountLimitKey = `employee-verify:${companyIdentifier.toLowerCase()}:${email}`;
+    const accountLimitKey = `employee-verify:${email}`;
     if (consumeRateLimit(`employee-verify-ip:${clientIP}`, MAX_VERIFY_PER_IP) || consumeRateLimit(accountLimitKey, MAX_VERIFY_PER_ACCOUNT)) {
       return res.status(429).json({ error: "För många verifieringsförsök. Vänta några minuter och försök igen." });
     }
 
-    const company = await getCompanyByIdentifierAndPassword(companyIdentifier, password);
+    const staffMember = await getStaffByEmail(email);
+    if (!staffMember) {
+      return res.status(401).json({ error: "Din e-post är inte registrerad. Kontakta din chef." });
+    }
+
+    const company = await getCompanyById(staffMember.company_id);
     if (!company) {
-      return res.status(401).json({ error: "Fel restauranglösenord" });
+      return res.status(401).json({ error: "Företaget är inte aktivt" });
     }
 
     const { data: employee, error: employeeError } = await supabase

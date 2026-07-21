@@ -20,8 +20,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { newPassword } = req.body;
+    const { currentPassword, newPassword } = req.body;
     console.log("DEBUG: Change admin password request received");
+
+    if (!currentPassword) {
+      return res.status(400).json({ error: "Nuvarande lösenord krävs" });
+    }
 
     if (!newPassword || newPassword.length < 6) {
       return res.status(400).json({ error: "Lösenordet måste vara minst 6 tecken" });
@@ -77,6 +81,27 @@ export default async function handler(req, res) {
       if (userRole !== 'owner') {
         return res.status(403).json({ error: "Endast owners kan ändra admin-lösenord" });
       }
+    }
+
+    // Verify current admin password before allowing change
+    const { data: companyRow, error: fetchError } = await supabaseAdmin
+      .from("companies")
+      .select("admin_password_hash")
+      .eq("id", decoded.companyId)
+      .single();
+
+    if (fetchError || !companyRow) {
+      return res.status(500).json({ error: "Kunde inte hämta företag" });
+    }
+
+    if (!companyRow.admin_password_hash) {
+      return res.status(500).json({ error: "Admin-lösenord inte konfigurerat" });
+    }
+
+    const currentMatch = await bcrypt.compare(currentPassword, companyRow.admin_password_hash);
+
+    if (!currentMatch) {
+      return res.status(401).json({ error: "Fel nuvarande lösenord" });
     }
 
     console.log("DEBUG: Starting password hash");
