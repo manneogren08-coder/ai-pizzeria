@@ -44,10 +44,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Failed to fetch companies" });
     }
 
-    console.log("DEBUG: Fetched companies:", companies);
-    console.log("DEBUG: User company:", userCompany);
-
-    res.status(200).json({ 
+    res.status(200).json({
       companies: companies || [],
       total: companies?.length || 0
     });

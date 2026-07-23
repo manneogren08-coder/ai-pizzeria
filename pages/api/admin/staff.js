@@ -40,7 +40,7 @@ export default async function handler(req, res) {
         const { data: staff } = await supabase
           .from("restaurant_staff")
           .select("role")
-          .eq("email", decoded.email)
+          .eq("email", decoded.employeeEmail)
           .eq("company_id", companyId)
           .maybeSingle();
         
@@ -85,6 +85,11 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: "Ogiltig roll" });
         }
 
+        // Only an existing owner can grant the owner role to someone new
+        if (role === 'owner' && userRole !== 'owner') {
+          return res.status(403).json({ error: "Endast owners kan tilldela owner-rollen" });
+        }
+
         // Check if staff member already exists
         const { data: existingStaff, error: checkError } = await supabase
           .from("restaurant_staff")
@@ -126,6 +131,11 @@ export default async function handler(req, res) {
       }
     } else if (req.method === "DELETE") {
       try {
+        // Only owners can remove staff
+        if (userRole !== 'owner') {
+          return res.status(403).json({ error: "Endast owners kan ta bort personal" });
+        }
+
         const staffId = req.query.id;
 
         if (!staffId) {
@@ -176,6 +186,11 @@ export default async function handler(req, res) {
         const validRoles = ['owner', 'admin', 'editor', 'member'];
         if (!validRoles.includes(role)) {
           return res.status(400).json({ error: "Ogiltig roll" });
+        }
+
+        // Only an existing owner can promote someone else to owner
+        if (role === 'owner' && userRole !== 'owner') {
+          return res.status(403).json({ error: "Endast owners kan tilldela owner-rollen" });
         }
 
         // Verify staff belongs to this company

@@ -1,11 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import bcrypt from "bcrypt";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
 
 const supabaseAdmin = createServiceClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -32,54 +26,6 @@ function consumeRateLimit(key, maxRequests) {
 
   existing.count += 1;
   return existing.count > maxRequests;
-}
-
-async function getCompanyByIdentifier(companyIdentifier) {
-  const normalizedIdentifier = String(companyIdentifier || "").trim();
-  if (!normalizedIdentifier) return null;
-
-  const cleanIdentifier = normalizedIdentifier.replace(/[%,]/g, "");
-  const isNumericId = /^\d+$/.test(cleanIdentifier);
-
-  let query = supabase
-    .from("companies")
-    .select("id, name, password_hash, active, support_email")
-    .eq("active", true);
-
-  if (isNumericId) {
-    query = query.eq("id", Number(cleanIdentifier));
-  } else {
-    query = query.or(`name.ilike.%${cleanIdentifier}%,support_email.ilike.%${cleanIdentifier}%`);
-  }
-
-  const { data: companies, error } = await query.limit(20);
-
-  if (error || !Array.isArray(companies)) {
-    return null;
-  }
-
-  for (const company of companies) {
-    if (!company.password_hash) continue;
-    // We don't need to verify password for employee login
-    return company;
-  }
-
-  return null;
-}
-
-async function getStaffByEmailAndCompany(email, companyId) {
-  const { data: staff, error } = await supabase
-    .from("restaurant_staff")
-    .select("company_id, name, email, companies!inner(id, name)")
-    .eq("email", email.toLowerCase())
-    .eq("company_id", companyId)
-    .single();
-
-  if (error) {
-    return null;
-  }
-
-  return staff;
 }
 
 async function getStaffByEmail(email) {
@@ -210,7 +156,7 @@ export default async function handler(req, res) {
     const loginCodeHash = await bcrypt.hash(loginCode, 10);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-    const { error: upsertError } = await supabase
+    const { error: upsertError } = await supabaseAdmin
       .from("employee_accounts")
       .upsert(
         {

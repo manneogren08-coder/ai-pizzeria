@@ -1,12 +1,15 @@
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 async function sendContactEmail({ name, restaurant, email, message }) {
   const resendApiKey = process.env.RESEND_API_KEY;
   const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@staffguide.se";
-
-  console.log('Contact email attempt:', {
-    resendApiKey: resendApiKey ? 'exists' : 'missing',
-    fromEmail,
-    to: 'staffguide.se@gmail.com'
-  });
 
   if (!resendApiKey) {
     console.error('Missing RESEND_API_KEY environment variable');
@@ -14,7 +17,7 @@ async function sendContactEmail({ name, restaurant, email, message }) {
   }
 
   const subject = `Ny kontaktförfrågan från ${name}`;
-  
+
   const text = [
     `Ny kontaktförfrågan från Staffguide.se`,
     ``,
@@ -28,17 +31,24 @@ async function sendContactEmail({ name, restaurant, email, message }) {
     `Skickat: ${new Date().toLocaleString('sv-SE')}`
   ].join('\n');
 
+  // Escape before interpolating into HTML - name/restaurant/email/message
+  // are all attacker-controlled and this is rendered as HTML by the recipient.
+  const safeName = escapeHtml(name);
+  const safeRestaurant = escapeHtml(restaurant || 'Ej angivet');
+  const safeEmail = escapeHtml(email);
+  const safeMessage = escapeHtml(message);
+
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827; max-width: 600px;">
       <h2 style="color: #2563eb; margin-bottom: 20px;">Ny kontaktförfrågan</h2>
       <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-        <p style="margin: 0 0 10px;"><strong>Namn:</strong> ${name}</p>
-        <p style="margin: 0 0 10px;"><strong>Restaurang:</strong> ${restaurant || 'Ej angivet'}</p>
-        <p style="margin: 0 0 10px;"><strong>E-post:</strong> ${email}</p>
+        <p style="margin: 0 0 10px;"><strong>Namn:</strong> ${safeName}</p>
+        <p style="margin: 0 0 10px;"><strong>Restaurang:</strong> ${safeRestaurant}</p>
+        <p style="margin: 0 0 10px;"><strong>E-post:</strong> ${safeEmail}</p>
       </div>
       <div style="background: #ffffff; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
         <h3 style="margin-top: 0; color: #374151;">Meddelande:</h3>
-        <p style="white-space: pre-wrap; margin: 10px 0; color: #4b5563;">${message}</p>
+        <p style="white-space: pre-wrap; margin: 10px 0; color: #4b5563;">${safeMessage}</p>
       </div>
       <p style="margin-top: 20px; color: #6b7280; font-size: 14px;">
         Skickat: ${new Date().toLocaleString('sv-SE')}
@@ -88,15 +98,39 @@ async function sendContactEmail({ name, restaurant, email, message }) {
   }
 }
 
+const rateLimitStore = new Map();
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const MAX_REQUESTS_PER_IP = process.env.NODE_ENV === "production" ? 5 : 30;
+
+function getClientIP(req) {
+  return req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+}
+
+function consumeRateLimit(key, maxRequests) {
+  const now = Date.now();
+  const existing = rateLimitStore.get(key);
+
+  if (!existing || now > existing.resetAt) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+
+  existing.count += 1;
+  return existing.count > maxRequests;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const clientIP = getClientIP(req);
+  if (consumeRateLimit(`contact-ip:${clientIP}`, MAX_REQUESTS_PER_IP)) {
+    return res.status(429).json({ error: 'För många meddelanden. Vänta några minuter och försök igen.' });
+  }
+
   try {
     const { name, restaurant, email, message } = req.body;
-
-    console.log('Contact form received:', { name, restaurant, email, messageLength: message?.length });
 
     // Validate required fields
     if (!name || !email || !message) {

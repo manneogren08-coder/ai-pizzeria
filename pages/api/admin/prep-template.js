@@ -66,14 +66,38 @@ function normalizePrepDate(rawDate) {
   return new Date().toISOString().slice(0, 10);
 }
 
-async function getAdminCompany(supabase, companyId) {
+// Resolve the acting user's own role rather than trusting companies.is_admin,
+// which is a company-wide flag and not a per-user permission. Editing the
+// prep template affects every employee's daily tasks, so it requires the
+// same PREP_EDIT-level access as recipes/menu management (owner/admin/editor).
+async function getAdminCompany(supabase, companyId, decoded) {
   const { data: company, error } = await supabase
     .from("companies")
-    .select("id, is_admin")
+    .select("id")
     .eq("id", companyId)
     .single();
 
-  if (error || !company || !company.is_admin) {
+  if (error || !company) {
+    return null;
+  }
+
+  let userRole = decoded.role;
+  if (!userRole) {
+    if (decoded.companyId && !decoded.employeeEmail) {
+      userRole = 'owner';
+    } else {
+      const { data: staff } = await supabase
+        .from("restaurant_staff")
+        .select("role")
+        .eq("email", decoded.employeeEmail)
+        .eq("company_id", companyId)
+        .maybeSingle();
+
+      userRole = staff?.role || 'member';
+    }
+  }
+
+  if (!['owner', 'admin', 'editor'].includes(userRole)) {
     return null;
   }
 
@@ -103,7 +127,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Invalid token" });
     }
 
-    const adminCompany = await getAdminCompany(supabase, companyId);
+    const adminCompany = await getAdminCompany(supabase, companyId, decoded);
     if (!adminCompany) {
       return res.status(403).json({ error: "Du är inte admin" });
     }

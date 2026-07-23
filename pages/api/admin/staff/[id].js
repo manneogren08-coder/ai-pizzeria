@@ -103,31 +103,20 @@ export default async function handler(req, res) {
     }
 
     // Update staff member role
-    console.log("DEBUG: Attempting to update staff role:", { staffId, role: role.trim(), originalRole: staffToUpdate.role });
-    
     const { data: updatedStaff, error: updateError } = await supabaseAdmin
       .from("restaurant_staff")
-      .update({ 
+      .update({
         role: role.trim()
       })
       .eq("id", staffId)
       .select()
       .single();
 
-    console.log("DEBUG: Update result:", { updatedStaff, updateError });
-
     if (updateError) {
       console.error("Error updating staff role:", updateError);
-      console.error("DEBUG: Update error details:", { 
-        staffId, 
-        role, 
-        updateError: updateError.message,
-        updateErrorCode: updateError.code,
-        updateErrorDetails: updateError.details
-      });
-      return res.status(500).json({ 
-        error: "Kunde inte uppdatera roll", 
-        details: updateError.message 
+      return res.status(500).json({
+        error: "Kunde inte uppdatera roll",
+        details: updateError.message
       });
     }
 

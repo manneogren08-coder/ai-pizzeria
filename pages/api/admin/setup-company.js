@@ -1,16 +1,13 @@
-import { createClient } from "@supabase/supabase-js";
+import crypto from "crypto";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { getSupabaseAdminClient } from "../../../lib/supabase.js";
 import { extractAuthToken } from "../../../lib/auth.js";
-import { hasPermission, requirePermission } from "../../../lib/auth/permissions.js";
+import { requirePermission } from "../../../lib/auth/permissions.js";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+function generateAdminPassword() {
+  return crypto.randomBytes(9).toString("base64url");
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -18,86 +15,71 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Check if super-admin is enabled
-    const { data: superAdminCompany } = await supabase
-      .from("companies")
-      .select("super_admin_enabled")
-      .eq("active", true)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    // If super-admin is enabled, only super-admin can create companies
-    if (superAdminCompany?.super_admin_enabled) {
-      const token = extractAuthToken(req);
-      if (!token) {
-        return res.status(401).json({ error: "Super-admin är aktiverat. Endast super-admin kan skapa företag." });
-      }
-
-      const decoded = JSON.parse(atob(token.split('.')[1]));
-      
-      // Check if user is super-admin
-      const { data: superAdmin } = await supabase
-        .from("restaurant_staff")
-        .select("email, role")
-        .eq("email", decoded.employeeEmail)
-        .eq("company_id", decoded.companyId)
-        .maybeSingle();
-
-      if (!superAdmin || superAdmin.role !== 'owner') {
-        return res.status(403).json({ error: "Endast super-admin kan skapa företag när super-admin är aktiverat." });
-      }
+    const supabaseAdmin = getSupabaseAdminClient();
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: "Servern saknar SUPABASE_SERVICE_ROLE_KEY" });
     }
 
-    // Extract and verify token for regular admin check
     const token = extractAuthToken(req);
     if (!token) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const decoded = JSON.parse(atob(token.split('.')[1]));
-    
-    console.log('🔍 Debug - Token decoded:', {
-      employeeEmail: decoded.employeeEmail,
-      companyId: decoded.companyId,
-      role: decoded.role
-    });
-    
-    // Get role from database if not in token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Check if super-admin mode is enabled
+    const { data: superAdminCompany } = await supabaseAdmin
+      .from("companies")
+      .select("id, super_admin_enabled")
+      .eq("active", true)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    // Resolve the acting user's real role. Company-login tokens carry a
+    // companyId but no employeeEmail and are always the owner. Employee
+    // tokens carry both companyId and employeeEmail - their role must be
+    // looked up from restaurant_staff, never assumed from the token.
     let userRole = decoded.role;
     if (!userRole) {
-      console.log('🔍 Debug - Role not in token, fetching from database...');
-      const { data: staff } = await supabase
-        .from("restaurant_staff")
-        .select("role")
-        .eq("email", decoded.employeeEmail)
-        .eq("company_id", decoded.companyId)
-        .maybeSingle();
-      
-      console.log('🔍 Debug - Database result:', staff);
-      userRole = staff?.role || 'member';
-    }
-    
-    console.log('🔍 Debug - Final userRole:', userRole);
-    
-    // TODO: Fix permission check - temporarily disabled for testing
-    // Check if user has permission to set up companies
-    // requirePermission(userRole, 'manage_security');
-    console.log('🔍 Debug - Permission check temporarily disabled');
+      if (decoded.companyId && !decoded.employeeEmail) {
+        userRole = 'owner';
+      } else {
+        const { data: staff } = await supabaseAdmin
+          .from("restaurant_staff")
+          .select("role")
+          .eq("email", decoded.employeeEmail)
+          .eq("company_id", decoded.companyId)
+          .maybeSingle();
 
-    const { 
-      companyName, 
-      companyEmail, 
-      ownerName, 
+        userRole = staff?.role || 'member';
+      }
+    }
+
+    // If super-admin mode is enabled, only the super-admin (owner of the
+    // first-created company) may create new companies.
+    if (superAdminCompany?.super_admin_enabled) {
+      if (userRole !== 'owner' || String(decoded.companyId) !== String(superAdminCompany.id)) {
+        return res.status(403).json({ error: "Endast super-admin kan skapa företag när super-admin är aktiverat." });
+      }
+    }
+
+    // Check if user has permission to set up companies
+    try {
+      requirePermission(userRole, 'manage_security');
+    } catch (permError) {
+      return res.status(403).json({ error: permError.message });
+    }
+
+    const {
+      companyName,
+      companyEmail,
+      ownerName,
       ownerEmail,
-      ownerPassword 
+      ownerPassword
     } = req.body;
 
-    // Validate required fields
-    console.log('🔍 Debug - Request body:', req.body);
-    
     if (!companyName || !companyEmail || !ownerName || !ownerEmail || !ownerPassword) {
-      console.log('🔍 Debug - Missing fields:', { companyName, companyEmail, ownerName, ownerEmail, hasPassword: !!ownerPassword });
       return res.status(400).json({ error: "Alla fält är obligatoriska" });
     }
 
@@ -108,7 +90,6 @@ export default async function handler(req, res) {
     }
 
     // Create company
-    console.log('Email Debug - Creating company with:', { companyName, companyEmail });
     const { data: company, error: companyError } = await supabaseAdmin
       .from("companies")
       .insert({
@@ -122,11 +103,8 @@ export default async function handler(req, res) {
 
     if (companyError) {
       console.error("Company creation error:", companyError);
-      console.log('🔍 Debug - Company error details:', companyError);
       return res.status(500).json({ error: "Kunde inte skapa företag" });
     }
-
-    console.log('🔍 Debug - Company created:', company);
 
     // Create owner account in employee_accounts
     const { error: employeeAccountError } = await supabaseAdmin
@@ -163,16 +141,19 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Kunde inte skapa personal" });
     }
 
-    // Hash the owner password
-    const bcrypt = require('bcrypt');
-    const hashedPassword = await bcrypt.hash(ownerPassword, 10);
+    // The login password and the admin-panel password are kept separate:
+    // a leaked login password no longer also grants admin-panel access.
+    const adminPassword = generateAdminPassword();
+    const [hashedPassword, hashedAdminPassword] = await Promise.all([
+      bcrypt.hash(ownerPassword, 10),
+      bcrypt.hash(adminPassword, 10)
+    ]);
 
-    // Store company password for company login AND admin password
     const { error: passwordError } = await supabaseAdmin
       .from("companies")
       .update({
         password_hash: hashedPassword,
-        admin_password_hash: hashedPassword
+        admin_password_hash: hashedAdminPassword
       })
       .eq("id", company.id);
 
@@ -195,10 +176,15 @@ export default async function handler(req, res) {
         name: ownerName,
         email: ownerEmail,
         role: 'owner'
-      }
+      },
+      adminPassword
     });
 
   } catch (error) {
+    if (error.name === "JsonWebTokenError" || error.name === "TokenExpiredError") {
+      return res.status(401).json({ error: "Ogiltig eller utgången session. Logga in igen." });
+    }
+
     console.error("Setup company error:", error);
     return res.status(500).json({ error: "Serverfel" });
   }

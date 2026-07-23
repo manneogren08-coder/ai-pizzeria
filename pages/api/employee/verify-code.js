@@ -1,13 +1,7 @@
-import { createClient } from "@supabase/supabase-js";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { setAuthCookie } from "../../../lib/auth.js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
 
 const supabaseAdmin = createServiceClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -51,7 +45,7 @@ async function getStaffByEmail(email) {
 }
 
 async function getCompanyById(companyId) {
-  const { data: company, error } = await supabase
+  const { data: company, error } = await supabaseAdmin
     .from("companies")
     .select("id, name, active, query_count")
     .eq("id", companyId)
@@ -98,7 +92,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Företaget är inte aktivt" });
     }
 
-    const { data: employee, error: employeeError } = await supabase
+    const { data: employee, error: employeeError } = await supabaseAdmin
       .from("employee_accounts")
       .select("id, display_name, one_time_code_hash, one_time_code_expires_at, verified_at")
       .eq("company_id", String(company.id))
@@ -110,7 +104,7 @@ export default async function handler(req, res) {
     }
 
     // Get staff role from restaurant_staff table
-    const { data: staffData, error: staffError } = await supabase
+    const { data: staffData, error: staffError } = await supabaseAdmin
       .from("restaurant_staff")
       .select("role")
       .eq("company_id", String(company.id))
@@ -145,7 +139,7 @@ export default async function handler(req, res) {
 
     const nowIso = new Date().toISOString();
 
-    await supabase
+    await supabaseAdmin
       .from("employee_accounts")
       .update({
         verified_at: employee.verified_at || nowIso,

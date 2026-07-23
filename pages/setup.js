@@ -75,6 +75,45 @@ export default function SetupPage() {
             </p>
           </div>
 
+          {setupData.adminPassword && (
+            <div style={{
+              background: '#fffbeb',
+              border: '1px solid #fbbf24',
+              borderRadius: '8px',
+              padding: '20px',
+              marginBottom: '20px'
+            }}>
+              <h3 style={{
+                margin: '0 0 8px 0',
+                color: '#92400e',
+                fontSize: '16px'
+              }}>
+                Admin-panelens lösenord
+              </h3>
+              <p style={{
+                margin: '0 0 10px 0',
+                color: '#78350f',
+                fontSize: '14px'
+              }}>
+                Detta är ett separat lösenord för admin-panelen (inte samma som ditt inloggningslösenord). Spara det nu — det visas inte igen.
+              </p>
+              <code style={{
+                display: 'block',
+                background: '#fff',
+                border: '1px solid #fde68a',
+                borderRadius: '6px',
+                padding: '10px 12px',
+                fontSize: '16px',
+                fontWeight: '700',
+                color: '#1f2937',
+                letterSpacing: '0.02em',
+                wordBreak: 'break-all'
+              }}>
+                {setupData.adminPassword}
+              </code>
+            </div>
+          )}
+
           <div style={{
             background: '#eff6ff',
             border: '1px solid #3b82f6',

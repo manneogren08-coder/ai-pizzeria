@@ -1,18 +1,34 @@
 import { createClient } from "@supabase/supabase-js";
 import { extractAuthToken } from "../../../lib/auth.js";
-import { hasPermission, requirePermission } from "../../../lib/auth/permissions.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+const rateLimitStore = new Map();
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const MAX_ATTEMPTS_PER_IP = process.env.NODE_ENV === "production" ? 20 : 50;
+const MAX_ATTEMPTS_PER_ACCOUNT = process.env.NODE_ENV === "production" ? 10 : 20;
+
+function getClientIP(req) {
+  return req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+}
+
+function consumeRateLimit(key, maxRequests) {
+  const now = Date.now();
+  const existing = rateLimitStore.get(key);
+
+  if (!existing || now > existing.resetAt) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+
+  existing.count += 1;
+  return existing.count > maxRequests;
+}
 
 export default async function handler(req, res) {
   if (req.method !== "PATCH") {
@@ -21,7 +37,6 @@ export default async function handler(req, res) {
 
   try {
     const { currentPassword, newPassword } = req.body;
-    console.log("DEBUG: Change admin password request received");
 
     if (!currentPassword) {
       return res.status(400).json({ error: "Nuvarande lösenord krävs" });
@@ -36,14 +51,18 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Ingen token" });
     }
 
-    console.log("DEBUG: Token extracted successfully");
-
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (!decoded) {
       return res.status(401).json({ error: "Ogiltig token" });
     }
 
-    console.log("DEBUG: Token decoded:", decoded);
+    const clientIP = getClientIP(req);
+    if (
+      consumeRateLimit(`admin-pw-ip:${clientIP}`, MAX_ATTEMPTS_PER_IP) ||
+      consumeRateLimit(`admin-pw-company:${decoded.companyId}`, MAX_ATTEMPTS_PER_ACCOUNT)
+    ) {
+      return res.status(429).json({ error: "För många försök. Vänta några minuter och försök igen." });
+    }
 
     // Get user role
     let userRole = decoded.role;
@@ -66,16 +85,14 @@ export default async function handler(req, res) {
       }
     }
 
-    console.log("DEBUG: User role determined:", userRole);
-
     // Check if user is owner OR company admin
     if (userRole !== 'owner' && !decoded.isAdmin) {
       return res.status(403).json({ error: "Endast owners kan ändra admin-lösenord" });
     }
-    
+
     // For company login, always allow password change
     if (decoded.companyId && !decoded.employeeEmail) {
-      console.log("DEBUG: Company login detected, allowing password change");
+      // company login - already confirmed owner-equivalent above
     } else {
       // For staff login, require owner role
       if (userRole !== 'owner') {
@@ -104,13 +121,8 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Fel nuvarande lösenord" });
     }
 
-    console.log("DEBUG: Starting password hash");
-
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    console.log("DEBUG: Password hashed successfully");
-
-    console.log("DEBUG: Updating company with ID:", decoded.companyId);
 
     // Update company admin password
     const { error: updateError } = await supabaseAdmin
@@ -125,9 +137,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Kunde inte uppdatera admin-lösenord", details: updateError.message });
     }
 
-    console.log("DEBUG: Password updated successfully");
-
-    return res.status(200).json({ 
+    return res.status(200).json({
       success: true, 
       message: "Admin-lösenord uppdaterat" 
     });

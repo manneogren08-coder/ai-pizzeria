@@ -58,21 +58,41 @@ export default async function handler(req, res) {
     const isNumericId = /^\d+$/.test(cleanIdentifier);
 
     const supabase = getSupabaseAdminClient();
-    
-    let query = supabase
-      .from("companies")
-      .select(selectFields)
-      .eq("active", true);
+
+    let companies = [];
+    let queryError = null;
 
     if (isNumericId) {
-      query = query.eq("id", Number(cleanIdentifier));
+      const { data, error } = await supabase
+        .from("companies")
+        .select(selectFields)
+        .eq("active", true)
+        .eq("id", Number(cleanIdentifier))
+        .limit(20);
+
+      companies = data || [];
+      queryError = error;
     } else {
-      query = query.or(`name.ilike.%${cleanIdentifier}%,support_email.ilike.%${cleanIdentifier}%`);
+      // Two separate parameterized ilike() calls instead of building a raw
+      // .or() filter string, so the identifier is never concatenated into
+      // PostgREST filter syntax.
+      const [byName, byEmail] = await Promise.all([
+        supabase.from("companies").select(selectFields).eq("active", true).ilike("name", `%${cleanIdentifier}%`).limit(20),
+        supabase.from("companies").select(selectFields).eq("active", true).ilike("support_email", `%${cleanIdentifier}%`).limit(20)
+      ]);
+
+      queryError = byName.error || byEmail.error;
+
+      const seen = new Set();
+      for (const company of [...(byName.data || []), ...(byEmail.data || [])]) {
+        if (!seen.has(company.id)) {
+          seen.add(company.id);
+          companies.push(company);
+        }
+      }
     }
 
-    const { data: companies, error } = await query.limit(20);
-
-    if (error || !companies || companies.length === 0) {
+    if (queryError || companies.length === 0) {
       return res.status(401).json({ error: "Företaget hittades inte" });
     }
 
@@ -93,13 +113,16 @@ export default async function handler(req, res) {
 
     const data = matchedCompany;
 
-    // Get staff role from restaurant_staff table for company admin
-    const { data: staffData, error: staffError } = await supabase
+    // Get the company's owner role from restaurant_staff (dynamic per company,
+    // not tied to any specific person's email)
+    const { data: ownerStaffRows } = await supabase
       .from("restaurant_staff")
       .select("role")
       .eq("company_id", String(data.id))
-      .eq("email", "manneboi08@gmail.com") // TODO: Make this dynamic for any company admin
-      .maybeSingle();
+      .eq("role", "owner")
+      .limit(1);
+
+    const staffData = ownerStaffRows?.[0] || null;
 
     // Skapa token
     const token = jwt.sign(
