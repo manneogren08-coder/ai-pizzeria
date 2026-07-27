@@ -27,13 +27,6 @@ export default function CompanySetup({ onSetupComplete }) {
     }
 
     try {
-      console.log('🔍 Frontend Debug - Sending request:', {
-        companyName: formData.companyName,
-        companyEmail: formData.companyEmail,
-        ownerName: formData.ownerName,
-        ownerEmail: formData.ownerEmail
-      });
-      
       const response = await fetch('/api/admin/setup-company', {
         method: 'POST',
         headers: {
@@ -48,14 +41,9 @@ export default function CompanySetup({ onSetupComplete }) {
         })
       });
 
-      console.log('🔍 Frontend Debug - Response status:', response.status);
-      console.log('🔍 Frontend Debug - Response ok:', response.ok);
-
       const data = await response.json();
-      console.log('🔍 Frontend Debug - Response data:', data);
 
       if (!response.ok) {
-        console.log('🔍 Frontend Debug - Error:', data.error);
         setError(data.error || 'Kunde inte skapa företag');
         setLoading(false);
         return;

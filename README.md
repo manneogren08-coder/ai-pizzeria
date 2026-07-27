@@ -8,12 +8,12 @@ Set these environment variables:
 
 ```bash
 RESEND_API_KEY=your_resend_api_key
-RESEND_FROM_EMAIL=login@your-verified-domain.com
+RESEND_FROM_EMAIL="Effexo <kontakt@effexo.se>"
 ```
 
 Notes:
 
-- `RESEND_FROM_EMAIL` must be a verified sender in your Resend account.
+- `RESEND_FROM_EMAIL` must be a verified sender (or verified domain) in your Resend account.
 - In non-production, if Resend is not configured, the API returns `debugCode` for local testing.
 
 ## Getting Started

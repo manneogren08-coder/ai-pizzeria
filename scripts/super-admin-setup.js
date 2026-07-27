@@ -9,7 +9,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const SUPER_ADMIN_EMAIL = "super.admin@staffguide.internal";
-const SUPER_ADMIN_PASSWORD = "SuperAdmin2024!SecureKey";
+const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD;
 
 // Validate environment variables
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -18,6 +18,13 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_A
   console.error('   NEXT_PUBLIC_SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   console.error('');
   console.error('📋 Se till att .env.local filen finns i projektets rot.');
+  process.exit(1);
+}
+
+if (!SUPER_ADMIN_PASSWORD) {
+  console.error('❌ SUPER_ADMIN_PASSWORD saknas!');
+  console.error('   Sätt den som miljövariabel innan du kör detta skript, t.ex.:');
+  console.error('   SUPER_ADMIN_PASSWORD="ditt-eget-lösenord" node scripts/super-admin-setup.js');
   process.exit(1);
 }
 
@@ -109,7 +116,7 @@ async function setupSuperAdmin() {
 
     console.log('✅ Super-admin setup klart!');
     console.log(`📧 Super-admin e-post: ${SUPER_ADMIN_EMAIL}`);
-    console.log(`📧 Super-admin lösenord: ${SUPER_ADMIN_PASSWORD}`);
+    console.log('📧 Super-admin lösenord: (det du satte i SUPER_ADMIN_PASSWORD - loggas inte här)');
     console.log(`🏢 Företag: ${firstCompany.name} (ID: ${firstCompany.id})`);
     console.log('');
     console.log('🔒 ANVÄND ENDAST FÖR ADMIN-LOGIN:');

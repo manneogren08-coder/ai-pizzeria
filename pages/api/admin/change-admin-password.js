@@ -134,19 +134,22 @@ export default async function handler(req, res) {
 
     if (updateError) {
       console.error("Error updating admin password:", updateError);
-      return res.status(500).json({ error: "Kunde inte uppdatera admin-lösenord", details: updateError.message });
+      return res.status(500).json({
+        error: "Kunde inte uppdatera admin-lösenord",
+        ...(process.env.NODE_ENV !== "production" ? { details: updateError.message } : {})
+      });
     }
 
     return res.status(200).json({
-      success: true, 
-      message: "Admin-lösenord uppdaterat" 
+      success: true,
+      message: "Admin-lösenord uppdaterat"
     });
 
   } catch (error) {
     console.error("Change admin password error:", error);
-    return res.status(500).json({ 
-      error: "Serverfel", 
-      details: error.message 
+    return res.status(500).json({
+      error: "Serverfel",
+      ...(process.env.NODE_ENV !== "production" ? { details: error.message } : {})
     });
   }
 }

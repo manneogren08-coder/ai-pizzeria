@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
+import Link from "next/link";
+import Image from "next/image";
 import { canAccessPrep, canViewPrep, canEditPrep, canAccessAdminTab, getRoleDescription } from "../lib/roles.js";
 
 const ADMIN_TABS = ["info", "menu", "recipes", "routines", "prep", "staff", "security", "stats"];
@@ -304,7 +306,6 @@ export default function Home() {
   const [showLoginButton, setShowLoginButton] = useState(false);
   const [company, setCompany] = useState(null);
   const [userRole, setUserRole] = useState(null);
-  const [isRestoringSession, setIsRestoringSession] = useState(true);
   const [question, setQuestion] = useState("");
   const [chat, setChat] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -778,8 +779,6 @@ export default function Home() {
     if (!savedToken || !savedCompany || isJwtExpired(savedToken)) {
       localStorage.removeItem("token");
       localStorage.removeItem("company");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsRestoringSession(false);
       return;
     }
 
@@ -793,8 +792,6 @@ export default function Home() {
       localStorage.removeItem("token");
       localStorage.removeItem("company");
     }
-
-    setIsRestoringSession(false);
   }, []);
 
   // scroll when chat updates
@@ -1085,11 +1082,6 @@ export default function Home() {
       setEmployeeCode("");
       setCodeRequestTime(null);
       setShowLoginButton(false);
-
-      // Debug logging
-      console.log("DEBUG: Login successful - Company data:", data.company);
-      console.log("DEBUG: Stored company:", JSON.parse(localStorage.getItem("company")));
-      console.log("DEBUG: Stored token:", localStorage.getItem("token"));
 
       showToast(`Inloggad som ${data.company.name}`, "success");
     } catch {
@@ -1460,21 +1452,9 @@ export default function Home() {
   };
 
   const fetchStaffList = async () => {
-    console.log("DEBUG: Starting fetchStaffList");
-    console.log("DEBUG: Token exists:", !!token);
-    console.log("DEBUG: Token value:", token ? token.substring(0, 50) + "..." : "null");
-    console.log("DEBUG: Company exists:", !!company);
-
     if (!token || !company) {
-      console.log("DEBUG: Missing token or company, returning early");
       return;
     }
-
-    console.log("DEBUG: Fetching staff list with token and company:", {
-      hasToken: !!token,
-      companyId: company.id,
-      companyName: company.name
-    });
 
     setStaffLoading(true);
     try {
@@ -1482,16 +1462,9 @@ export default function Home() {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      console.log("DEBUG: Staff API response status:", res.status);
-      console.log("DEBUG: Staff API response headers:", Object.fromEntries(res.headers.entries()));
-
       if (res.ok) {
         const data = await res.json();
-        console.log("DEBUG: Staff API response:", data);
-        console.log("DEBUG: Setting staff list:", data.staff || []);
-        console.log("DEBUG: Staff roles:", data.staff?.map(s => ({ id: s.id, email: s.email, role: s.role })) || []);
         setStaffList(data.staff || []);
-        console.log("DEBUG: Staff list state after setting:", data.staff || []);
       } else {
         console.error("Failed to fetch staff list, status:", res.status);
         const errorText = await res.text();
@@ -1557,7 +1530,7 @@ export default function Home() {
     }
 
     try {
-      const res = await fetch(`/api/admin/staff/${staffId}`, {
+      const res = await fetch(`/api/admin/staff/delete?staffId=${staffId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -1908,17 +1881,6 @@ export default function Home() {
     );
   };
 
-  if (isRestoringSession) {
-    return (
-      <div style={styles.loginPage}>
-        <div style={styles.loginCard}>
-          <h2 style={{ marginBottom: 8 }}>Laddar session...</h2>
-          <p style={styles.subtitle}>Ett ögonblick, vi hämtar din inloggning.</p>
-        </div>
-      </div>
-    );
-  }
-
   // LOGIN PAGE
   if (!company) {
     const scrollToLogin = (mode) => {
@@ -2213,6 +2175,19 @@ export default function Home() {
             color: #f8fafc !important;
           }
 
+          .landingNavLogoLink {
+            transition: opacity 0.2s ease;
+          }
+
+          .landingNavLogoLink:hover {
+            opacity: 0.82;
+          }
+
+          .landingNavLogoLink:focus-visible {
+            outline: 2px solid rgba(148, 163, 184, 0.6);
+            outline-offset: 4px;
+          }
+
           .landingNavLoginBtn:hover {
             background: rgba(255, 255, 255, 0.09) !important;
             border-color: rgba(148, 163, 184, 0.5) !important;
@@ -2377,6 +2352,18 @@ export default function Home() {
               display: none;
             }
 
+            .landingNavLogoIcon {
+              height: 28px !important;
+            }
+
+            .landingNavLogoWordmark {
+              height: 16px !important;
+            }
+
+            .landingNavLogoLink {
+              gap: 9px !important;
+            }
+
             .servicesGrid {
               grid-template-columns: 1fr !important;
             }
@@ -2401,15 +2388,47 @@ export default function Home() {
 
         <nav style={styles.landingNav} className="landingNav">
           <div style={styles.landingNavInner} className="landingNavInner">
-            <span style={styles.landingNavLogo}>Effexo</span>
+            <Link
+              href="/"
+              style={styles.landingNavLogoLink}
+              className="landingNavLogoLink"
+              aria-label="Effexo – till startsidan"
+            >
+              <Image
+                src="/effexo-icon-white.png"
+                alt=""
+                width={201}
+                height={216}
+                priority
+                style={styles.landingNavLogoIcon}
+                className="landingNavLogoIcon"
+              />
+              <Image
+                src="/effexo-wordmark-white.png"
+                alt=""
+                width={448}
+                height={124}
+                priority
+                style={styles.landingNavLogoWordmark}
+                className="landingNavLogoWordmark"
+              />
+            </Link>
             <div style={styles.landingNavLinks} className="landingNavLinks">
               <a
-                href="#services-section"
+                href="#hemsidor-section"
                 style={styles.landingNavLink}
                 className="landingNavLink"
-                onClick={(e) => { e.preventDefault(); scrollToSection("services-section"); }}
+                onClick={(e) => { e.preventDefault(); scrollToSection("hemsidor-section"); }}
               >
                 Hemsidor
+              </a>
+              <a
+                href="#staffguide-section"
+                style={styles.landingNavLink}
+                className="landingNavLink"
+                onClick={(e) => { e.preventDefault(); scrollToSection("staffguide-section"); }}
+              >
+                Staffguide
               </a>
               <a
                 href="#contact-section"
@@ -2642,65 +2661,6 @@ export default function Home() {
             </div>
           </section>
 
-          <div style={styles.sectionDivider} />
-
-          <section id="hemsidor-section" style={styles.staffguideSection} className="hemsidorSection">
-            <div style={styles.staffguideHeader}>
-              <h2 style={styles.staffguideTitle}>Hemsidor</h2>
-              <p style={styles.staffguideSubtitle}>
-                Moderna hemsidor som gör att företag ser professionella ut och får fler kunder.
-              </p>
-              <div style={styles.valuesRow}>
-                <span style={styles.heroMetaChip}>Snabba</span>
-                <span style={styles.heroMetaChip}>Mobilanpassade</span>
-                <span style={styles.heroMetaChip}>SEO-optimerade</span>
-                <span style={styles.heroMetaChip}>Konverteringsfokuserade</span>
-              </div>
-            </div>
-
-            <div style={styles.valueFeaturesGrid} className="valueFeaturesGrid">
-              <div style={styles.serviceCard} className="serviceCard">
-                <div style={styles.serviceIconWrap}>
-                  <span style={styles.serviceIcon}>🎨</span>
-                </div>
-                <h3 style={styles.serviceCardTitle}>Design</h3>
-                <p style={styles.serviceCardDesc}>
-                  Vi skapar en modern design som speglar ert varumärke.
-                </p>
-              </div>
-
-              <div style={styles.serviceCard} className="serviceCard">
-                <div style={styles.serviceIconWrap}>
-                  <span style={styles.serviceIcon}>💻</span>
-                </div>
-                <h3 style={styles.serviceCardTitle}>Utveckling</h3>
-                <p style={styles.serviceCardDesc}>
-                  Vi bygger snabba, säkra och skalbara hemsidor från grunden.
-                </p>
-              </div>
-
-              <div style={styles.serviceCard} className="serviceCard">
-                <div style={styles.serviceIconWrap}>
-                  <span style={styles.serviceIcon}>🔍</span>
-                </div>
-                <h3 style={styles.serviceCardTitle}>SEO</h3>
-                <p style={styles.serviceCardDesc}>
-                  Vi optimerar er sida så att fler hittar er via sökmotorer.
-                </p>
-              </div>
-
-              <div style={styles.serviceCard} className="serviceCard">
-                <div style={styles.serviceIconWrap}>
-                  <span style={styles.serviceIcon}>📈</span>
-                </div>
-                <h3 style={styles.serviceCardTitle}>Konvertering</h3>
-                <p style={styles.serviceCardDesc}>
-                  Vi designar för att fler besökare ska bli kunder.
-                </p>
-              </div>
-            </div>
-          </section>
-
           <div style={styles.loginRow} className="loginRow">
             <div id="login-section" style={styles.loginCard} className="loginCard">
               <h2 style={{ marginBottom: 6, color: "#0f172a" }}>Intern personalguide</h2>
@@ -2835,6 +2795,65 @@ export default function Home() {
               )}
             </div>
           </div>
+
+          <div style={styles.sectionDivider} />
+
+          <section id="hemsidor-section" style={styles.staffguideSection} className="hemsidorSection">
+            <div style={styles.staffguideHeader}>
+              <h2 style={styles.staffguideTitle}>Hemsidor</h2>
+              <p style={styles.staffguideSubtitle}>
+                Moderna hemsidor som gör att företag ser professionella ut och får fler kunder.
+              </p>
+              <div style={styles.valuesRow}>
+                <span style={styles.heroMetaChip}>Snabba</span>
+                <span style={styles.heroMetaChip}>Mobilanpassade</span>
+                <span style={styles.heroMetaChip}>SEO-optimerade</span>
+                <span style={styles.heroMetaChip}>Konverteringsfokuserade</span>
+              </div>
+            </div>
+
+            <div style={styles.valueFeaturesGrid} className="valueFeaturesGrid">
+              <div style={styles.serviceCard} className="serviceCard">
+                <div style={styles.serviceIconWrap}>
+                  <span style={styles.serviceIcon}>🎨</span>
+                </div>
+                <h3 style={styles.serviceCardTitle}>Design</h3>
+                <p style={styles.serviceCardDesc}>
+                  Vi skapar en modern design som speglar ert varumärke.
+                </p>
+              </div>
+
+              <div style={styles.serviceCard} className="serviceCard">
+                <div style={styles.serviceIconWrap}>
+                  <span style={styles.serviceIcon}>💻</span>
+                </div>
+                <h3 style={styles.serviceCardTitle}>Utveckling</h3>
+                <p style={styles.serviceCardDesc}>
+                  Vi bygger snabba, säkra och skalbara hemsidor från grunden.
+                </p>
+              </div>
+
+              <div style={styles.serviceCard} className="serviceCard">
+                <div style={styles.serviceIconWrap}>
+                  <span style={styles.serviceIcon}>🔍</span>
+                </div>
+                <h3 style={styles.serviceCardTitle}>SEO</h3>
+                <p style={styles.serviceCardDesc}>
+                  Vi optimerar er sida så att fler hittar er via sökmotorer.
+                </p>
+              </div>
+
+              <div style={styles.serviceCard} className="serviceCard">
+                <div style={styles.serviceIconWrap}>
+                  <span style={styles.serviceIcon}>📈</span>
+                </div>
+                <h3 style={styles.serviceCardTitle}>Konvertering</h3>
+                <p style={styles.serviceCardDesc}>
+                  Vi designar för att fler besökare ska bli kunder.
+                </p>
+              </div>
+            </div>
+          </section>
 
           <section style={styles.faqSection} className="faqSection">
             <h3 style={styles.faqTitle}>Vanliga frågor</h3>
@@ -2978,7 +2997,8 @@ export default function Home() {
             </div>
 
             <div style={styles.footerBottom}>
-              <a href="mailto:hej@staffguide.se" style={styles.footerLink}>staffguide.se@gmail.com</a>
+              <a href="mailto:kontakt@effexo.se" style={styles.footerLink}>kontakt@effexo.se</a>
+              <a href="https://effexo.se" style={styles.footerLink}>effexo.se</a>
             </div>
             <p style={styles.footerText}>© 2026 Effexo. Alla rättigheter reserverade.</p>
           </footer>
@@ -4274,15 +4294,6 @@ export default function Home() {
 }
 
 const styles = {
-  loginPage: {
-    minHeight: "100vh",
-    background: "#f8fafc",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20
-  },
-
   landingPage: {
     minHeight: "100vh",
     position: "relative",
@@ -4309,11 +4320,26 @@ const styles = {
     gap: 16
   },
 
-  landingNavLogo: {
-    fontWeight: 800,
-    fontSize: 16,
-    letterSpacing: "0.01em",
-    color: "#f8fafc"
+  landingNavLogoLink: {
+    display: "inline-flex",
+    alignItems: "center",
+    flex: "none",
+    gap: 12,
+    lineHeight: 0,
+    textDecoration: "none",
+    borderRadius: 6
+  },
+
+  landingNavLogoIcon: {
+    display: "block",
+    height: 36,
+    width: "auto"
+  },
+
+  landingNavLogoWordmark: {
+    display: "block",
+    height: 20.6,
+    width: "auto"
   },
 
   landingNavLinks: {

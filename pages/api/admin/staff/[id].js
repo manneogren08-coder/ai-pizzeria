@@ -90,7 +90,10 @@ export default async function handler(req, res) {
 
     if (fetchError) {
       console.error("Error fetching staff to update:", fetchError);
-      return res.status(500).json({ error: "Kunde inte hitta personal", details: fetchError.message });
+      return res.status(500).json({
+        error: "Kunde inte hitta personal",
+        ...(process.env.NODE_ENV !== "production" ? { details: fetchError.message } : {})
+      });
     }
 
     if (!staffToUpdate) {
@@ -116,7 +119,7 @@ export default async function handler(req, res) {
       console.error("Error updating staff role:", updateError);
       return res.status(500).json({
         error: "Kunde inte uppdatera roll",
-        details: updateError.message
+        ...(process.env.NODE_ENV !== "production" ? { details: updateError.message } : {})
       });
     }
 
@@ -134,9 +137,9 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error("Update staff role error:", error);
-    res.status(500).json({ 
-      error: "Serverfel", 
-      details: error.message 
+    res.status(500).json({
+      error: "Serverfel",
+      ...(process.env.NODE_ENV !== "production" ? { details: error.message } : {})
     });
   }
 }

@@ -9,6 +9,10 @@ export default function MyApp({ Component, pageProps }) {
   return (
     <div className={inter.className}>
       <style jsx global>{`
+        html {
+          scroll-padding-top: 96px;
+        }
+
         .faqSummary {
           cursor: pointer;
           font-weight: 700;

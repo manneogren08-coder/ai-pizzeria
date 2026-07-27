@@ -9,7 +9,7 @@ function escapeHtml(value) {
 
 async function sendContactEmail({ name, restaurant, email, message }) {
   const resendApiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@staffguide.se";
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "Effexo <kontakt@effexo.se>";
 
   if (!resendApiKey) {
     console.error('Missing RESEND_API_KEY environment variable');
@@ -19,7 +19,7 @@ async function sendContactEmail({ name, restaurant, email, message }) {
   const subject = `Ny kontaktförfrågan från ${name}`;
 
   const text = [
-    `Ny kontaktförfrågan från Staffguide.se`,
+    `Ny kontaktförfrågan från Effexo.se`,
     ``,
     `Namn: ${name}`,
     `Restaurang: ${restaurant || 'Ej angivet'}`,
@@ -65,7 +65,8 @@ async function sendContactEmail({ name, restaurant, email, message }) {
       },
       body: JSON.stringify({
         from: fromEmail,
-        to: ["staffguide.se@gmail.com"],
+        to: ["kontakt@effexo.se"],
+        reply_to: "kontakt@effexo.se",
         subject,
         text,
         html

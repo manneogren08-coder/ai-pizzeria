@@ -69,7 +69,10 @@ export default async function handler(req, res) {
 
     if (fetchError) {
       console.error("Error fetching staff to delete:", fetchError);
-      return res.status(500).json({ error: "Kunde inte hitta personal", details: fetchError.message });
+      return res.status(500).json({
+        error: "Kunde inte hitta personal",
+        ...(process.env.NODE_ENV !== "production" ? { details: fetchError.message } : {})
+      });
     }
 
     if (!staffToDelete) {
@@ -89,7 +92,10 @@ export default async function handler(req, res) {
 
     if (deleteError) {
       console.error("Error deleting staff:", deleteError);
-      return res.status(500).json({ error: "Kunde inte ta bort personal", details: deleteError.message });
+      return res.status(500).json({
+        error: "Kunde inte ta bort personal",
+        ...(process.env.NODE_ENV !== "production" ? { details: deleteError.message } : {})
+      });
     }
 
     console.log(`Staff member ${staffToDelete.email} deleted by ${decoded.employeeEmail || 'company login'}`);
@@ -105,9 +111,9 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error("Delete staff error:", error);
-    res.status(500).json({ 
-      error: "Serverfel", 
-      details: error.message 
+    res.status(500).json({
+      error: "Serverfel",
+      ...(process.env.NODE_ENV !== "production" ? { details: error.message } : {})
     });
   }
 }

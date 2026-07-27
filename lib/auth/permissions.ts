@@ -1,5 +1,5 @@
 // Permission system for role-based access control
-// This defines what each role can do in the Staffguide system
+// This defines what each role can do in the Effexo system
 
 export type UserRole = 'owner' | 'admin' | 'editor' | 'member';
 

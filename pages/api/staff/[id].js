@@ -74,7 +74,10 @@ export default async function handler(req, res) {
 
     if (updateError) {
       console.error("Error updating staff role:", updateError);
-      return res.status(500).json({ error: "Failed to update role", details: updateError.message });
+      return res.status(500).json({
+        error: "Failed to update role",
+        ...(process.env.NODE_ENV !== "production" ? { details: updateError.message } : {})
+      });
     }
 
     if (!staffMember) {

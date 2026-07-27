@@ -3,6 +3,28 @@ import bcrypt from 'bcrypt';
 import { getSupabaseAdminClient } from "../../../lib/supabase.js";
 import { extractAuthToken } from "../../../lib/auth.js";
 
+const rateLimitStore = new Map();
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const MAX_ATTEMPTS_PER_IP = process.env.NODE_ENV === "production" ? 20 : 50;
+const MAX_ATTEMPTS_PER_ACCOUNT = process.env.NODE_ENV === "production" ? 10 : 20;
+
+function getClientIP(req) {
+  return req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+}
+
+function consumeRateLimit(key, maxRequests) {
+  const now = Date.now();
+  const existing = rateLimitStore.get(key);
+
+  if (!existing || now > existing.resetAt) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+
+  existing.count += 1;
+  return existing.count > maxRequests;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST allowed" });
@@ -16,7 +38,7 @@ export default async function handler(req, res) {
     }
 
     const token = extractAuthToken(req);
-    
+
     if (!token) {
       return res.status(401).json({ error: "Missing token" });
     }
@@ -29,15 +51,46 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Invalid token" });
     }
 
-    // Get company and check if admin
+    const clientIP = getClientIP(req);
+    if (
+      consumeRateLimit(`update-pw-ip:${clientIP}`, MAX_ATTEMPTS_PER_IP) ||
+      consumeRateLimit(`update-pw-company:${companyId}`, MAX_ATTEMPTS_PER_ACCOUNT)
+    ) {
+      return res.status(429).json({ error: "För många försök. Vänta några minuter och försök igen." });
+    }
+
+    // Resolve the acting user's own role rather than trusting companies.is_admin,
+    // which is a company-wide flag and not a per-user permission. Only an
+    // owner should be able to rotate the shared company login password.
+    let userRole = decoded.role;
+    if (!userRole) {
+      if (decoded.companyId && !decoded.employeeEmail) {
+        userRole = 'owner';
+      } else {
+        const { data: staff } = await supabase
+          .from("restaurant_staff")
+          .select("role")
+          .eq("email", decoded.employeeEmail)
+          .eq("company_id", companyId)
+          .maybeSingle();
+
+        userRole = staff?.role || 'member';
+      }
+    }
+
+    if (userRole !== 'owner') {
+      return res.status(403).json({ error: "Endast owners kan byta företagets lösenord" });
+    }
+
+    // Get company (need current password_hash to verify the current password)
     const { data: company, error: companyError } = await supabase
       .from("companies")
-      .select("id, is_admin, password_hash")
+      .select("id, password_hash")
       .eq("id", companyId)
       .single();
 
-    if (companyError || !company || !company.is_admin) {
-      return res.status(403).json({ error: "Du är inte admin" });
+    if (companyError || !company) {
+      return res.status(404).json({ error: "Företag hittades inte" });
     }
 
     // Get current + new password from request

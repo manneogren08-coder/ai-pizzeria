@@ -48,7 +48,7 @@ function generateOtpCode() {
 
 async function sendOtpEmail({ to, code, companyName }) {
   const resendApiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "Effexo <kontakt@effexo.se>";
 
   if (!resendApiKey) {
     return { sent: false, reason: "missing_api_key" };
@@ -81,6 +81,7 @@ async function sendOtpEmail({ to, code, companyName }) {
     body: JSON.stringify({
       from: fromEmail,
       to: [to],
+      reply_to: "kontakt@effexo.se",
       subject,
       text,
       html
@@ -171,7 +172,8 @@ export default async function handler(req, res) {
       );
 
     if (upsertError) {
-      return res.status(500).json({ error: upsertError.message || "Kunde inte skapa anställd-konto" });
+      console.error("Employee account upsert error:", upsertError);
+      return res.status(500).json({ error: "Kunde inte skapa anställd-konto" });
     }
 
     const emailResult = await sendOtpEmail({

@@ -176,7 +176,9 @@ export default async function handler(req, res) {
       console.error("Update error:", updateError);
       return res.status(500).json({
         error: "Kunde inte uppdatera uppgifter",
-        details: updateError.message || "OkÃ¤nt databasfel"
+        ...(process.env.NODE_ENV !== "production"
+          ? { details: updateError.message || "Okänt databasfel" }
+          : {})
       });
     }
 
@@ -188,12 +190,12 @@ export default async function handler(req, res) {
 
   } catch (err) {
     if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
-      return res.status(401).json({ error: "Din session har gÃ¥tt ut. Logga in igen." });
+      return res.status(401).json({ error: "Din session har gått ut. Logga in igen." });
     }
     console.error("Error:", err);
     return res.status(500).json({
       error: "Serverfel",
-      details: err?.message || "OkÃ¤nt serverfel"
+      ...(process.env.NODE_ENV !== "production" ? { details: err?.message || "Okänt serverfel" } : {})
     });
   }
 }

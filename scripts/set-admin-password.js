@@ -13,25 +13,32 @@ const supabaseAdmin = createClient(
 
 async function setAdminPassword() {
   console.log("Sätter admin-lösenord för nya företag...");
-  
+
+  const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD;
+  if (!defaultPassword) {
+    console.error("❌ DEFAULT_ADMIN_PASSWORD saknas!");
+    console.error('   Sätt den som miljövariabel innan du kör detta skript, t.ex.:');
+    console.error('   DEFAULT_ADMIN_PASSWORD="ett-unikt-lösenord-per-korning" node scripts/set-admin-password.js');
+    console.error('   OBS: samma lösenord sätts för ALLA berörda företag - byt det manuellt per företag efteråt.');
+    return;
+  }
+
   try {
     // Hämta alla företag utan admin-lösenord
     const { data: companies, error } = await supabaseAdmin
       .from("companies")
       .select("id, name, password_hash")
       .is("admin_password_hash", null, true);
-    
+
     if (error) {
       console.error("Fel vid hämtning av företag:", error);
       return;
     }
-    
+
     console.log(`Hittade ${companies.length} företag utan admin-lösenord`);
-    
-    // Sätt ett standard admin-lösenord för alla företag
-    const defaultPassword = "Manne2008";
+
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
-    
+
     for (const company of companies) {
       const { error: updateError } = await supabaseAdmin
         .from("companies")
@@ -39,16 +46,16 @@ async function setAdminPassword() {
           admin_password_hash: hashedPassword
         })
         .eq("id", company.id);
-      
+
       if (updateError) {
         console.error(`Fel vid uppdatering av ${company.name}:`, updateError);
       } else {
-        console.log(`✅ Admin-lösenord satt för ${company.name}: ${defaultPassword}`);
+        console.log(`✅ Admin-lösenord satt för ${company.name} (kontakta ägaren separat med lösenordet)`);
       }
     }
-    
-    console.log("Klart! Alla företag har nu admin-lösenord: admin123");
-    
+
+    console.log("Klart! Byt gärna lösenord per företag efteråt via admin-panelen.");
+
   } catch (error) {
     console.error("Ett oväntat fel uppstod:", error);
   }
