@@ -1901,9 +1901,16 @@ export default function Home() {
 
     const scrollToSection = (id) => {
       const section = document.getElementById(id);
-      if (section) {
-        section.scrollIntoView({ behavior: "smooth" });
-      }
+      if (!section) return;
+
+      // Offset the scroll target by the sticky nav's real height (measured live so it
+      // stays correct on both desktop and mobile) plus a little breathing room, so the
+      // section doesn't land underneath the fixed header.
+      const nav = document.querySelector(".landingNav");
+      const headerOffset = (nav ? nav.getBoundingClientRect().height : 0) + 16;
+      const targetY = section.getBoundingClientRect().top + window.scrollY - headerOffset;
+
+      window.scrollTo({ top: Math.max(targetY, 0), behavior: "smooth" });
     };
 
     return (
