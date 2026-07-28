@@ -69,7 +69,7 @@ function normalizePrepDate(rawDate) {
 // Resolve the acting user's own role rather than trusting companies.is_admin,
 // which is a company-wide flag and not a per-user permission. Editing the
 // prep template affects every employee's daily tasks, so it requires the
-// same PREP_EDIT-level access as recipes/menu management (owner/admin/editor).
+// same PREP_EDIT-level access as recipes/menu management (owner/admin).
 async function getAdminCompany(supabase, companyId, decoded) {
   const { data: company, error } = await supabase
     .from("companies")
@@ -97,7 +97,7 @@ async function getAdminCompany(supabase, companyId, decoded) {
     }
   }
 
-  if (!['owner', 'admin', 'editor'].includes(userRole)) {
+  if (!['owner', 'admin'].includes(userRole)) {
     return null;
   }
 

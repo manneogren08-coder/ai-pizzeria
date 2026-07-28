@@ -55,15 +55,15 @@ export default async function handler(req, res) {
       }
     }
 
-    // Check permissions - only owner can delete staff
-    if (userRole !== 'owner') {
-      return res.status(403).json({ error: "Endast owners kan ta bort personal" });
+    // Check permissions - owners and admins can delete staff
+    if (!['owner', 'admin'].includes(userRole)) {
+      return res.status(403).json({ error: "Du har inte behörighet att ta bort personal" });
     }
 
     // Check if staff exists and belongs to the same company
     const { data: staffToDelete, error: fetchError } = await supabaseAdmin
       .from("restaurant_staff")
-      .select("id, email, name, company_id")
+      .select("id, email, name, company_id, role")
       .eq("id", staffId)
       .single();
 
@@ -82,6 +82,11 @@ export default async function handler(req, res) {
     // Verify staff belongs to the same company as the requester
     if (staffToDelete.company_id !== decoded.companyId) {
       return res.status(403).json({ error: "Du kan bara ta bort personal från ditt eget företag" });
+    }
+
+    // Only an owner can remove another owner - prevents an admin from ousting the company's owner
+    if (staffToDelete.role === 'owner' && userRole !== 'owner') {
+      return res.status(403).json({ error: "Endast owners kan ta bort en owner" });
     }
 
     // Delete the staff member

@@ -1,7 +1,7 @@
 // Permission system for role-based access control
 // This defines what each role can do in the Effexo system
 
-export type UserRole = 'owner' | 'admin' | 'editor' | 'member';
+export type UserRole = 'owner' | 'admin' | 'member';
 
 export interface Permission {
   action: string;
@@ -55,15 +55,6 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.UPDATE_PREP_STATUS,
     PERMISSIONS.VIEW_STATS
   ],
-  editor: [
-    PERMISSIONS.MANAGE_RECIPES,
-    PERMISSIONS.VIEW_RECIPES,
-    PERMISSIONS.MANAGE_MENU,
-    PERMISSIONS.VIEW_MENU,
-    PERMISSIONS.MANAGE_PREP,
-    PERMISSIONS.VIEW_PREP,
-    PERMISSIONS.UPDATE_PREP_STATUS
-  ],
   member: [
     PERMISSIONS.VIEW_PREP,
     PERMISSIONS.UPDATE_PREP_STATUS
@@ -99,7 +90,7 @@ export function getRolePermissions(role: UserRole): string[] {
 export const SPECIAL_PERMISSIONS = {
   // Members can only update specific fields in prep tasks
   canUpdatePrepTask: (role: UserRole, fields: string[]): boolean => {
-    if (role === 'owner' || role === 'admin' || role === 'editor') {
+    if (role === 'owner' || role === 'admin') {
       return true; // These roles can update any field
     }
     

@@ -43,7 +43,7 @@ export default async function handler(req, res) {
       }
     }
 
-    if (!['owner', 'admin', 'editor'].includes(userRole)) {
+    if (!['owner', 'admin'].includes(userRole)) {
       return res.status(403).json({ error: "Du har inte behörighet att tilldela uppgifter" });
     }
 

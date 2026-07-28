@@ -80,7 +80,7 @@ export default async function handler(req, res) {
         }
 
         // Validate role
-        const validRoles = ['owner', 'admin', 'editor', 'member'];
+        const validRoles = ['owner', 'admin', 'member'];
         if (!validRoles.includes(role)) {
           return res.status(400).json({ error: "Ogiltig roll" });
         }
@@ -183,7 +183,7 @@ export default async function handler(req, res) {
         }
 
         // Validate role
-        const validRoles = ['owner', 'admin', 'editor', 'member'];
+        const validRoles = ['owner', 'admin', 'member'];
         if (!validRoles.includes(role)) {
           return res.status(400).json({ error: "Ogiltig roll" });
         }
@@ -203,6 +203,11 @@ export default async function handler(req, res) {
 
         if (staffError || !staff) {
           return res.status(404).json({ error: "Personal hittades inte" });
+        }
+
+        // Only an existing owner can demote another owner
+        if (staff.role === 'owner' && role !== 'owner' && userRole !== 'owner') {
+          return res.status(403).json({ error: "Endast owners kan ändra en owners roll" });
         }
 
         // Prevent removing the last owner

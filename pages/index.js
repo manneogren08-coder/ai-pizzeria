@@ -5,7 +5,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { canAccessPrep, canViewPrep, canEditPrep, canAccessAdminTab, getRoleDescription } from "../lib/roles.js";
 
-const ADMIN_TABS = ["info", "menu", "recipes", "routines", "prep", "staff", "security", "stats"];
+// Statistik-fliken är tillfälligt dold i UI:t tills vyn innehåller mer
+// användbar information. All backend-logik, API:er och data lever kvar -
+// sätt STATS_TAB_ENABLED till true för att visa fliken igen.
+const STATS_TAB_ENABLED = false;
+const ADMIN_TABS = ["info", "menu", "recipes", "routines", "prep", "staff", "security", "stats"].filter(
+  (tab) => STATS_TAB_ENABLED || tab !== "stats"
+);
 
 function getTodayDateString() {
   const now = new Date();
@@ -1648,17 +1654,17 @@ export default function Home() {
 
     switch (permission) {
       case 'view_admin':
-        return ['owner', 'admin', 'editor'].includes(userRole);
+        return ['owner', 'admin'].includes(userRole);
       case 'manage_staff':
         return ['owner', 'admin'].includes(userRole);
       case 'manage_security':
         return ['owner'].includes(userRole);
       case 'view_prep':
-        return ['owner', 'admin', 'editor', 'member'].includes(userRole);
+        return ['owner', 'admin', 'member'].includes(userRole);
       case 'manage_prep':
-        return ['owner', 'admin', 'editor', 'member'].includes(userRole);
+        return ['owner', 'admin', 'member'].includes(userRole);
       case 'access_ai':
-        return ['owner', 'admin', 'editor', 'member'].includes(userRole);
+        return ['owner', 'admin', 'member'].includes(userRole);
       default:
         return false;
     }
@@ -2935,7 +2941,7 @@ export default function Home() {
           </section>
 
           <section style={styles.trustSection} className="trustSection">
-            <h2 style={styles.trustTitle}>Inte bara en idé – redan testat i verkligheten</h2>
+            <h2 style={styles.trustTitle}>Byggd från grunden med fokus på restauranger!</h2>
             <div style={styles.trustGrid} className="trustGrid">
               <div style={{ ...styles.serviceCard, ...styles.trustCard }} className="serviceCard">
                 <div style={styles.trustCheckWrap}>✓</div>
@@ -3339,7 +3345,7 @@ export default function Home() {
                   Säkerhet
                 </button>
               )}
-              {canAccessAdminTab(userRole, "stats") && (
+              {STATS_TAB_ENABLED && canAccessAdminTab(userRole, "stats") && (
                 <button
                   style={{
                     ...styles.adminTab,
@@ -3864,7 +3870,6 @@ export default function Home() {
                       >
                         <option value="owner">Owner</option>
                         <option value="admin">Admin</option>
-                        <option value="editor">Editor</option>
                         <option value="member">Member</option>
                       </select>
                     </div>
@@ -3921,7 +3926,6 @@ export default function Home() {
                                   >
                                     <option value="owner">Owner</option>
                                     <option value="admin">Admin</option>
-                                    <option value="editor">Editor</option>
                                     <option value="member">Member</option>
                                   </select>
                                   <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4, lineHeight: 1.3 }}>
@@ -4074,7 +4078,7 @@ export default function Home() {
                 </div>
               )}
 
-              {adminTab === "stats" && (
+              {STATS_TAB_ENABLED && adminTab === "stats" && (
                 <div className="adminSectionCard">
                   <h3 style={{ marginTop: 0 }}>Statistik</h3>
 

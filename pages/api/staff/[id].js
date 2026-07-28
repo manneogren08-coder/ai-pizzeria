@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     // Get request body
     const { role } = req.body;
 
-    if (!role || !['owner', 'admin', 'editor', 'member'].includes(role)) {
+    if (!role || !['owner', 'admin', 'member'].includes(role)) {
       return res.status(400).json({ error: "Invalid role" });
     }
 

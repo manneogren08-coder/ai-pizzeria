@@ -34,8 +34,7 @@ export default async function handler(req, res) {
     // Note: These must match the database constraint "restaurant_staff_role_check"
     const validRoles = [
       "owner",
-      "admin", 
-      "editor",
+      "admin",
       "member"
     ];
 
