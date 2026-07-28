@@ -3123,6 +3123,48 @@ export default function Home() {
           .chatAreaMobile {
             padding: 12px !important;
           }
+
+          /* Personal-tabellen blir en lista av kort på mobil så att roll,
+             datum och "Ta bort"-knappen aldrig hamnar utanför skärmen. */
+          .staffTable thead {
+            display: none;
+          }
+          .staffTable, .staffTable tbody, .staffTable tr, .staffTable td {
+            display: block;
+            width: 100%;
+          }
+          .staffTable tr {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            margin: 0 0 12px;
+            padding: 4px 12px;
+          }
+          .staffTable tr:last-child {
+            margin-bottom: 0;
+          }
+          .staffTable td {
+            padding: 10px 0 !important;
+            text-align: left !important;
+            border-bottom: 1px solid #f3f4f6 !important;
+          }
+          .staffTable tr td:last-child {
+            border-bottom: none !important;
+          }
+          .staffTable td::before {
+            content: attr(data-label);
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            color: #9ca3af;
+            margin-bottom: 4px;
+          }
+          .staffTable td select,
+          .staffTable td button {
+            width: 100% !important;
+            max-width: none !important;
+          }
         }
 
         @keyframes blink {
@@ -3891,7 +3933,7 @@ export default function Home() {
                       <p style={{ textAlign: "center", color: "#6b7280", padding: 20 }}>Ingen personal registrerad</p>
                     ) : (
                       <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse" }} className="staffTable">
                           <thead>
                             <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
                               <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#374151" }}>Namn</th>
@@ -3904,11 +3946,11 @@ export default function Home() {
                           <tbody>
                             {staffList.map((staff) => (
                               <tr key={staff.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                                <td style={{ padding: "12px 16px", color: "#374151" }}>
+                                <td data-label="Namn" style={{ padding: "12px 16px", color: "#374151" }}>
                                   {staff.name || <span style={{ color: "#9ca3af", fontStyle: "italic" }}>Ej namngiven</span>}
                                 </td>
-                                <td style={{ padding: "12px 16px", color: "#2563eb", fontSize: 14 }}>{staff.email}</td>
-                                <td style={{ padding: "12px 16px", color: "#374151", fontSize: 14 }}>
+                                <td data-label="E-post" style={{ padding: "12px 16px", color: "#2563eb", fontSize: 14 }}>{staff.email}</td>
+                                <td data-label="Roll" style={{ padding: "12px 16px", color: "#374151", fontSize: 14 }}>
                                   <select
                                     value={staff.role || 'member'}
                                     onChange={(e) => updateStaffRole(staff.id, e.target.value)}
@@ -3932,10 +3974,10 @@ export default function Home() {
                                     {getRoleDescription(staff.role || 'member')}
                                   </div>
                                 </td>
-                                <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: 14 }}>
+                                <td data-label="Tillagd datum" style={{ padding: "12px 16px", color: "#6b7280", fontSize: 14 }}>
                                   {new Date(staff.created_at).toLocaleDateString("sv-SE")}
                                 </td>
-                                <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                                <td data-label="Åtgärd" style={{ padding: "12px 16px", textAlign: "right" }}>
                                   <button
                                     style={{
                                       background: "#fef2f2",
