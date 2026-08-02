@@ -404,9 +404,14 @@ export default function Home() {
     // Clear localStorage
     localStorage.removeItem("token");
     localStorage.removeItem("company");
-    
+
     // Sync admin route to false
     syncAdminRoute(false);
+
+    // Clear the HttpOnly auth cookie server-side too, so this is a real
+    // logout rather than just a local UI reset. Best-effort: local state
+    // above is already cleared regardless of whether this succeeds.
+    fetch("/api/logout", { method: "POST" }).catch(() => {});
   }, [syncAdminRoute]);
 
   const isJwtExpired = (jwtToken) => {
@@ -808,16 +813,10 @@ export default function Home() {
   }, [chat, loading]);
 
   useEffect(() => {
-    if (showAdmin && adminTab === "staff") {
+    if (showAdmin && (adminTab === "staff" || adminTab === "prep") && staffList.length === 0) {
       fetchStaffList();
     }
-  }, [showAdmin, adminTab]);
-
-  useEffect(() => {
-    if (showAdmin && adminTab === "prep") {
-      fetchStaffList();
-    }
-  }, [showAdmin, adminTab]);
+  }, [showAdmin, adminTab, staffList.length]);
 
   useEffect(() => {
     // Also fetch staff list when prep view is opened
@@ -837,13 +836,15 @@ export default function Home() {
     }
   }, [codeRequestTime, employeeLoginStep]);
 
-  // Role-based admin access control - prevents admin panel from showing for non-admin users
+  // Role-based admin access control - prevents admin panel from showing for non-admin users.
+  // Uses the acting user's own role (owner/admin), not the company-wide is_admin flag,
+  // which is never set for newly created companies and would wrongly lock owners out.
   useEffect(() => {
     if (company && token) {
       try {
         // Check if current user should have admin access
-        const shouldHaveAdminAccess = company.is_admin;
-        
+        const shouldHaveAdminAccess = ['owner', 'admin'].includes(company.role);
+
         // If admin panel is showing but user shouldn't have access, hide it
         if (showAdmin && !shouldHaveAdminAccess) {
           setShowAdmin(false);
@@ -858,7 +859,7 @@ export default function Home() {
         syncAdminRoute(false);
       }
     }
-  }, [company?.is_admin, showAdmin, token]);
+  }, [company?.role, showAdmin, token]);
 
   useEffect(() => {
     // Load showMyPrepTasks from localStorage
@@ -874,7 +875,7 @@ export default function Home() {
   }, [showMyPrepTasks]);
 
   useEffect(() => {
-    if (!router.isReady || !company?.is_admin) {
+    if (!router.isReady || !['owner', 'admin'].includes(company?.role)) {
       return;
     }
 
@@ -906,7 +907,7 @@ export default function Home() {
     router.isReady,
     router.query.view,
     router.query.tab,
-    company?.is_admin,
+    company?.role,
     showAdmin,
     adminPasswordPrompt
   ]);
@@ -4138,7 +4139,7 @@ export default function Home() {
                   </div>
 
                   <div style={styles.statCard}>
-                    <div style={styles.statNumber}>{company.is_admin ? "Ja" : "Nej"}</div>
+                    <div style={styles.statNumber}>{['owner', 'admin'].includes(company.role) ? "Ja" : "Nej"}</div>
                     <div style={styles.statLabel}>Admin-behörighet</div>
                   </div>
 

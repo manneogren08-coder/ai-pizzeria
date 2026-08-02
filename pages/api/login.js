@@ -53,7 +53,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Skriv in företags-id eller företagsnamn" });
     }
 
-    const selectFields = "id, name, support_email, password_hash, is_admin, active, query_count";
+    const selectFields = "id, name, support_email, password_hash, active, query_count";
     const cleanIdentifier = normalizedIdentifier.replace(/[%,]/g, "");
     const isNumericId = /^\d+$/.test(cleanIdentifier);
 
@@ -113,16 +113,9 @@ export default async function handler(req, res) {
 
     const data = matchedCompany;
 
-    // Get the company's owner role from restaurant_staff (dynamic per company,
-    // not tied to any specific person's email)
-    const { data: ownerStaffRows } = await supabase
-      .from("restaurant_staff")
-      .select("role")
-      .eq("company_id", String(data.id))
-      .eq("role", "owner")
-      .limit(1);
-
-    const staffData = ownerStaffRows?.[0] || null;
+    // A company/password login has no other principal type than the owner,
+    // so the role is always 'owner' here - never derived from the legacy,
+    // unmaintained companies.is_admin flag.
 
     // Skapa token
     const token = jwt.sign(
@@ -131,7 +124,7 @@ export default async function handler(req, res) {
         type: "company"
       },
       process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: '30d' }
     );
 
     setAuthCookie(res, token);
@@ -141,8 +134,7 @@ export default async function handler(req, res) {
       company: {
         id: data.id,
         name: data.name,
-        role: staffData?.role || (data.is_admin ? 'owner' : 'member'),
-        is_admin: data.is_admin || false,
+        role: 'owner',
         active: data.active !== undefined ? data.active : true,
         query_count: data.query_count || 0
       }

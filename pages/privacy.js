@@ -35,7 +35,7 @@ export default function PrivacyPolicy() {
           lineHeight: 1.6,
           marginBottom: '30px'
         }}>
-          Senast uppdaterad: 24 juli 2026
+          Senast uppdaterad: 2 augusti 2026
         </p>
 
         <p style={{ color: '#475569', lineHeight: 1.6, marginBottom: '30px' }}>
@@ -59,6 +59,24 @@ export default function PrivacyPolicy() {
             dataskyddslagstiftning (GDPR).
           </p>
           <p style={{ color: '#475569', lineHeight: 1.6, marginBottom: '15px' }}>
+            Vem som är personuppgiftsansvarig beror på vilken uppgift det gäller:
+          </p>
+          <ul style={{ color: '#475569', lineHeight: 1.6, paddingLeft: '20px', marginBottom: '15px' }}>
+            <li style={{ marginBottom: '10px' }}>
+              Effexo är personuppgiftsansvarig för de personuppgifter vi behandlar i egenskap av
+              leverantör, till exempel kontaktuppgifter till företagets administratörer och information
+              som lämnas via kontaktformuläret.
+            </li>
+            <li style={{ marginBottom: '10px' }}>
+              Restaurangföretaget (kunden) är normalt personuppgiftsansvarig för sin egen personaldata,
+              det vill säga uppgifter om de anställda som får tillgång till StaffGuide.
+            </li>
+            <li style={{ marginBottom: '10px' }}>
+              I den rollen agerar Effexo som personuppgiftsbiträde och behandlar personaldatan enbart på
+              uppdrag av och enligt instruktioner från kunden, för att kunna leverera tjänsten.
+            </li>
+          </ul>
+          <p style={{ color: '#475569', lineHeight: 1.6, marginBottom: '15px' }}>
             Kontaktuppgifter till personuppgiftsansvarig:
           </p>
           <div style={{
@@ -69,9 +87,6 @@ export default function PrivacyPolicy() {
           }}>
             <p style={{ color: '#0f172a', fontWeight: 600, margin: '0 0 8px' }}>
               Effexo
-            </p>
-            <p style={{ color: '#475569', margin: '0 0 8px' }}>
-              Organisationsnummer: <em style={{ fontStyle: 'normal', color: '#94a3b8' }}>[Att fylla i]</em>
             </p>
             <p style={{ color: '#475569', margin: '0 0 8px' }}>
               E-post: <a href="mailto:kontakt@effexo.se" style={{ color: '#2563eb', textDecoration: 'none' }}>kontakt@effexo.se</a>
@@ -113,7 +128,18 @@ export default function PrivacyPolicy() {
               <strong>Kommunikation:</strong> Namn, e-postadress och meddelande som anges när någon
               kontaktar oss via kontaktformuläret på vår hemsida.
             </li>
+            <li style={{ marginBottom: '10px' }}>
+              <strong>Faktureringsuppgifter:</strong> För betalande kunder behandlar vi företagsnamn,
+              kontaktuppgifter samt den information som krävs för fakturering och bokföring, i enlighet
+              med gällande bokföringslagstiftning.
+            </li>
           </ul>
+          <p style={{ color: '#475569', lineHeight: 1.6, marginTop: '15px' }}>
+            För kunder som beställer en hemsidelösning av oss kan ytterligare personuppgiftsbehandling
+            förekomma beroende på vilka funktioner som ingår, till exempel kontaktformulär eller
+            bokningsfunktioner. Vilken data det rör sig om och hur den hanteras beskrivs i så fall i
+            samband med beställningen.
+          </p>
         </section>
 
         <section style={{ marginBottom: '30px' }}>
@@ -143,10 +169,41 @@ export default function PrivacyPolicy() {
               support till våra kunder.
             </li>
             <li style={{ marginBottom: '10px' }}>
-              <strong>AI-assistenten:</strong> När en användare ställer en fråga till StaffGuides
-              AI-assistent skickas frågan, tillsammans med relevant företagsinformation (t.ex. rutiner
-              och recept som företaget har lagt in), till OpenAI för att generera ett svar. Frågorna
-              används enbart för att besvara den aktuella förfrågan.
+              <strong>AI-assistenten:</strong> StaffGuides AI-funktion drivs av OpenAI. När en användare
+              ställer en fråga skickas den, tillsammans med den företagsinformation som faktiskt behövs
+              för att besvara just den frågan (t.ex. relevanta rutiner eller recept som företaget har
+              lagt in), till OpenAI för att generera ett svar. Vi skickar aldrig mer data än vad som krävs
+              för att besvara frågan, och vi är transparenta med att denna behandling sker - läs mer om
+              leverantören under punkt 7. Företagsinformation som inte behövs för att besvara den
+              aktuella frågan skickas inte till OpenAI.
+            </li>
+          </ul>
+        </section>
+
+        <section style={{ marginBottom: '30px' }}>
+          <h2 style={{
+            fontSize: '1.3rem',
+            color: '#0f172a',
+            fontWeight: 700,
+            margin: '0 0 15px'
+          }}>
+            3.1 Rättslig grund för behandling
+          </h2>
+          <p style={{ color: '#475569', lineHeight: 1.6, marginBottom: '15px' }}>
+            Effexo behandlar personuppgifter med stöd av följande rättsliga grunder:
+          </p>
+          <ul style={{ color: '#475569', lineHeight: 1.6, paddingLeft: '20px' }}>
+            <li style={{ marginBottom: '10px' }}>
+              <strong>Avtal:</strong> För att kunna leverera StaffGuide till våra kunder enligt det avtal
+              som ingåtts.
+            </li>
+            <li style={{ marginBottom: '10px' }}>
+              <strong>Berättigat intresse:</strong> Till exempel för att upprätthålla säkerheten i
+              tjänsten, felsöka problem och förbättra StaffGuide.
+            </li>
+            <li style={{ marginBottom: '10px' }}>
+              <strong>Rättslig förpliktelse:</strong> Till exempel för att uppfylla krav enligt
+              bokföringslagstiftningen.
             </li>
           </ul>
         </section>
@@ -161,10 +218,14 @@ export default function PrivacyPolicy() {
             4. Lagring och säkerhet
           </h2>
           <p style={{ color: '#475569', lineHeight: 1.6, marginBottom: '15px' }}>
-            Dina personuppgifter lagras på servrar inom EU. All trafik till och från tjänsten krypteras
-            (HTTPS/TLS), och lösenord lagras aldrig i klartext utan hashas med branschstandarden bcrypt.
-            Åtkomst till data begränsas per företag och per roll, så att en användare bara kan se
-            information som hör till det egna företaget och den egna behörighetsnivån.
+            Vi använder leverantörer som i första hand erbjuder serverdrift inom EU/EES. I vissa fall,
+            till exempel vid AI-bearbetning via OpenAI, kan personuppgifter behandlas av leverantörer
+            utanför EU/EES. Sådan överföring sker då alltid med de skyddsåtgärder som krävs enligt GDPR,
+            exempelvis EU-kommissionens standardavtalsklausuler. All trafik till och från tjänsten
+            krypteras (HTTPS/TLS), och lösenord lagras aldrig i klartext utan hashas med
+            branschstandarden bcrypt. Åtkomst till data begränsas per företag och per roll, så att en
+            användare bara kan se information som hör till det egna företaget och den egna
+            behörighetsnivån.
           </p>
           <p style={{ color: '#475569', lineHeight: 1.6 }}>
             Data sparas så länge det är nödvändigt för att tillhandahålla tjänsten till dig eller
@@ -245,12 +306,14 @@ export default function PrivacyPolicy() {
             fontWeight: 700,
             margin: '0 0 15px'
           }}>
-            7. Tredjepartsleverantörer
+            7. Leverantörer och personuppgiftsbiträden
           </h2>
           <p style={{ color: '#475569', lineHeight: 1.6, marginBottom: '15px' }}>
             Vi säljer eller delar inte dina personuppgifter med tredjeparter för marknadsföring. För att
-            driva Effexo använder vi följande betrodda tjänsteleverantörer, som behandlar personuppgifter
-            för vår räkning:
+            driva StaffGuide använder vi Vercel, Supabase, OpenAI och Resend som leverantörer. De
+            behandlar personuppgifter enligt sina respektive dataskyddsvillkor och, där sådana krävs,
+            personuppgiftsbiträdesavtal, och endast i den utsträckning som krävs för att leverera
+            respektive del av tjänsten:
           </p>
           <ul style={{ color: '#475569', lineHeight: 1.6, paddingLeft: '20px' }}>
             <li style={{ marginBottom: '10px' }}>
@@ -292,9 +355,6 @@ export default function PrivacyPolicy() {
           }}>
             <p style={{ color: '#0f172a', fontWeight: 600, margin: '0 0 8px' }}>
               Effexo
-            </p>
-            <p style={{ color: '#475569', margin: '0 0 8px' }}>
-              Organisationsnummer: <em style={{ fontStyle: 'normal', color: '#94a3b8' }}>[Att fylla i]</em>
             </p>
             <p style={{ color: '#475569', margin: '0 0 8px' }}>
               E-post: <a href="mailto:kontakt@effexo.se" style={{ color: '#2563eb', textDecoration: 'none' }}>kontakt@effexo.se</a>

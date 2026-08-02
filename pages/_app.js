@@ -1,4 +1,7 @@
 import { Inter } from "next/font/google";
+import CreateCompanyDevTool from "../components/dev/CreateCompanyDevTool";
+import ResetCompanyPasswordDevTool from "../components/dev/ResetCompanyPasswordDevTool";
+import DeleteCompanyDevTool from "../components/dev/DeleteCompanyDevTool";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -47,6 +50,9 @@ export default function MyApp({ Component, pageProps }) {
         }
       `}</style>
       <Component {...pageProps} />
+      <CreateCompanyDevTool />
+      <ResetCompanyPasswordDevTool />
+      <DeleteCompanyDevTool />
     </div>
   );
 }

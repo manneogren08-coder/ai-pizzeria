@@ -33,7 +33,7 @@ function consumeRateLimit(key, maxRequests) {
 async function getStaffByEmail(email) {
   const { data, error } = await supabaseAdmin
     .from("restaurant_staff")
-    .select("*, companies(id, name)")
+    .select("*, companies(id, name, active, query_count)")
     .eq("email", email)
     .maybeSingle();
 
@@ -42,21 +42,6 @@ async function getStaffByEmail(email) {
   }
 
   return data;
-}
-
-async function getCompanyById(companyId) {
-  const { data: company, error } = await supabaseAdmin
-    .from("companies")
-    .select("id, name, active, query_count")
-    .eq("id", companyId)
-    .eq("active", true)
-    .maybeSingle();
-
-  if (error) {
-    return null;
-  }
-
-  return company;
 }
 
 export default async function handler(req, res) {
@@ -87,8 +72,8 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Din e-post är inte registrerad. Kontakta din chef." });
     }
 
-    const company = await getCompanyById(staffMember.company_id);
-    if (!company) {
+    const company = staffMember.companies;
+    if (!company || !company.active) {
       return res.status(401).json({ error: "Företaget är inte aktivt" });
     }
 
@@ -102,14 +87,6 @@ export default async function handler(req, res) {
     if (employeeError || !employee) {
       return res.status(404).json({ error: "Anställd hittades inte. Begär engångskod först." });
     }
-
-    // Get staff role from restaurant_staff table
-    const { data: staffData, error: staffError } = await supabaseAdmin
-      .from("restaurant_staff")
-      .select("role")
-      .eq("company_id", String(company.id))
-      .eq("email", email)
-      .maybeSingle();
 
     const isDevEnv = process.env.NODE_ENV !== "production";
 
@@ -160,7 +137,7 @@ export default async function handler(req, res) {
         isEmployee: true
       },
       process.env.JWT_SECRET,
-      { expiresIn: "24h" }
+      { expiresIn: "30d" }
     );
 
     setAuthCookie(res, token);
@@ -170,8 +147,7 @@ export default async function handler(req, res) {
       company: {
         id: company.id,
         name: company.name,
-        role: staffData?.role || 'member',
-        is_admin: staffData?.role === 'owner' || staffData?.role === 'admin',
+        role: staffMember.role || 'member',
         active: company.active !== undefined ? company.active : true,
         query_count: company.query_count || 0,
         is_employee: true,

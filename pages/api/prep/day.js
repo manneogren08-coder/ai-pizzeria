@@ -112,24 +112,15 @@ async function ensureTasksForDay(supabase, companyId, prepDate) {
     assigned_to: task.assigned_to
   }));
 
-  const { error: insertError } = await supabase
+  const { data: insertedTasks, error: insertError } = await supabase
     .from("prep_tasks")
-    .insert(rowsToInsert);
-
-  if (insertError) {
-    throw insertError;
-  }
-
-  const { data: insertedTasks, error: insertedReadError } = await supabase
-    .from("prep_tasks")
+    .insert(rowsToInsert)
     .select("id, title, priority, station, due_time, is_done, sort_order")
-    .eq("company_id", companyKey)
-    .eq("prep_date", prepDate)
     .order("sort_order", { ascending: true })
     .order("id", { ascending: true });
 
-  if (insertedReadError) {
-    throw insertedReadError;
+  if (insertError) {
+    throw insertError;
   }
 
   return {
