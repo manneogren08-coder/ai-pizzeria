@@ -366,6 +366,7 @@ export default function Home() {
   const toastTimerRef = useRef(null);
   const skipNextAdminRoutePromptRef = useRef(false);
   const tokenRef = useRef("");
+  const activeAskAbortRef = useRef(null);
 
   const syncAdminRoute = useCallback((nextShowAdmin, nextTab = "info") => {
     if (!router.isReady) return;
@@ -922,6 +923,9 @@ export default function Home() {
       if (toastTimerRef.current) {
         clearTimeout(toastTimerRef.current);
       }
+      if (activeAskAbortRef.current) {
+        activeAskAbortRef.current.abort();
+      }
     };
   }, []);
 
@@ -1114,6 +1118,41 @@ export default function Home() {
     setQuestion("");
     setLoading(true);
 
+    // Placeholder AI message that is filled in live as stream chunks arrive.
+    // It's the only AI message added for this exchange - later updates mutate
+    // it in place rather than pushing new entries, so the chat history ends
+    // up with exactly one AI message per question, streamed or not.
+    setChat(prev => [...prev, { from: "ai", text: "", streaming: true }]);
+
+    const updateStreamingMessage = (updater) => {
+      setChat(prev => {
+        const lastIndex = prev.length - 1;
+        if (lastIndex < 0 || prev[lastIndex].from !== "ai" || !prev[lastIndex].streaming) {
+          return prev;
+        }
+        const next = [...prev];
+        next[lastIndex] = updater(next[lastIndex]);
+        return next;
+      });
+    };
+
+    const finishStreamingMessage = (finalText, menuItems = []) => {
+      updateStreamingMessage(() => ({ from: "ai", text: finalText, menuItems }));
+    };
+
+    const dropStreamingMessage = () => {
+      setChat(prev => {
+        const lastIndex = prev.length - 1;
+        if (lastIndex < 0 || prev[lastIndex].from !== "ai" || !prev[lastIndex].streaming) {
+          return prev;
+        }
+        return prev.slice(0, -1);
+      });
+    };
+
+    const abortController = new AbortController();
+    activeAskAbortRef.current = abortController;
+
     try {
       const res = await fetch("/api/ask", {
         method: "POST",
@@ -1121,39 +1160,85 @@ export default function Home() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${activeToken}`
         },
-        body: JSON.stringify({ question: userMessage, quickActionKey: options.quickActionKey || null })
+        body: JSON.stringify({ question: userMessage, quickActionKey: options.quickActionKey || null }),
+        signal: abortController.signal
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get("content-type") || "";
 
-      if (res.status === 401 && /ogiltig token|ingen token|session/i.test(data?.answer || "")) {
-        logout();
-        showToast("Sessionen har gått ut. Logga in igen.", "info");
-        setLoading(false);
-        return;
-      }
+      if (!contentType.includes("text/event-stream")) {
+        // Quick actions, cache hits and pre-stream errors are already
+        // complete strings - showing them instantly is correct here and
+        // streaming them word-by-word would just be fake streaming.
+        const data = await res.json();
 
-      if (!res.ok) {
-        setChat(prev => [...prev, { from: "ai", text: data?.answer || "Ett fel uppstod. Försök igen." }]);
-        setLoading(false);
-        return;
-      }
-
-      setChat(prev => [
-        ...prev,
-        {
-          from: "ai",
-          text: formatAiAnswer(data.answer),
-          menuItems: Array.isArray(data?.menuItems) ? data.menuItems : []
+        if (res.status === 401 && /ogiltig token|ingen token|session/i.test(data?.answer || "")) {
+          dropStreamingMessage();
+          logout();
+          showToast("Sessionen har gått ut. Logga in igen.", "info");
+          setLoading(false);
+          return;
         }
-      ]);
-    } catch {
-      setChat(prev => [
-        ...prev,
-        { from: "ai", text: "Ett fel uppstod. Försök igen." }
-      ]);
+
+        finishStreamingMessage(
+          data?.answer || "Ett fel uppstod. Försök igen.",
+          Array.isArray(data?.menuItems) ? data.menuItems : []
+        );
+        setLoading(false);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let streamedText = "";
+      let streamErrorMessage = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const frames = buffer.split("\n\n");
+        buffer = frames.pop() || "";
+
+        for (const frame of frames) {
+          const line = frame.trim();
+          if (!line.startsWith("data:")) continue;
+
+          let payload;
+          try {
+            payload = JSON.parse(line.slice(5).trim());
+          } catch {
+            continue;
+          }
+
+          if (payload.delta) {
+            streamedText += payload.delta;
+            const chunkText = payload.delta;
+            updateStreamingMessage((msg) => ({ ...msg, text: msg.text + chunkText }));
+          } else if (payload.error) {
+            streamErrorMessage = payload.error;
+          }
+        }
+      }
+
+      if (streamErrorMessage) {
+        finishStreamingMessage(streamedText ? `${streamedText}\n\n${streamErrorMessage}` : streamErrorMessage);
+      } else {
+        finishStreamingMessage(formatAiAnswer(streamedText || "Jag kunde inte generera ett svar just nu."));
+      }
+    } catch (err) {
+      if (err?.name === "AbortError") {
+        dropStreamingMessage();
+      } else {
+        finishStreamingMessage("Ett fel uppstod. Försök igen.");
+      }
     }
 
+    if (activeAskAbortRef.current === abortController) {
+      activeAskAbortRef.current = null;
+    }
     setLoading(false);
   };
 
@@ -4287,8 +4372,19 @@ export default function Home() {
                     ? styles.userBubble
                     : styles.aiBubble
                 }
+                className={msg.from === "ai" && msg.streaming && !msg.text ? "typing" : undefined}
               >
-                {msg.from === "ai" ? renderAiTextWithClickableMenuItems(msg, i) : msg.text}
+                {msg.from === "ai" && msg.streaming && !msg.text ? (
+                  <>
+                    <span className="dot" />
+                    <span className="dot" />
+                    <span className="dot" />
+                  </>
+                ) : msg.from === "ai" ? (
+                  renderAiTextWithClickableMenuItems(msg, i)
+                ) : (
+                  msg.text
+                )}
                 {msg.from === "ai" && Array.isArray(msg.menuItems) && msg.menuItems.length > 0 && (
                   <div style={styles.menuItemsWrap}>
                     <div style={styles.menuItemsTitle}>Tryck på en rätt för recept</div>
@@ -4296,14 +4392,6 @@ export default function Home() {
                 )}
               </div>
             ))}
-
-            {loading && (
-              <div style={styles.aiBubble} className="typing">
-                <span className="dot" />
-                <span className="dot" />
-                <span className="dot" />
-              </div>
-            )}
           </div>
 
           <div style={styles.quickActions} className="quickActionWrap">

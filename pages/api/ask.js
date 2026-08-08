@@ -304,17 +304,29 @@ export default async function handler(req, res) {
       apiKey: openAiApiKey
     });
 
-    let response;
+    // Aborts the OpenAI request if the client disconnects mid-stream (tab
+    // closed, navigation away, fetch aborted), so we don't keep paying for
+    // tokens or holding the function open after nobody is listening.
+    const streamAbortController = new AbortController();
+    const onClientDisconnect = () => streamAbortController.abort();
+    req.on("close", onClientDisconnect);
+
+    let stream;
     try {
-      response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: normalizedQuestion }
-        ],
-        max_tokens: 350
-      });
+      stream = await openai.chat.completions.create(
+        {
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: normalizedQuestion }
+          ],
+          max_tokens: 350,
+          stream: true
+        },
+        { signal: streamAbortController.signal }
+      );
     } catch (openAiError) {
+      req.off("close", onClientDisconnect);
       const errorCode = openAiError?.code || "";
       const errorMessage = openAiError?.message || "";
       const statusCode = Number(openAiError?.status || openAiError?.statusCode || 0);
@@ -347,18 +359,57 @@ export default async function handler(req, res) {
       return res.status(502).json({ answer: "AI-tjänsten svarade inte som väntat. Försök igen om en stund." });
     }
 
-    const answerText = response.choices?.[0]?.message?.content || "Jag kunde inte generera ett svar just nu.";
-    answerCacheMap.set(cacheKey, {
-      answer: answerText,
-      createdAt: now
+    // From here on the response is a Server-Sent Events stream: the HTTP
+    // status/headers are already committed, so any error past this point
+    // has to be signalled as an SSE event instead of a JSON status code.
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no"
     });
 
-    void incrementQueryCount(companyId, companyData.query_count);
+    const writeEvent = (payload) => {
+      if (res.writableEnded) return;
+      try {
+        res.write(`data: ${JSON.stringify(payload)}\n\n`);
+      } catch {
+        // client socket already gone - nothing to do
+      }
+    };
 
-    return res.status(200).json({
-      answer: answerText,
-      company: { name: companyData.name }
-    });
+    let fullText = "";
+    try {
+      for await (const chunk of stream) {
+        const delta = chunk.choices?.[0]?.delta?.content || "";
+        if (delta) {
+          fullText += delta;
+          writeEvent({ delta });
+        }
+      }
+
+      const answerText = fullText || "Jag kunde inte generera ett svar just nu.";
+      answerCacheMap.set(cacheKey, {
+        answer: answerText,
+        createdAt: now
+      });
+
+      void incrementQueryCount(companyId, companyData.query_count);
+
+      writeEvent({ done: true });
+    } catch (streamError) {
+      if (streamError?.name !== "AbortError") {
+        console.error("OpenAI stream error:", streamError?.message || streamError);
+        writeEvent({ error: "AI-tjänsten avbröts oväntat. Försök igen." });
+      }
+    } finally {
+      req.off("close", onClientDisconnect);
+      if (!res.writableEnded) {
+        res.end();
+      }
+    }
+
+    return;
   } catch (error) {
     if (error.name === "JsonWebTokenError" || error.name === "TokenExpiredError") {
       return res.status(401).json({ answer: "Ogiltig token." });
