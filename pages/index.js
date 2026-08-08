@@ -2,8 +2,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import Link from "next/link";
-import Image from "next/image";
 import { canAccessPrep, canViewPrep, canEditPrep, canAccessAdminTab, getRoleDescription } from "../lib/roles.js";
+import LandingNav from "../components/LandingNav";
 
 // Statistik-fliken är tillfälligt dold i UI:t tills vyn innehåller mer
 // användbar information. All backend-logik, API:er och data lever kvar -
@@ -2238,10 +2238,6 @@ export default function Home() {
             animation: fadeInUp 0.7s ease both;
           }
 
-          .landingNav {
-            animation: fadeInDown 0.7s ease both;
-          }
-
           .heroMockupWrap {
             animation: fadeInUp 0.7s ease 0.1s both, floatMockup 8s ease-in-out 0.8s infinite;
           }
@@ -2255,42 +2251,10 @@ export default function Home() {
             to { opacity: 1; transform: translateY(0); }
           }
 
-          @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-12px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-
           @keyframes floatMockup {
             0% { transform: translateY(0); }
             50% { transform: translateY(-8px); }
             100% { transform: translateY(0); }
-          }
-
-          .landingNavLink {
-            transition: color 0.2s ease;
-          }
-
-          .landingNavLink:hover {
-            color: #f8fafc !important;
-          }
-
-          .landingNavLogoLink {
-            transition: opacity 0.2s ease;
-          }
-
-          .landingNavLogoLink:hover {
-            opacity: 0.82;
-          }
-
-          .landingNavLogoLink:focus-visible {
-            outline: 2px solid rgba(148, 163, 184, 0.6);
-            outline-offset: 4px;
-          }
-
-          .landingNavLoginBtn:hover {
-            background: rgba(255, 255, 255, 0.09) !important;
-            border-color: rgba(148, 163, 184, 0.5) !important;
-            transform: translateY(-1px);
           }
 
           .heroCtaBtn {
@@ -2447,22 +2411,6 @@ export default function Home() {
           }
 
           @media (max-width: 700px) {
-            .landingNavLinks a.landingNavLink {
-              display: none;
-            }
-
-            .landingNavLogoIcon {
-              height: 28px !important;
-            }
-
-            .landingNavLogoWordmark {
-              height: 16px !important;
-            }
-
-            .landingNavLogoLink {
-              gap: 9px !important;
-            }
-
             .servicesGrid {
               grid-template-columns: 1fr !important;
             }
@@ -2485,69 +2433,7 @@ export default function Home() {
           }
         `}</style>
 
-        <nav style={styles.landingNav} className="landingNav">
-          <div style={styles.landingNavInner} className="landingNavInner">
-            <Link
-              href="/"
-              style={styles.landingNavLogoLink}
-              className="landingNavLogoLink"
-              aria-label="Effexo – till startsidan"
-            >
-              <Image
-                src="/effexo-icon-white.png"
-                alt=""
-                width={201}
-                height={216}
-                priority
-                style={styles.landingNavLogoIcon}
-                className="landingNavLogoIcon"
-              />
-              <Image
-                src="/effexo-wordmark-white.png"
-                alt=""
-                width={448}
-                height={124}
-                priority
-                style={styles.landingNavLogoWordmark}
-                className="landingNavLogoWordmark"
-              />
-            </Link>
-            <div style={styles.landingNavLinks} className="landingNavLinks">
-              <a
-                href="#hemsidor-section"
-                style={styles.landingNavLink}
-                className="landingNavLink"
-                onClick={(e) => { e.preventDefault(); scrollToSection("hemsidor-section"); }}
-              >
-                Hemsidor
-              </a>
-              <a
-                href="#staffguide-section"
-                style={styles.landingNavLink}
-                className="landingNavLink"
-                onClick={(e) => { e.preventDefault(); scrollToSection("staffguide-section"); }}
-              >
-                Staffguide
-              </a>
-              <a
-                href="#contact-section"
-                style={styles.landingNavLink}
-                className="landingNavLink"
-                onClick={(e) => { e.preventDefault(); scrollToSection("contact-section"); }}
-              >
-                Kontakt
-              </a>
-              <button
-                type="button"
-                style={styles.landingNavLoginBtn}
-                className="landingNavLoginBtn"
-                onClick={() => scrollToLogin("company")}
-              >
-                Logga in
-              </button>
-            </div>
-          </div>
-        </nav>
+        <LandingNav onLoginClick={() => scrollToLogin("company")} />
 
         <div style={styles.landingBackground}>
           <div className="landingOrb orbA" />
@@ -4441,72 +4327,6 @@ const styles = {
     position: "relative",
     overflow: "hidden",
     background: "linear-gradient(180deg, #05070d 0%, #0a0e1a 45%, #0b0f1c 100%)"
-  },
-
-  landingNav: {
-    position: "sticky",
-    top: 0,
-    zIndex: 20,
-    background: "rgba(5, 7, 13, 0.72)",
-    backdropFilter: "blur(10px)",
-    borderBottom: "1px solid rgba(148, 163, 184, 0.12)"
-  },
-
-  landingNavInner: {
-    maxWidth: 1200,
-    margin: "0 auto",
-    padding: "14px 18px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 16
-  },
-
-  landingNavLogoLink: {
-    display: "inline-flex",
-    alignItems: "center",
-    flex: "none",
-    gap: 12,
-    lineHeight: 0,
-    textDecoration: "none",
-    borderRadius: 6
-  },
-
-  landingNavLogoIcon: {
-    display: "block",
-    height: 36,
-    width: "auto"
-  },
-
-  landingNavLogoWordmark: {
-    display: "block",
-    height: 20.6,
-    width: "auto"
-  },
-
-  landingNavLinks: {
-    display: "flex",
-    alignItems: "center",
-    gap: 22
-  },
-
-  landingNavLink: {
-    color: "#94a3b8",
-    fontSize: 14,
-    fontWeight: 600,
-    textDecoration: "none"
-  },
-
-  landingNavLoginBtn: {
-    border: "1px solid rgba(148, 163, 184, 0.28)",
-    background: "rgba(255, 255, 255, 0.04)",
-    color: "#f8fafc",
-    borderRadius: 8,
-    padding: "8px 16px",
-    fontWeight: 700,
-    fontSize: 14,
-    cursor: "pointer",
-    transition: "background 0.2s ease, border-color 0.2s ease, transform 0.2s ease"
   },
 
   landingBackground: {
