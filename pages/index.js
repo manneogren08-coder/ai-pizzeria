@@ -2654,7 +2654,7 @@ export default function Home() {
                   <span style={styles.serviceBadge}>Kunskap</span>
                   <span style={styles.serviceBadge}>Mise en place</span>
                 </div>
-                <button type="button" style={styles.serviceCardButton} className="serviceCardButton">Läs mer</button>
+                <Link href="/staffguide" style={styles.serviceCardButton} className="serviceCardButton">Läs mer</Link>
               </div>
 
               <div style={styles.serviceCard} className="serviceCard">
@@ -2671,7 +2671,7 @@ export default function Home() {
                   <span style={styles.serviceBadge}>Modern Design</span>
                   <span style={styles.serviceBadge}>Snabb</span>
                 </div>
-                <button type="button" style={styles.serviceCardButton} className="serviceCardButton">Läs mer</button>
+                <Link href="/webbdesign" style={styles.serviceCardButton} className="serviceCardButton">Läs mer</Link>
               </div>
             </div>
           </section>
@@ -4850,7 +4850,9 @@ const styles = {
     padding: "10px 18px",
     fontWeight: 700,
     fontSize: 14,
-    cursor: "pointer"
+    cursor: "pointer",
+    textDecoration: "none",
+    display: "inline-block"
   },
 
   staffguideSection: {
