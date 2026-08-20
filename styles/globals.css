@@ -1,0 +1,128 @@
+/* Shared theme variables for CRM (/admin) and the Staffguide app.
+   Only components that opt in by reading these var()s are affected -
+   the public marketing pages keep their own hardcoded colors
+   untouched, so this file cannot visually change anything outside
+   CRM/Staffguide even though data-theme lives on <html> globally (see
+   pages/_document.js for the anti-flash script that sets it).
+
+   Light values are the ORIGINAL hex already hardcoded throughout the
+   CRM/Staffguide components before dark mode existed - copied here
+   verbatim so :root keeps every existing light-mode pixel identical.
+   Dark values are new, chosen to stay in the same Slate/Blue family
+   already used everywhere in this codebase. */
+
+:root {
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --surface-secondary: #f1f5f9;
+  --surface-hover: #f1f5f9;
+
+  --text: #0f172a;
+  --text-secondary: #374151;
+  --text-muted: #6b7280;
+  --text-faint: #9ca3af;
+
+  --border: #e5e7eb;
+  --border-input: #cbd5e1;
+
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-contrast: #ffffff;
+  --accent-soft-bg: #eff6ff;
+  --accent-soft-border: #bfdbfe;
+
+  --success-bg: #f0fdf4;
+  --success-text: #16a34a;
+  --success-border: #bbf7d0;
+
+  --danger-bg: #fef2f2;
+  --danger-text: #dc2626;
+  --danger-border: #fecaca;
+
+  --warning-bg: #fffbeb;
+  --warning-text: #b45309;
+  --warning-border: #fde68a;
+
+  --teal-bg: #ecfeff;
+  --teal-text: #0e7490;
+  --teal-border: #a5f3fc;
+
+  --purple-bg: #f5f3ff;
+  --purple-text: #6d28d9;
+  --purple-border: #ddd6fe;
+
+  --neutral-bg: #f1f5f9;
+  --neutral-text: #475569;
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --shadow-modal: 0 20px 50px rgba(15, 23, 42, 0.25);
+  --overlay-bg: rgba(15, 23, 42, 0.5);
+
+  /* Staffguide prep task row - its own tokens rather than reusing
+     --surface/--surface-hover, since the original hardcoded rest/hover
+     backgrounds (#f9fafb / #f0f9ff) are a different, blue-tinted pair
+     that doesn't match those general-purpose tokens' values. */
+  --prep-item-bg: #f9fafb;
+  --prep-item-hover-bg: #f0f9ff;
+}
+
+html[data-theme="dark"] {
+  --background: #0f172a;
+  --surface: #1e293b;
+  --surface-secondary: #273449;
+  --surface-hover: #263548;
+
+  --text: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-faint: #64748b;
+
+  --border: #334155;
+  --border-input: #475569;
+
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-contrast: #ffffff;
+  --accent-soft-bg: #1e3a5f;
+  --accent-soft-border: #1e40af;
+
+  --success-bg: #14532d;
+  --success-text: #4ade80;
+  --success-border: #166534;
+
+  --danger-bg: #450a0a;
+  --danger-text: #f87171;
+  --danger-border: #7f1d1d;
+
+  --warning-bg: #451a03;
+  --warning-text: #fbbf24;
+  --warning-border: #92400e;
+
+  --teal-bg: #164e63;
+  --teal-text: #22d3ee;
+  --teal-border: #155e75;
+
+  --purple-bg: #3b0764;
+  --purple-text: #a78bfa;
+  --purple-border: #5b21b6;
+
+  --neutral-bg: #334155;
+  --neutral-text: #cbd5e1;
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-modal: 0 20px 50px rgba(0, 0, 0, 0.5);
+  --overlay-bg: rgba(0, 0, 0, 0.7);
+
+  /* Same neutral card tone as --surface for the resting state; the
+     hover tone reuses --accent-soft-bg's dark value so hovering still
+     reads as an accent-tinted highlight, matching the light-mode
+     design intent (a pale blue tint on hover), instead of ever
+     resolving to a light/white background. */
+  --prep-item-bg: #1e293b;
+  --prep-item-hover-bg: #1e3a5f;
+}
+
+.theme-toggle-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

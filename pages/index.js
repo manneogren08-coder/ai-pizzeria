@@ -4,6 +4,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { canAccessPrep, canViewPrep, canEditPrep, canAccessAdminTab, getRoleDescription } from "../lib/roles.js";
 import LandingNav from "../components/LandingNav";
+import ThemeToggle from "../lib/theme/ThemeToggle";
 
 // Statistik-fliken är tillfälligt dold i UI:t tills vyn innehåller mer
 // användbar information. All backend-logik, API:er och data lever kvar -
@@ -1921,19 +1922,19 @@ export default function Home() {
         key={task.id}
         style={{
           ...styles.prepItem,
-          ...(task.is_done ? { opacity: 0.5, background: "#f1f5f9" } : {}),
+          ...(task.is_done ? { opacity: 0.5, background: "var(--surface-secondary)" } : {}),
           ...(task.assigned_to && !task.is_done ? { borderLeft: "3px solid #2563EB" } : {})
         }}
         onMouseEnter={(e) => {
           if (!task.is_done) {
-            e.currentTarget.style.background = "#f0f9ff";
-            e.currentTarget.style.borderColor = "#bfdbfe";
+            e.currentTarget.style.background = "var(--prep-item-hover-bg)";
+            e.currentTarget.style.borderColor = "var(--accent-soft-border)";
           }
         }}
         onMouseLeave={(e) => {
           if (!task.is_done) {
-            e.currentTarget.style.background = "#f9fafb";
-            e.currentTarget.style.borderColor = "#e5e7eb";
+            e.currentTarget.style.background = "var(--prep-item-bg)";
+            e.currentTarget.style.borderColor = "var(--border)";
           }
         }}
       >
@@ -2684,7 +2685,7 @@ export default function Home() {
 
               {loginMode === "company" && (
                 <input
-                  style={styles.input}
+                  style={{ ...styles.input, border: "1.5px solid #cbd5e1", background: "#fafbfc", color: "#0f172a" }}
                   className="chatInput"
                   type="text"
                   placeholder="Restaurangens namn"
@@ -2696,7 +2697,7 @@ export default function Home() {
 
               {loginMode === "company" && (
                 <input
-                  style={styles.input}
+                  style={{ ...styles.input, border: "1.5px solid #cbd5e1", background: "#fafbfc", color: "#0f172a" }}
                   className="chatInput"
                   type="password"
                   placeholder="Restaurangens lösenord"
@@ -2719,7 +2720,7 @@ export default function Home() {
                   {employeeLoginStep === "request" ? (
                     <>
                       <input
-                        style={styles.input}
+                        style={{ ...styles.input, border: "1.5px solid #cbd5e1", background: "#fafbfc", color: "#0f172a" }}
                         className="chatInput"
                         type="email"
                         placeholder="Din e-post"
@@ -2729,7 +2730,7 @@ export default function Home() {
                       />
 
                       <button
-                        style={{ ...styles.secondaryButton, width: "100%", marginBottom: 10 }}
+                        style={{ ...styles.secondaryButton, width: "100%", marginBottom: 10, background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" }}
                         onClick={requestEmployeeCode}
                         disabled={loading || employeeLoginStep === "code"}
                       >
@@ -2739,7 +2740,7 @@ export default function Home() {
                   ) : (
                     <>
                       <input
-                        style={styles.input}
+                        style={{ ...styles.input, border: "1.5px solid #cbd5e1", background: "#fafbfc", color: "#0f172a" }}
                         className="chatInput"
                         type="text"
                         placeholder="Engångskod"
@@ -2751,7 +2752,7 @@ export default function Home() {
                       />
 
                       <button
-                        style={{ ...styles.secondaryButton, width: "100%", marginBottom: 10 }}
+                        style={{ ...styles.secondaryButton, width: "100%", marginBottom: 10, background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" }}
                         onClick={() => {
                           setEmployeeLoginStep("request");
                           setCodeRequestTime(null);
@@ -2770,7 +2771,7 @@ export default function Home() {
 
               {!(loginMode === "employee" && employeeLoginStep === "request") && (
                 <button
-                  style={styles.primaryButton}
+                  style={{ ...styles.primaryButton, background: "#2563eb", color: "#fff" }}
                   className="primaryButton"
                   onClick={loginMode === "company" ? login : loginWithEmployeeCode}
                   disabled={loading}
@@ -3000,22 +3001,22 @@ export default function Home() {
 
         :global(body) {
           font-family: 'Manrope', 'Segoe UI', sans-serif;
-          background: #f8fafc;
-          color: #0f172a;
+          background: var(--background);
+          color: var(--text);
         }
 
         .loginCard:hover { transform: translateY(-3px); }
         .primaryButton:hover { background: #1e40af; }
-        .sendButton:hover { background: #1e40af; }
+        .sendButton:hover { background: var(--accent-hover); }
         .loginModeButton:hover { border-color: #93c5fd; background: #f8fbff; }
-        .logoutButton:hover { background: #eff6ff; }
-        .chatInput:focus { border-color: #2563eb; }
+        .logoutButton:hover { background: var(--accent-soft-bg); }
+        .chatInput:focus { border-color: var(--accent); }
         input:focus, textarea:focus {
-          border-color: #2563eb;
+          border-color: var(--accent);
           box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
         }
         .adminSectionCard {
-          background: #fff;
+          background: var(--surface);
           border-radius: 14px;
           padding: 18px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.05);
@@ -3026,19 +3027,19 @@ export default function Home() {
           box-shadow: 0 6px 18px rgba(0,0,0,0.08);
         }
         .quickActionButton:hover {
-          background: #e0ebff;
+          background: var(--accent-soft-border);
           transform: translateY(-1px);
           box-shadow: 0 4px 10px rgba(30, 64, 175, 0.18);
         }
         .menuInlineItem:hover {
-          color: #1e3a8a;
+          color: var(--accent-hover);
           text-decoration-thickness: 2px;
         }
 
         .typing { display: flex; gap: 4px; align-items: center; }
         .typing .dot {
           width: 8px; height: 8px;
-          background: #2563eb;
+          background: var(--accent);
           border-radius: 50%;
           animation: blink 1s infinite alternate;
         }
@@ -3106,7 +3107,7 @@ export default function Home() {
             width: 100%;
           }
           .staffTable tr {
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border);
             border-radius: 12px;
             margin: 0 0 12px;
             padding: 4px 12px;
@@ -3117,7 +3118,7 @@ export default function Home() {
           .staffTable td {
             padding: 10px 0 !important;
             text-align: left !important;
-            border-bottom: 1px solid #f3f4f6 !important;
+            border-bottom: 1px solid var(--surface-secondary) !important;
           }
           .staffTable tr td:last-child {
             border-bottom: none !important;
@@ -3129,7 +3130,7 @@ export default function Home() {
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.02em;
-            color: #9ca3af;
+            color: var(--text-faint);
             margin-bottom: 4px;
           }
           .staffTable td select,
@@ -3150,9 +3151,9 @@ export default function Home() {
 
         /* --- Small UX polish --- */
         input:focus, textarea:focus {
-          border-color: #2563eb !important;
+          border-color: var(--accent) !important;
           box-shadow: 0 0 0 3px rgba(37,99,235,0.1) !important;
-          background: #fff !important;
+          background: var(--surface) !important;
         }
 
         button:hover:not(:disabled) {
@@ -3163,12 +3164,12 @@ export default function Home() {
         }
 
         .adminTabButton:hover {
-          background: #f1f5f9;
+          background: var(--surface-hover);
         }
 
         .adminSectionCard {
-          background: #fff;
-          border: 1px solid #e2e8f0;
+          background: var(--surface);
+          border: 1px solid var(--border);
           border-radius: 16px;
           padding: 24px;
           box-shadow: 0 4px 16px rgba(15,23,42,0.05);
@@ -3196,8 +3197,8 @@ export default function Home() {
           <button
             style={{
               ...styles.logoutButton,
-              background: showPrep ? "#2563eb" : "#ffffff",
-              color: showPrep ? "#ffffff" : "#1d4ed8"
+              background: showPrep ? "var(--accent)" : "var(--surface)",
+              color: showPrep ? "var(--accent-contrast)" : "var(--accent-hover)"
             }}
             onClick={handlePrepClick}
           >
@@ -3207,14 +3208,15 @@ export default function Home() {
             <button
               style={{
                 ...styles.logoutButton,
-                background: showAdmin ? "#2563eb" : "#ffffff",
-                color: showAdmin ? "#ffffff" : "#1d4ed8"
+                background: showAdmin ? "var(--accent)" : "var(--surface)",
+                color: showAdmin ? "var(--accent-contrast)" : "var(--accent-hover)"
               }}
               onClick={handleAdminClick}
             >
               {showAdmin ? "Tillbaka" : "Admin"}
             </button>
           )}
+          <ThemeToggle />
           <button
             style={styles.logoutButton}
             onClick={logout}
@@ -3227,8 +3229,8 @@ export default function Home() {
       {adminPasswordPrompt && (
         <div style={styles.modalOverlay} onClick={closeAdminPasswordPrompt}>
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>Admin-lösenord krävs</h3>
-            <p style={{ color: "#6b7280", fontSize: 14 }}>Ange admin-lösenord för att komma åt admin-panelen</p>
+            <h3 style={{ marginTop: 0, color: "var(--text)" }}>Admin-lösenord krävs</h3>
+            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Ange admin-lösenord för att komma åt admin-panelen</p>
 
             <input
               style={styles.input}
@@ -3242,7 +3244,7 @@ export default function Home() {
             />
 
             {adminPasswordError && (
-              <p style={{ color: "#dc2626", fontSize: 14, marginBottom: 12 }}>
+              <p style={{ color: "var(--danger-text)", fontSize: 14, marginBottom: 12 }}>
                 {adminPasswordError}
               </p>
             )}
@@ -3256,7 +3258,7 @@ export default function Home() {
                 {adminLoading ? "Verifierar..." : "Öppna admin"}
               </button>
               <button
-                style={{ ...styles.secondaryButton, flex: 1, background: "#e5edff", color: "#1e40af" }}
+                style={{ ...styles.secondaryButton, flex: 1 }}
                 onClick={closeAdminPasswordPrompt}
                 disabled={adminLoading}
               >
@@ -3857,8 +3859,8 @@ export default function Home() {
                   </p>
 
                   {/* Add new staff */}
-                  <div style={{ background: "#f8fafc", padding: 20, borderRadius: 12, marginBottom: 24 }}>
-                    <h4 style={{ margin: "0 0 16px", fontSize: 16, color: "#374151" }}>Lägg till ny personal</h4>
+                  <div style={{ background: "var(--background)", padding: 20, borderRadius: 12, marginBottom: 24 }}>
+                    <h4 style={{ margin: "0 0 16px", fontSize: 16, color: "var(--text-secondary)" }}>Lägg till ny personal</h4>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
                       <input
                         style={styles.input}
@@ -3898,42 +3900,43 @@ export default function Home() {
 
                   {/* Staff list */}
                   <div>
-                    <h4 style={{ margin: "0 0 16px", fontSize: 16, color: "#374151" }}>Registrerad personal ({staffList.length})</h4>
+                    <h4 style={{ margin: "0 0 16px", fontSize: 16, color: "var(--text-secondary)" }}>Registrerad personal ({staffList.length})</h4>
                     {staffLoading ? (
-                      <p style={{ textAlign: "center", color: "#6b7280", padding: 20 }}>Laddar...</p>
+                      <p style={{ textAlign: "center", color: "var(--text-muted)", padding: 20 }}>Laddar...</p>
                     ) : staffList.length === 0 ? (
-                      <p style={{ textAlign: "center", color: "#6b7280", padding: 20 }}>Ingen personal registrerad</p>
+                      <p style={{ textAlign: "center", color: "var(--text-muted)", padding: 20 }}>Ingen personal registrerad</p>
                     ) : (
-                      <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
+                      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
                         <table style={{ width: "100%", borderCollapse: "collapse" }} className="staffTable">
                           <thead>
-                            <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                              <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#374151" }}>Namn</th>
-                              <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#374151" }}>E-post</th>
-                              <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#374151" }}>Roll</th>
-                              <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "#374151" }}>Tillagd datum</th>
-                              <th style={{ padding: "12px 16px", textAlign: "right", fontSize: 14, fontWeight: 600, color: "#374151" }}>Åtgärd</th>
+                            <tr style={{ background: "var(--surface-secondary)", borderBottom: "1px solid var(--border)" }}>
+                              <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>Namn</th>
+                              <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>E-post</th>
+                              <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>Roll</th>
+                              <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>Tillagd datum</th>
+                              <th style={{ padding: "12px 16px", textAlign: "right", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>Åtgärd</th>
                             </tr>
                           </thead>
                           <tbody>
                             {staffList.map((staff) => (
-                              <tr key={staff.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                                <td data-label="Namn" style={{ padding: "12px 16px", color: "#374151" }}>
-                                  {staff.name || <span style={{ color: "#9ca3af", fontStyle: "italic" }}>Ej namngiven</span>}
+                              <tr key={staff.id} style={{ borderBottom: "1px solid var(--surface-secondary)" }}>
+                                <td data-label="Namn" style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>
+                                  {staff.name || <span style={{ color: "var(--text-faint)", fontStyle: "italic" }}>Ej namngiven</span>}
                                 </td>
-                                <td data-label="E-post" style={{ padding: "12px 16px", color: "#2563eb", fontSize: 14 }}>{staff.email}</td>
-                                <td data-label="Roll" style={{ padding: "12px 16px", color: "#374151", fontSize: 14 }}>
+                                <td data-label="E-post" style={{ padding: "12px 16px", color: "var(--accent)", fontSize: 14 }}>{staff.email}</td>
+                                <td data-label="Roll" style={{ padding: "12px 16px", color: "var(--text-secondary)", fontSize: 14 }}>
                                   <select
                                     value={staff.role || 'member'}
                                     onChange={(e) => updateStaffRole(staff.id, e.target.value)}
                                     style={{
                                       padding: "6px 10px",
-                                      border: "1px solid #d1d5db",
+                                      border: "1px solid var(--border-input)",
                                       borderRadius: 6,
                                       fontSize: 13,
                                       width: "100%",
                                       maxWidth: 200,
-                                      backgroundColor: "#ffffff",
+                                      backgroundColor: "var(--surface)",
+                                      color: "var(--text)",
                                       cursor: "pointer"
                                     }}
                                     disabled={staffLoading}
@@ -3942,19 +3945,19 @@ export default function Home() {
                                     <option value="admin">Admin</option>
                                     <option value="member">Member</option>
                                   </select>
-                                  <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4, lineHeight: 1.3 }}>
+                                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, lineHeight: 1.3 }}>
                                     {getRoleDescription(staff.role || 'member')}
                                   </div>
                                 </td>
-                                <td data-label="Tillagd datum" style={{ padding: "12px 16px", color: "#6b7280", fontSize: 14 }}>
+                                <td data-label="Tillagd datum" style={{ padding: "12px 16px", color: "var(--text-muted)", fontSize: 14 }}>
                                   {new Date(staff.created_at).toLocaleDateString("sv-SE")}
                                 </td>
                                 <td data-label="Åtgärd" style={{ padding: "12px 16px", textAlign: "right" }}>
                                   <button
                                     style={{
-                                      background: "#fef2f2",
-                                      color: "#dc2626",
-                                      border: "1px solid #fecaca",
+                                      background: "var(--danger-bg)",
+                                      color: "var(--danger-text)",
+                                      border: "1px solid var(--danger-border)",
                                       borderRadius: 6,
                                       padding: "6px 12px",
                                       fontSize: 13,
@@ -3964,8 +3967,8 @@ export default function Home() {
                                     }}
                                     onClick={() => removeStaffMember(staff.id)}
                                     disabled={staffLoading}
-                                    onMouseOver={(e) => e.target.style.background = "#fee2e2"}
-                                    onMouseOut={(e) => e.target.style.background = "#fef2f2"}
+                                    onMouseOver={(e) => e.target.style.background = "var(--danger-border)"}
+                                    onMouseOut={(e) => e.target.style.background = "var(--danger-bg)"}
                                   >
                                     Ta bort
                                   </button>
@@ -3985,8 +3988,8 @@ export default function Home() {
                   <h3 style={{ marginTop: 0 }}>Säkerhet & Åtkomst</h3>
                   <p style={styles.helperText}>Hantera åtkomst och byt lösenord vid behov.</p>
 
-                  <div style={{ background: "#f3f4f6", padding: 16, borderRadius: 8, marginBottom: 20 }}>
-                    <p style={{ margin: 0, fontSize: 14 }}>
+                  <div style={{ background: "var(--surface-secondary)", padding: 16, borderRadius: 8, marginBottom: 20 }}>
+                    <p style={{ margin: 0, fontSize: 14, color: "var(--text)" }}>
                       <strong>Status:</strong> Företaget är {company.active ? "aktiverat" : "deaktiverat"}
                     </p>
                   </div>
@@ -3994,7 +3997,7 @@ export default function Home() {
                   <button
                     style={{
                       ...styles.primaryButton,
-                      background: company.active ? "#dc2626" : "#059669",
+                      background: company.active ? "var(--danger-text)" : "var(--success-text)",
                       marginBottom: 24
                     }}
                     onClick={toggleCompanyStatus}
@@ -4029,7 +4032,7 @@ export default function Home() {
                     disabled={adminLoading}
                   />
                   {confirmPassword && newPassword !== confirmPassword && (
-                    <p style={{ color: "#dc2626", fontSize: 13, marginTop: -8, marginBottom: 12 }}>
+                    <p style={{ color: "var(--danger-text)", fontSize: 13, marginTop: -8, marginBottom: 12 }}>
                       Lösenorden matchar inte.
                     </p>
                   )}
@@ -4068,7 +4071,7 @@ export default function Home() {
                     disabled={adminLoading}
                   />
                   {adminPanelConfirmPassword && adminPanelNewPassword !== adminPanelConfirmPassword && (
-                    <p style={{ color: "#dc2626", fontSize: 13, marginTop: -8, marginBottom: 12 }}>
+                    <p style={{ color: "var(--danger-text)", fontSize: 13, marginTop: -8, marginBottom: 12 }}>
                       Lösenorden matchar inte.
                     </p>
                   )}
@@ -4084,7 +4087,7 @@ export default function Home() {
                   {adminMessage && (
                     <p style={{
                       ...styles.adminMessage,
-                      color: adminMessage.includes("✅") ? "#059669" : "#dc2626"
+                      color: adminMessage.includes("✅") ? "var(--success-text)" : "var(--danger-text)"
                     }}>
                       {adminMessage}
                     </p>
@@ -4150,7 +4153,7 @@ export default function Home() {
                 >
                   <div>
                     <div>Markera synliga klara</div>
-                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Bockar av alla uppgifter i nuvarande vy</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>Bockar av alla uppgifter i nuvarande vy</div>
                   </div>
                 </button>
                 <button
@@ -4160,7 +4163,7 @@ export default function Home() {
                 >
                   <div>
                     <div>Återställ synliga</div>
-                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Avmarkerar alla klarmarkeringar</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>Avmarkerar alla klarmarkeringar</div>
                   </div>
                 </button>
                 <button
@@ -4170,7 +4173,7 @@ export default function Home() {
                 >
                   <div>
                     <div>{prepLoading ? "Laddar..." : "Uppdatera"}</div>
-                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Hämtar senaste uppgifter från servern</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>Hämtar senaste uppgifter från servern</div>
                   </div>
                 </button>
               </div>
@@ -4207,7 +4210,7 @@ export default function Home() {
               </select>
             </div>
 
-            {prepError && <p style={styles.error}>{prepError}</p>}
+            {prepError && <p style={{ ...styles.error, color: "var(--danger-text)" }}>{prepError}</p>}
 
             {!prepError && !prepLoading && prepTasks.length === 0 && (
               <div style={styles.prepEmptyState}>
@@ -4897,25 +4900,31 @@ const styles = {
     textAlign: "left"
   },
 
+  // Shared by the public login form (out of dark-mode scope) AND dozens
+  // of admin-panel/app forms (in scope) - themed here since the app
+  // usages vastly outnumber the login form's; the login form's 6 call
+  // sites override these color properties inline to stay pinned to
+  // their original light-only look (see the `!company` branch above).
   input: {
     width: "100%",
     padding: "12px 14px",
     fontSize: 16,
     borderRadius: 10,
-    border: "1.5px solid #cbd5e1",
+    border: "1.5px solid var(--border-input)",
     marginBottom: 12,
     boxSizing: "border-box",
     outline: "none",
     transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-    background: "#fafbfc"
+    background: "var(--surface)",
+    color: "var(--text)"
   },
 
   primaryButton: {
     width: "100%",
     padding: 12,
     fontSize: 16,
-    background: "#2563eb",
-    color: "#fff",
+    background: "var(--accent)",
+    color: "var(--accent-contrast)",
     border: "none",
     borderRadius: 10,
     cursor: "pointer",
@@ -5244,31 +5253,31 @@ const styles = {
     flexDirection: "column",
     height: "100dvh",
     minHeight: "100vh",
-    background: "#f8fafc"
+    background: "var(--background)"
   },
 
   header: {
     padding: "18px 28px",
-    background: "#ffffff",
-    color: "#0f172a",
+    background: "var(--surface)",
+    color: "var(--text)",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    borderBottom: "1px solid #e2e8f0",
+    borderBottom: "1px solid var(--border)",
     boxShadow: "0 2px 12px rgba(15,23,42,0.04)"
   },
 
   headerSub: {
     fontSize: 13,
-    color: "#64748b",
+    color: "var(--text-muted)",
     fontWeight: 600,
     letterSpacing: 0.3
   },
 
   logoutButton: {
-    background: "#ffffff",
-    border: "1px solid #bfdbfe",
-    color: "#1d4ed8",
+    background: "var(--surface)",
+    border: "1px solid var(--accent-soft-border)",
+    color: "var(--accent-hover)",
     padding: "10px 18px",
     borderRadius: 999,
     cursor: "pointer",
@@ -5285,13 +5294,13 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: 14,
-    background: "#f8fafc"
+    background: "var(--background)"
   },
 
   emptyStateCard: {
     alignSelf: "center",
-    background: "#ffffff",
-    border: "1px solid #e5e7eb",
+    background: "var(--surface)",
+    border: "1px solid var(--border)",
     borderRadius: 14,
     padding: "14px 16px",
     maxWidth: 520,
@@ -5301,20 +5310,20 @@ const styles = {
 
   emptyStateTitle: {
     fontWeight: 700,
-    color: "#111827",
+    color: "var(--text)",
     marginBottom: 4
   },
 
   emptyStateText: {
-    color: "#4b5563",
+    color: "var(--text-secondary)",
     fontSize: 14,
     lineHeight: 1.5
   },
 
   userBubble: {
     alignSelf: "flex-end",
-    background: "#2563eb",
-    color: "#fff",
+    background: "var(--accent)",
+    color: "var(--accent-contrast)",
     padding: 14,
     borderRadius: "16px 16px 6px 16px",
     maxWidth: "76%",
@@ -5324,31 +5333,32 @@ const styles = {
 
   aiBubble: {
     alignSelf: "flex-start",
-    background: "#ffffff",
+    background: "var(--surface)",
+    color: "var(--text)",
     padding: 14,
     borderRadius: "16px 16px 16px 6px",
     maxWidth: "76%",
     whiteSpace: "pre-wrap",
     boxShadow: "0 8px 20px rgba(15,23,42,0.08)",
-    border: "1px solid #e2e8f0",
+    border: "1px solid var(--border)",
     animation: "fadeIn 0.2s"
   },
 
   menuItemsWrap: {
     marginTop: 12,
     paddingTop: 10,
-    borderTop: "1px dashed #d1d5db"
+    borderTop: "1px dashed var(--border-input)"
   },
 
   menuItemsTitle: {
     fontSize: 12,
     fontWeight: 600,
-    color: "#4b5563",
+    color: "var(--text-secondary)",
     marginBottom: 8
   },
 
   menuInlineText: {
-    color: "#1d4ed8"
+    color: "var(--accent-hover)"
   },
 
   menuInlineItemButton: {
@@ -5356,7 +5366,7 @@ const styles = {
     background: "transparent",
     padding: 0,
     margin: 0,
-    color: "#1d4ed8",
+    color: "var(--accent-hover)",
     font: "inherit",
     fontWeight: 700,
     textDecoration: "underline",
@@ -5371,9 +5381,9 @@ const styles = {
   },
 
   menuItemButton: {
-    border: "1px solid #dbeafe",
-    background: "#eff6ff",
-    color: "#1e3a8a",
+    border: "1px solid var(--accent-soft-border)",
+    background: "var(--accent-soft-bg)",
+    color: "var(--accent-hover)",
     borderRadius: 999,
     padding: "7px 12px",
     fontSize: 12,
@@ -5387,15 +5397,15 @@ const styles = {
     flexWrap: "wrap",
     gap: 8,
     padding: "12px 18px 14px 18px",
-    background: "#ffffff",
-    borderTop: "1px solid #e5e7eb",
-    borderBottom: "1px solid #e2e8f0"
+    background: "var(--surface)",
+    borderTop: "1px solid var(--border)",
+    borderBottom: "1px solid var(--border)"
   },
 
   quickActionButton: {
-    border: "1px solid #bfdbfe",
-    background: "#eff6ff",
-    color: "#1e40af",
+    border: "1px solid var(--accent-soft-border)",
+    background: "var(--accent-soft-bg)",
+    color: "var(--accent-hover)",
     borderRadius: 10,
     padding: "12px 18px",
     fontSize: 14,
@@ -5408,9 +5418,9 @@ const styles = {
   inputArea: {
     display: "flex",
     padding: "12px 18px 18px 18px",
-    background: "#ffffff",
+    background: "var(--surface)",
     boxShadow: "0 -2px 10px rgba(15,23,42,0.04)",
-    borderTop: "1px solid #e2e8f0"
+    borderTop: "1px solid var(--border)"
   },
 
   chatInput: {
@@ -5418,17 +5428,18 @@ const styles = {
     padding: "14px 16px",
     fontSize: 16,
     borderRadius: 12,
-    border: "1.5px solid #cbd5e1",
+    border: "1.5px solid var(--border-input)",
     marginRight: 12,
     boxSizing: "border-box",
     outline: "none",
-    background: "#fafbfc",
+    background: "var(--background)",
+    color: "var(--text)",
     transition: "border-color 0.2s, box-shadow 0.2s"
   },
 
   sendButton: {
-    background: "#2563eb",
-    color: "#fff",
+    background: "var(--accent)",
+    color: "var(--accent-contrast)",
     border: "none",
     padding: "0 24px",
     borderRadius: 12,
@@ -5445,15 +5456,15 @@ const styles = {
     minHeight: 0,
     overflowY: "auto",
     padding: 24,
-    background: "#f8fafc"
+    background: "var(--background)"
   },
 
   prepCard: {
     maxWidth: 760,
     margin: "0 auto",
-    background: "#fff",
+    background: "var(--surface)",
     borderRadius: 14,
-    border: "1px solid #e5e7eb",
+    border: "1px solid var(--border)",
     boxShadow: "0 6px 18px rgba(15,23,42,0.06)",
     padding: 18
   },
@@ -5470,7 +5481,7 @@ const styles = {
 
   prepProgressText: {
     fontSize: 13,
-    color: "#475569",
+    color: "var(--text-secondary)",
     marginBottom: 6,
     fontWeight: 600
   },
@@ -5479,13 +5490,13 @@ const styles = {
     width: "100%",
     height: 8,
     borderRadius: 999,
-    background: "#e2e8f0",
+    background: "var(--border)",
     overflow: "hidden"
   },
 
   prepProgressFill: {
     height: "100%",
-    background: "#2563eb",
+    background: "var(--accent)",
     borderRadius: 999,
     transition: "width 0.25s ease"
   },
@@ -5513,25 +5524,25 @@ const styles = {
     alignItems: "center",
     gap: 8,
     fontSize: 14,
-    color: "#374151"
+    color: "var(--text-secondary)"
   },
 
   prepSelect: {
-    border: "1px solid #d1d5db",
+    border: "1px solid var(--border-input)",
     borderRadius: 10,
     padding: "8px 10px",
-    background: "#fff",
-    color: "#111827",
+    background: "var(--surface)",
+    color: "var(--text)",
     fontSize: 14,
     minWidth: 170
   },
 
   prepEmptyState: {
-    background: "#f8fafc",
-    border: "1px dashed #cbd5e1",
+    background: "var(--background)",
+    border: "1px dashed var(--border-input)",
     borderRadius: 10,
     padding: 12,
-    color: "#475569",
+    color: "var(--text-secondary)",
     marginBottom: 12
   },
 
@@ -5548,12 +5559,12 @@ const styles = {
     margin: "0 0 10px",
     fontSize: 15,
     fontWeight: 700,
-    color: "#0f172a"
+    color: "var(--text)"
   },
 
   prepSectionCount: {
     fontWeight: 600,
-    color: "#64748b"
+    color: "var(--text-muted)"
   },
 
   prepItem: {
@@ -5561,9 +5572,9 @@ const styles = {
     alignItems: "flex-start",
     gap: 10,
     padding: "14px 14px",
-    background: "#f9fafb",
+    background: "var(--surface)",
     borderRadius: 12,
-    border: "1px solid #e5e7eb",
+    border: "1px solid var(--border)",
     transition: "border-color 0.15s, box-shadow 0.15s, background 0.15s",
     cursor: "pointer"
   },
@@ -5577,7 +5588,7 @@ const styles = {
   },
 
   prepItemText: {
-    color: "#111827",
+    color: "var(--text)",
     lineHeight: 1.45,
     fontSize: 15
   },
@@ -5592,9 +5603,9 @@ const styles = {
     fontSize: 12,
     padding: "4px 8px",
     borderRadius: 999,
-    background: "#eef2ff",
-    color: "#3730a3",
-    border: "1px solid #c7d2fe"
+    background: "var(--purple-bg)",
+    color: "var(--purple-text)",
+    border: "1px solid var(--purple-border)"
   },
 
   assignedToMeBadge: {
@@ -5606,41 +5617,41 @@ const styles = {
     letterSpacing: 0.2,
     padding: "3px 9px",
     borderRadius: 999,
-    background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
-    color: "#ffffff",
+    background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)",
+    color: "var(--accent-contrast)",
     boxShadow: "0 1px 4px rgba(37, 99, 235, 0.35)",
     whiteSpace: "nowrap"
   },
 
   prepPriorityHigh: {
-    background: "#FEE2E2",
-    color: "#DC2626",
-    border: "1px solid #FECACA"
+    background: "var(--danger-bg)",
+    color: "var(--danger-text)",
+    border: "1px solid var(--danger-border)"
   },
 
   prepPriorityMedium: {
-    background: "#FEF3C7",
-    color: "#D97706",
-    border: "1px solid #FDE68A"
+    background: "var(--warning-bg)",
+    color: "var(--warning-text)",
+    border: "1px solid var(--warning-border)"
   },
 
   prepPriorityLow: {
-    background: "#dcfce7",
-    color: "#166534",
-    border: "1px solid #bbf7d0"
+    background: "var(--success-bg)",
+    color: "var(--success-text)",
+    border: "1px solid var(--success-border)"
   },
 
   prepItemDone: {
     textDecoration: "line-through",
-    color: "#6b7280"
+    color: "var(--text-muted)"
   },
 
   prepTemplateTableWrap: {
     width: "100%",
     overflowX: "auto",
-    border: "1px solid #e5e7eb",
+    border: "1px solid var(--border)",
     borderRadius: 10,
-    background: "#fff"
+    background: "var(--surface)"
   },
 
   prepTemplateTable: {
@@ -5652,41 +5663,44 @@ const styles = {
   prepTemplateTh: {
     textAlign: "left",
     fontSize: 12,
-    color: "#4b5563",
+    color: "var(--text-secondary)",
     padding: "10px 8px",
-    borderBottom: "1px solid #e5e7eb",
-    background: "#f9fafb"
+    borderBottom: "1px solid var(--border)",
+    background: "var(--surface-secondary)"
   },
 
   prepTemplateTd: {
     padding: 8,
-    borderBottom: "1px solid #f3f4f6",
+    borderBottom: "1px solid var(--surface-secondary)",
     verticalAlign: "top"
   },
 
   prepTemplateInput: {
     width: "100%",
-    border: "1px solid #d1d5db",
-    borderRadius: 8,
-    padding: "8px 10px",
-    fontSize: 14,
-    boxSizing: "border-box"
-  },
-
-  prepTemplateSelect: {
-    width: "100%",
-    border: "1px solid #d1d5db",
+    border: "1px solid var(--border-input)",
     borderRadius: 8,
     padding: "8px 10px",
     fontSize: 14,
     boxSizing: "border-box",
-    background: "#fff"
+    background: "var(--surface)",
+    color: "var(--text)"
+  },
+
+  prepTemplateSelect: {
+    width: "100%",
+    border: "1px solid var(--border-input)",
+    borderRadius: 8,
+    padding: "8px 10px",
+    fontSize: 14,
+    boxSizing: "border-box",
+    background: "var(--surface)",
+    color: "var(--text)"
   },
 
   prepDeleteRowButton: {
-    border: "1px solid #fecaca",
-    background: "#fff1f2",
-    color: "#991b1b",
+    border: "1px solid var(--danger-border)",
+    background: "var(--danger-bg)",
+    color: "var(--danger-text)",
     borderRadius: 8,
     padding: "7px 10px",
     cursor: "pointer",
@@ -5711,9 +5725,9 @@ const styles = {
   },
 
   recipeCountBadge: {
-    border: "1px solid #bfdbfe",
-    color: "#1d4ed8",
-    background: "#eff6ff",
+    border: "1px solid var(--accent-soft-border)",
+    color: "var(--accent-hover)",
+    background: "var(--accent-soft-bg)",
     borderRadius: 999,
     padding: "4px 10px",
     fontSize: 12,
@@ -5721,9 +5735,9 @@ const styles = {
   },
 
   recipeSidebar: {
-    border: "1px solid #e5e7eb",
+    border: "1px solid var(--border)",
     borderRadius: 10,
-    background: "#f8fafc",
+    background: "var(--background)",
     padding: 10
   },
 
@@ -5737,9 +5751,9 @@ const styles = {
   },
 
   recipeListButton: {
-    border: "1px solid #d1d5db",
-    background: "#fff",
-    color: "#1f2937",
+    border: "1px solid var(--border-input)",
+    background: "var(--surface)",
+    color: "var(--text)",
     borderRadius: 8,
     padding: "8px 10px",
     textAlign: "left",
@@ -5749,25 +5763,25 @@ const styles = {
   },
 
   recipeListButtonActive: {
-    borderColor: "#2563eb",
-    background: "#eff6ff",
-    color: "#1d4ed8"
+    borderColor: "var(--accent)",
+    background: "var(--accent-soft-bg)",
+    color: "var(--accent-hover)"
   },
 
   recipeListMeta: {
-    color: "#6b7280",
+    color: "var(--text-muted)",
     fontWeight: 500
   },
 
   recipeInactiveTag: {
-    color: "#b91c1c",
+    color: "var(--danger-text)",
     fontWeight: 700
   },
 
   recipeEditor: {
-    border: "1px solid #e5e7eb",
+    border: "1px solid var(--border)",
     borderRadius: 10,
-    background: "#fff",
+    background: "var(--surface)",
     padding: 12
   },
 
@@ -5783,7 +5797,7 @@ const styles = {
     minHeight: 0,
     display: "flex",
     flexDirection: "column",
-    background: "#f8fafc",
+    background: "var(--background)",
     width: "100%",
     boxSizing: "border-box",
     overflow: "hidden"
@@ -5793,8 +5807,8 @@ const styles = {
     display: "flex",
     gap: 8,
     padding: "16px 24px",
-    background: "#fff",
-    borderBottom: "1px solid #e5e7eb",
+    background: "var(--surface)",
+    borderBottom: "1px solid var(--border)",
     overflowX: "auto",
     flexShrink: 0
   },
@@ -5804,7 +5818,7 @@ const styles = {
     minHeight: 44,
     border: "none",
     background: "transparent",
-    color: "#6b7280",
+    color: "var(--text-muted)",
     fontSize: 14,
     fontWeight: 500,
     cursor: "pointer",
@@ -5820,8 +5834,8 @@ const styles = {
   },
 
   adminTabActive: {
-    background: "#2563eb",
-    color: "#fff"
+    background: "var(--accent)",
+    color: "var(--accent-contrast)"
   },
 
   adminContent: {
@@ -5841,13 +5855,13 @@ const styles = {
     display: "block",
     fontSize: 14,
     fontWeight: 600,
-    color: "#374151",
+    color: "var(--text-secondary)",
     marginBottom: 8,
     marginTop: 16
   },
 
   helperText: {
-    color: "#6b7280",
+    color: "var(--text-muted)",
     fontSize: 13,
     marginTop: -4,
     marginBottom: 12
@@ -5855,7 +5869,7 @@ const styles = {
 
   lastSavedText: {
     margin: "0 0 12px 2px",
-    color: "#4b5563",
+    color: "var(--text-secondary)",
     fontSize: 13,
     fontWeight: 500
   },
@@ -5868,16 +5882,16 @@ const styles = {
     gap: 10,
     paddingTop: 12,
     paddingBottom: 6,
-    background: "linear-gradient(180deg, rgba(248,250,252,0), #f8fafc 28%)"
+    background: "linear-gradient(180deg, rgba(15,23,42,0), var(--background) 28%)"
   },
 
   secondaryButton: {
     width: "auto",
     padding: 12,
     fontSize: 15,
-    background: "#eff6ff",
-    color: "#1d4ed8",
-    border: "1px solid #bfdbfe",
+    background: "var(--accent-soft-bg)",
+    color: "var(--accent-hover)",
+    border: "1px solid var(--accent-soft-border)",
     borderRadius: 10,
     cursor: "pointer",
     fontWeight: 700,
@@ -5889,9 +5903,9 @@ const styles = {
     width: "auto",
     padding: 12,
     fontSize: 15,
-    background: "#f8fafc",
-    color: "#64748b",
-    border: "2px solid #e2e8f0",
+    background: "var(--background)",
+    color: "var(--text-muted)",
+    border: "2px solid var(--border)",
     borderRadius: 10,
     cursor: "pointer",
     fontWeight: 600,
@@ -5907,24 +5921,24 @@ const styles = {
   },
 
   statCard: {
-    background: "#fff",
+    background: "var(--surface)",
     padding: 24,
     borderRadius: 12,
     marginBottom: 16,
-    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+    boxShadow: "var(--shadow-card)",
     textAlign: "center"
   },
 
   statNumber: {
     fontSize: 36,
     fontWeight: 700,
-    color: "#2563eb",
+    color: "var(--accent)",
     marginBottom: 8
   },
 
   statLabel: {
     fontSize: 14,
-    color: "#6b7280",
+    color: "var(--text-muted)",
     fontWeight: 500
   },
 
@@ -5934,7 +5948,7 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    background: "rgba(0,0,0,0.5)",
+    background: "var(--overlay-bg)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -5942,12 +5956,12 @@ const styles = {
   },
 
   modalContent: {
-    background: "#fff",
+    background: "var(--surface)",
     padding: 32,
     borderRadius: 16,
     maxWidth: 400,
     width: "90%",
-    boxShadow: "0 20px 60px rgba(0,0,0,0.3)"
+    boxShadow: "var(--shadow-modal)"
   },
 
   toast: {

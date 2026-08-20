@@ -1,4 +1,15 @@
 import { Html, Head, Main, NextScript } from "next/document";
+import { THEME_INIT_SCRIPT } from "../lib/theme/themeInitScript";
+
+// Applies the stored/system theme to <html> before React hydrates, so
+// CRM/Staffguide never show light mode for a moment and then flip to
+// dark (see lib/theme/ThemeContext.tsx for the matching React-side
+// logic). Harmless on every other page too - data-theme only has a
+// visual effect where components actually read the CSS variables it
+// controls (styles/globals.css), which is nowhere on the public
+// marketing pages. The site's CSP (next.config.ts) is script-src
+// 'self' with no 'unsafe-inline', so this exact script's hash is
+// allowlisted there instead - see THEME_INIT_SCRIPT's own comment.
 
 export default function Document() {
   return (
@@ -13,6 +24,7 @@ export default function Document() {
         <meta name="theme-color" content="#05070d" />
       </Head>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <Main />
         <NextScript />
       </body>
