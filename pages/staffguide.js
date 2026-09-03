@@ -374,6 +374,9 @@ export default function StaffGuidePage() {
             <Link href="/#contact-section" style={{ ...styles.ctaButtonPrimary, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center" }} className="ctaButtonPrimary">
               Kontakta Effexo
             </Link>
+            <Link href="/staffguide/login" style={{ ...styles.ctaButtonSecondary, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center" }} className="ctaButtonSecondary">
+              Logga in
+            </Link>
           </div>
         </section>
 

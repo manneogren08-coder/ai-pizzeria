@@ -19,13 +19,14 @@ function scrollToSectionOnHome(id) {
   window.scrollTo({ top: Math.max(targetY, 0), behavior: "smooth" });
 }
 
-// On the homepage these scroll to the matching teaser section (existing
-// behaviour, preserved as-is); from any other page they navigate to the
-// dedicated product page instead, since the teaser sections only exist
-// on the homepage.
+// Both Hemsidor and Staffguide are separate product routes now, not
+// teaser sections on the homepage - neither carries a sectionId, so
+// clicking them always navigates via href regardless of which page
+// they're clicked from (see handleSectionLinkClick below, which only
+// intercepts the click to scroll when a sectionId is actually present).
 const NAV_LINKS = [
-  { href: "/webbdesign", label: "Hemsidor", sectionId: "hemsidor-section" },
-  { href: "/staffguide", label: "Staffguide", sectionId: "staffguide-section" }
+  { href: "/webbdesign", label: "Hemsidor" },
+  { href: "/staffguide", label: "Staffguide" }
 ];
 
 // Same links as desktop, plus an explicit "Hem" entry since the mobile
@@ -35,7 +36,7 @@ const MOBILE_LINKS = [
   ...NAV_LINKS
 ];
 
-export default function LandingNav({ onLoginClick }) {
+export default function LandingNav() {
   const router = useRouter();
   const isHome = router.pathname === "/";
   const [menuOpen, setMenuOpen] = useState(false);
@@ -69,21 +70,9 @@ export default function LandingNav({ onLoginClick }) {
 
   const handleSectionLinkClick = (event, sectionId) => {
     setMenuOpen(false);
-    if (isHome) {
+    if (isHome && sectionId) {
       event.preventDefault();
       scrollToSectionOnHome(sectionId);
-    }
-  };
-
-  const handleLoginClick = (event) => {
-    setMenuOpen(false);
-    if (isHome) {
-      event.preventDefault();
-      if (onLoginClick) {
-        onLoginClick();
-      } else {
-        scrollToSectionOnHome("login-section");
-      }
     }
   };
 
@@ -229,7 +218,7 @@ export default function LandingNav({ onLoginClick }) {
           <Link href="/#contact-section" style={styles.landingNavLink} className="landingNavLink" onClick={(event) => handleSectionLinkClick(event, "contact-section")}>
             Kontakt
           </Link>
-          <Link href="/#login-section" style={styles.landingNavLoginBtn} className="landingNavLoginBtn" onClick={handleLoginClick}>
+          <Link href="/staffguide/login" style={styles.landingNavLoginBtn} className="landingNavLoginBtn" onClick={() => setMenuOpen(false)}>
             Logga in
           </Link>
         </div>
@@ -267,7 +256,7 @@ export default function LandingNav({ onLoginClick }) {
           <Link href="/#contact-section" style={styles.mobileMenuLink} className="mobileMenuLink" onClick={(event) => handleSectionLinkClick(event, "contact-section")}>
             Kontakt
           </Link>
-          <Link href="/#login-section" style={styles.mobileMenuLoginBtn} className="mobileMenuLoginBtn" onClick={handleLoginClick}>
+          <Link href="/staffguide/login" style={styles.mobileMenuLoginBtn} className="mobileMenuLoginBtn" onClick={() => setMenuOpen(false)}>
             Logga in
           </Link>
         </div>

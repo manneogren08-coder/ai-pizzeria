@@ -1,6 +1,7 @@
 import Head from "next/head";
 import Link from "next/link";
 import LandingNav from "../components/LandingNav";
+import WebsiteAdvisor from "../components/WebsiteAdvisor";
 
 const values = [
   { icon: "🔍", title: "Hitta företaget", text: "Snabb att hitta via Google, sociala medier och rekommendationer." },
@@ -293,6 +294,14 @@ export default function WebbdesignPage() {
               <p style={styles.featureText}>Ett kommande exempel på en webbplats för ett litet eller medelstort företag.</p>
             </div>
           </div>
+        </section>
+
+        <section id="website-advisor-section" style={styles.section}>
+          <h2 className="sectionTitle" style={styles.sectionTitle}>Vilken hemsida passar er?</h2>
+          <p style={styles.sectionLead}>
+            Berätta vad ni behöver – så hjälper vår AI er att hitta rätt.
+          </p>
+          <WebsiteAdvisor />
         </section>
 
         <section style={styles.ctaSection} className="ctaSection">
