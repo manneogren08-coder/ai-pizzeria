@@ -1749,6 +1749,17 @@ export default function StaffguideApp({ initialToken, initialCompany, initialUse
           transform: translateY(-1px);
           box-shadow: 0 4px 10px rgba(30, 64, 175, 0.18);
         }
+        .quickActionWrap {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+        }
+        .quickActionWrap::-webkit-scrollbar {
+          height: 5px;
+        }
+        .quickActionWrap::-webkit-scrollbar-thumb {
+          background: rgba(148, 163, 184, 0.35);
+          border-radius: 999px;
+        }
         .menuInlineItem:hover {
           color: var(--accent-hover);
           text-decoration-thickness: 2px;
@@ -1767,7 +1778,7 @@ export default function StaffguideApp({ initialToken, initialCompany, initialUse
         @media (max-width: 768px) {
           .typing { display: flex; gap: 4px; }
           .adminTabsBar { padding: 12px 12px !important; gap: 6px !important; }
-          .quickActionWrap { padding: 10px 12px 14px 12px !important; }
+          .quickActionWrap { padding: 6px 12px !important; }
           .recipeBuilderGrid { grid-template-columns: 1fr !important; }
           .appHeader {
             padding: 12px 12px !important;
@@ -3233,21 +3244,25 @@ const styles = {
 
   quickActions: {
     display: "flex",
-    flexWrap: "wrap",
+    flexWrap: "nowrap",
+    overflowX: "auto",
+    WebkitOverflowScrolling: "touch",
     gap: 8,
-    padding: "12px 18px 14px 18px",
+    padding: "8px 18px",
     background: "var(--surface)",
     borderTop: "1px solid var(--border)",
     borderBottom: "1px solid var(--border)"
   },
 
   quickActionButton: {
+    flexShrink: 0,
+    whiteSpace: "nowrap",
     border: "1px solid var(--accent-soft-border)",
     background: "var(--accent-soft-bg)",
     color: "var(--accent-hover)",
-    borderRadius: 10,
-    padding: "12px 18px",
-    fontSize: 14,
+    borderRadius: 999,
+    padding: "7px 14px",
+    fontSize: 13,
     cursor: "pointer",
     fontWeight: 700,
     transition: "transform 0.15s, box-shadow 0.2s, background 0.2s",
