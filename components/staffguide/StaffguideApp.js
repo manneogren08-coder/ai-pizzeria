@@ -2968,7 +2968,7 @@ export default function StaffguideApp({ initialToken, initialCompany, initialUse
               </select>
             </div>
 
-            {prepError && <p style={{ ...styles.error, color: "var(--danger-text)" }}>{prepError}</p>}
+            {prepError && <p style={styles.error}>{prepError}</p>}
 
             {!prepError && !prepLoading && prepTasks.length === 0 && (
               <div style={styles.prepEmptyState}>
@@ -3703,6 +3703,47 @@ const styles = {
     overflowY: "auto",
     WebkitOverflowScrolling: "touch",
     paddingBottom: 40
+  },
+
+  // input/primaryButton/error were dropped by accident when this file
+  // was extracted out of pages/index.js during the /staffguide route
+  // split - every text input, textarea and primary button in the admin
+  // panel (31 + 11 usages) was rendering with style={undefined} as a
+  // result, falling back to unstyled browser defaults. Restored here
+  // with their original values (verified against the pre-split commit).
+  input: {
+    width: "100%",
+    padding: "12px 14px",
+    fontSize: 16,
+    borderRadius: 10,
+    border: "1.5px solid var(--border-input)",
+    marginBottom: 12,
+    boxSizing: "border-box",
+    outline: "none",
+    transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+    background: "var(--surface)",
+    color: "var(--text)"
+  },
+
+  primaryButton: {
+    width: "100%",
+    padding: 12,
+    fontSize: 16,
+    background: "var(--accent)",
+    color: "var(--accent-contrast)",
+    border: "none",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontWeight: 700,
+    minHeight: 48,
+    transition: "background 0.2s, transform 0.1s, box-shadow 0.2s",
+    boxShadow: "0 2px 8px rgba(37,99,235,0.18)"
+  },
+
+  error: {
+    color: "var(--danger-text)",
+    marginBottom: 12,
+    fontSize: 14
   },
 
   label: {

@@ -537,6 +537,7 @@ const styles = {
   ctaTitle: { margin: "0 0 24px", fontSize: "2rem", color: "#f8fafc", fontWeight: 800, letterSpacing: "-0.01em" },
   ctaButtons: { display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" },
   ctaButtonPrimary: { border: "none", background: "linear-gradient(135deg, #3b82f6, #2563eb)", color: "#fff", borderRadius: 10, padding: "14px 26px", fontWeight: 700, cursor: "pointer", minHeight: 48, fontSize: 15 },
+  ctaButtonSecondary: { border: "1px solid rgba(148, 163, 184, 0.35)", background: "rgba(255, 255, 255, 0.03)", color: "#f8fafc", borderRadius: 10, padding: "14px 26px", fontWeight: 700, cursor: "pointer", minHeight: 48, fontSize: 15 },
 
   footer: { marginTop: 64, background: "rgba(255, 255, 255, 0.02)", borderTop: "1px solid rgba(148, 163, 184, 0.14)", padding: "32px 8px 20px", color: "#94a3b8" },
   footerGrid: { display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 24, marginBottom: 24, textAlign: "left" },
