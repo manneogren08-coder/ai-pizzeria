@@ -18,12 +18,25 @@
 // WEBSITE_NO_MOBILE_VIEWPORT and WEBSITE_NO_BOOKING_CTA exist in the
 // ReasonCode union (see ./reasonCodes) for forward-compatibility, but
 // this module never produces them - that requires actually fetching the
-// candidate's website, which this v1 deliberately does not do. In v1
-// the Opportunity score can only ever be 40 (no website registered) or
-// 0 (a website is registered, no further signal available about it).
+// candidate's website, which this v1.1 deliberately still does not do.
+//
+// v1.1 (Lead Scoring 2.0 reality check follow-up) - three fixes, still
+// with zero network calls:
+//   1. Opportunity now also fires (as NO_REAL_WEBSITE, same 40 points
+//      as NO_WEBSITE) when websiteUri points at a known third-party
+//      menu/directory/social/link-page domain instead of the business's
+//      own site - see ./websiteClassification. Pure hostname matching,
+//      no fetch.
+//   2. Buying signal's rating/review contribution is now a smooth
+//      gradient instead of two hard cliffs - see scoreBuyingSignal.
+//   3. Effexo Fit's category-match bonus is suppressed for known
+//      national chain / central-ecosystem domains (see
+//      isChainOrCentralDomain) - a business status page,
+//      not an independent local company Effexo can pitch.
 
 import type { PlacesBusinessStatus } from "./types";
 import { REASON_CODE_TEXT, type ReasonCode } from "./reasonCodes";
+import { classifyWebsite, isChainOrCentralDomain } from "./websiteClassification";
 
 const CLOSED_BUSINESS_STATUSES: ReadonlySet<PlacesBusinessStatus> = new Set(["CLOSED_PERMANENTLY", "CLOSED_TEMPORARILY"]);
 
@@ -102,10 +115,67 @@ function scoreOpportunity(input: LeadScoringInput): { score: number; codes: Reas
   if (!input.website) {
     return { score: 40, codes: ["NO_WEBSITE"] };
   }
+
+  const classification = classifyWebsite(input.website);
+  // THIRD_PARTY_MENU/DIRECTORY_PROFILE/SOCIAL_PROFILE/LINK_PAGE: a
+  // websiteUri exists, but it isn't the business's own site - treated
+  // identically to no website at all. UNKNOWN (URL didn't parse, or a
+  // domain we don't recognize) is deliberately NOT included here - a
+  // domain we can't positively classify as a problem is treated the
+  // same as REAL_WEBSITE (conservative: never assume a problem without
+  // evidence).
+  if (
+    classification === "THIRD_PARTY_MENU" ||
+    classification === "DIRECTORY_PROFILE" ||
+    classification === "SOCIAL_PROFILE" ||
+    classification === "LINK_PAGE"
+  ) {
+    return { score: 40, codes: ["NO_REAL_WEBSITE"] };
+  }
+
   return { score: 0, codes: [] };
 }
 
 // --- Buying signal ---------------------------------------------------------
+// v1.1: the v1 reality check found two-hard-cliff scoring (35 at
+// rating>=4.5 & count>=100, 20 at rating>=4.0 & count>=30, 0 otherwise)
+// treated wildly different businesses identically - a 5.0-rating/7-review
+// spot scored the same as one with no review data at all, and a
+// 4.4-rating/2837-review spot scored the same as one with exactly 30
+// reviews. Replaced with two independent, capped, gradual signals that
+// sum together:
+//
+//   ratingSignal(rating)  = clamp(round((rating - 3.5) * 20), 0, 20)
+//     0 at rating 3.5, 10 at 4.0, 20 (capped) from rating 4.5 up.
+//
+//   volumeSignal(count)   = clamp(round(5 * log10(count + 1)), 0, 15)
+//     Logarithmic on purpose: 0 reviews -> 0, ~5 at 7, ~10 at 100,
+//     capped at 15 from ~300+ reviews up - so an enormous review count
+//     (2800+) can no longer dominate a lead's score just by being huge,
+//     while still clearly outscoring a handful of reviews.
+//
+// Combined with the existing +10 BUSINESS_OPERATIONAL bonus, the maximum
+// buying signal stays 20 + 15 + 10 = 45 - the same ceiling the v1 hard
+// cliffs had (35 + 10), so the overall 0-100 total score scale is
+// unchanged (see the module comment above / WEIGHTS below).
+//
+// HIGH_RATING_HIGH_REVIEWS / MODERATE_RATING_REVIEWS /
+// LOW_REVIEW_COUNT_POSSIBLE_NEW are kept as informational reason codes
+// (same thresholds as v1) so the AI prompt and UI still get a readable
+// label - they no longer carry their own point value, the gradient
+// above does.
+
+const RATING_SIGNAL_CAP = 20;
+const VOLUME_SIGNAL_CAP = 15;
+const OPERATIONAL_SIGNAL = 10;
+
+function ratingSignal(rating: number): number {
+  return clamp(Math.round((rating - 3.5) * 20), 0, RATING_SIGNAL_CAP);
+}
+
+function volumeSignal(count: number): number {
+  return clamp(Math.round(5 * Math.log10(count + 1)), 0, VOLUME_SIGNAL_CAP);
+}
 
 function scoreBuyingSignal(input: LeadScoringInput): { score: number | null; codes: ReasonCode[] } {
   if (isClosedBusinessStatus(input.businessStatus)) {
@@ -126,20 +196,22 @@ function scoreBuyingSignal(input: LeadScoringInput): { score: number | null; cod
     const rating = input.rating as number;
     const count = input.userRatingCount as number;
 
+    score += ratingSignal(rating) + volumeSignal(count);
+
     if (rating >= 4.5 && count >= 100) {
-      score += 35;
       codes.push("HIGH_RATING_HIGH_REVIEWS");
     } else if (rating >= 4.0 && count >= 30) {
-      score += 20;
       codes.push("MODERATE_RATING_REVIEWS");
     }
 
     // "Possible new" is explicitly NOT a claim that the business is new -
     // only that review count is low while Google still lists it as
-    // operational. The reason text (see ./reasonCodes) spells this
-    // caveat out; this scorer must never upgrade it to a stated fact.
+    // operational. Informational only (see comment above) - the
+    // gradient above already gives a genuinely low score for a low
+    // count, this doesn't add to it. The reason text (see ./reasonCodes)
+    // spells the caveat out; this scorer must never upgrade it to a
+    // stated fact.
     if (count < 5 && input.businessStatus === "OPERATIONAL") {
-      score += 10;
       codes.push("LOW_REVIEW_COUNT_POSSIBLE_NEW");
     }
   } else {
@@ -148,7 +220,7 @@ function scoreBuyingSignal(input: LeadScoringInput): { score: number | null; cod
 
   if (input.businessStatus === "OPERATIONAL") {
     hasAnySignal = true;
-    score += 10;
+    score += OPERATIONAL_SIGNAL;
     codes.push("BUSINESS_OPERATIONAL");
   } else if (input.businessStatus === null) {
     codes.push("BUSINESS_STATUS_UNKNOWN");
@@ -167,11 +239,25 @@ function scoreEffexoFit(input: LeadScoringInput): { score: number; codes: Reason
   const codes: ReasonCode[] = [];
   let score = 0;
 
+  // v1.1: a category match on a national chain / central-ecosystem
+  // domain (see isChainOrCentralDomain) doesn't mean much - the "site"
+  // is the chain's, not this local unit's, and Effexo has nothing to
+  // pitch a redesign against. Suppress the category bonus in that case
+  // (contact info below is unaffected - a phone/address is still real
+  // regardless of who runs the website). Never inferred from the
+  // company name, only from the actual website domain.
+  const isChainDomain = input.website !== null && isChainOrCentralDomain(input.website);
+
   const categoryMatches =
     (input.primaryType !== null && RESTAURANT_TYPE_MATCH.has(input.primaryType)) ||
     (input.types !== null && input.types.some((t) => RESTAURANT_TYPE_MATCH.has(t)));
 
-  if (categoryMatches) {
+  if (isChainDomain) {
+    // Never award the category bonus on a chain/central domain,
+    // regardless of whether the type itself matched - the code below
+    // explains why instead.
+    codes.push("CHAIN_OR_CENTRAL_DOMAIN");
+  } else if (categoryMatches) {
     score += 40;
     codes.push("CATEGORY_MATCH_RESTAURANT");
   }

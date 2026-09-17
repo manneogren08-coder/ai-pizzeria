@@ -13,6 +13,7 @@
 
 export type ReasonCode =
   | "NO_WEBSITE"
+  | "NO_REAL_WEBSITE"
   | "WEBSITE_UNREACHABLE"
   | "WEBSITE_SOCIAL_ONLY"
   | "WEBSITE_NO_MOBILE_VIEWPORT"
@@ -25,11 +26,13 @@ export type ReasonCode =
   | "BUSINESS_STATUS_UNKNOWN"
   | "REVIEW_DATA_MISSING"
   | "CATEGORY_MATCH_RESTAURANT"
+  | "CHAIN_OR_CENTRAL_DOMAIN"
   | "CONTACT_INFO_AVAILABLE"
   | "CONTACT_INFO_MISSING";
 
 export const REASON_CODE_TEXT: Record<ReasonCode, string> = {
   NO_WEBSITE: "Ingen hemsida registrerad i Google Places",
+  NO_REAL_WEBSITE: "Hemsideadressen pekar på en tredjepartstjänst (t.ex. menykort, katalog, socialt konto eller länksida) - ingen egen företagswebbplats hittad",
   WEBSITE_UNREACHABLE: "Hemsidan gick inte att nå",
   WEBSITE_SOCIAL_ONLY: "Hemsidan är egentligen bara en sida på sociala medier, ingen egen webbplats",
   WEBSITE_NO_MOBILE_VIEWPORT: "Hemsidan verkar inte vara mobilanpassad",
@@ -42,6 +45,7 @@ export const REASON_CODE_TEXT: Record<ReasonCode, string> = {
   BUSINESS_STATUS_UNKNOWN: "Verksamhetens status kunde inte bekräftas",
   REVIEW_DATA_MISSING: "Ingen recensionsdata tillgänglig i Google Places",
   CATEGORY_MATCH_RESTAURANT: "Bransch matchar restaurang/café – bra målgrupp för Effexo",
+  CHAIN_OR_CENTRAL_DOMAIN: "Hemsidan tillhör en nationell kedja/central webbplats - troligen inte den lokala enheten som styr över en egen webbnärvaro",
   CONTACT_INFO_AVAILABLE: "Kontaktuppgifter (telefon och/eller adress) finns",
   CONTACT_INFO_MISSING: "Inga kontaktuppgifter tillgängliga"
 };

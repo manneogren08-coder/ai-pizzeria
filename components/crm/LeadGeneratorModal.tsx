@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import {
   Company,
   ServiceType,
@@ -53,6 +53,15 @@ export default function LeadGeneratorModal({ companies, onClose, onLeadAdded }: 
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
 
+  // Dedupe keys for every lead this modal session has already shown
+  // (any city, added or not) - lets a later search (e.g. a different
+  // city) recognize a business this session already surfaced. Backend
+  // dedupe (see lib/crm/leadSearch.ts) is per-request/stateless by
+  // design, so cross-search memory has to live here, on the client,
+  // for as long as this modal stays open. Cleared naturally when the
+  // modal unmounts (a fresh "flow" starts on reopen).
+  const seenKeysRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -76,14 +85,17 @@ export default function LeadGeneratorModal({ companies, onClose, onLeadAdded }: 
     if (!trimmedCity || !trimmedIndustry) return;
 
     const trimmedDescription = description.trim().slice(0, MAX_DESCRIPTION_LENGTH);
-    const existingKeys = companies.flatMap((company) =>
-      buildDedupeKeys({
-        placesId: company.placesId,
-        phone: company.phone,
-        name: company.name,
-        address: company.address
-      })
-    );
+    const existingKeys = [
+      ...companies.flatMap((company) =>
+        buildDedupeKeys({
+          placesId: company.placesId,
+          phone: company.phone,
+          name: company.name,
+          address: company.address
+        })
+      ),
+      ...seenKeysRef.current
+    ];
     const query: LeadSearchQuery = {
       city: trimmedCity,
       industry: trimmedIndustry,
@@ -99,6 +111,11 @@ export default function LeadGeneratorModal({ companies, onClose, onLeadAdded }: 
     const outcome = await findLeads(query);
 
     if (outcome.ok) {
+      outcome.leads.forEach((lead) => {
+        buildDedupeKeys({ placesId: lead.placesId, phone: lead.phone, name: lead.companyName, address: lead.address }).forEach((key) =>
+          seenKeysRef.current.add(key)
+        );
+      });
       setLeads(outcome.leads);
       setSubmittedQuery(query);
       setDismissed(new Set());
