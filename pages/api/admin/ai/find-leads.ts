@@ -10,7 +10,8 @@ import {
 } from "../../../../lib/crm/types";
 import { searchCompanies, SearchProviderNotConfiguredError } from "../../../../lib/crm/leadSearch";
 import { requiresNoWebsite } from "../../../../lib/crm/leadFilters";
-import { getOpenAiClient, mapOpenAiError, asBoundedString, clampLeadScore, parseJsonObject } from "../../../../lib/crm/aiClient.server";
+import { getOpenAiClient, mapOpenAiError, asBoundedString, parseJsonObject } from "../../../../lib/crm/aiClient.server";
+import { computeBaseLeadScore, applyAiFitAdjustment, clampAiFitAdjustment, type BaseLeadScore } from "../../../../lib/crm/leadScoring";
 
 // Part of the localhost-only CRM (see pages/admin) - same real,
 // server-enforced production block as the CRM page and the AI Lead
@@ -64,45 +65,64 @@ function validateQuery(body: unknown): LeadSearchQuery | null {
   };
 }
 
+// --- AI's role: Lead Scoring 2.0 -----------------------------------------
+// The three sub-scores, reasonCodes and reasonTexts are ALREADY final by
+// the time the AI sees a candidate - they come from the deterministic
+// lib/crm/leadScoring.ts, computed before this prompt is even built. The
+// AI's only two jobs are a short sales-angle sentence and a tightly
+// bounded (-15..+15) nudge to the Effexo Fit score - it can never touch
+// opportunity/buying signal, invent a reason, or state anything as fact
+// that isn't already in the prompt below.
+
 const CANDIDATE_SYSTEM_PROMPT = `Du är en intern säljassistent för Effexo, ett svenskt företag som bygger hemsidor och StaffGuide (ett AI-kunskapsverktyg för restaurangpersonal) åt restauranger och små/medelstora företag.
 
-Du får information om ETT företag som hittats via en extern företagssökning. Din uppgift är att bedöma hur intressant företaget är som potentiell kund åt Effexo.
+Effexo har redan beräknat tre deterministiska delpoäng (opportunity, buying signal, effexo fit) och en lista med konkreta, redan verifierade anledningar (reason texts) för det här företaget INNAN du får se det. Du ska INTE räkna om eller ifrågasätta dessa poäng. Din enda uppgift är:
+
+1. Skriv en kort, konkret säljvinkel ("suggestedPitchAngle") på svenska, baserad ENDAST på de faktiska anledningarna som redan listas nedan.
+2. Föreslå en liten justering av Effexo Fit-poängen ("aiFitAdjustment"), ett heltal mellan -15 och 15, ENDAST om du kan motivera den utifrån samma givna information. Om du inte kan motivera någon justering: returnera 0.
 
 MYCKET VIKTIGA REGLER:
-- Du har INGEN egen tillgång till internet. All information om företaget som du får är redan insamlad åt dig - du kan inte besöka hemsidan eller söka upp mer information själv.
-- Anta ALDRIG fakta som inte finns i den angivna informationen (t.ex. antal anställda, omsättning, öppettider, hur hemsidan faktiskt ser ut, recensioner). Om ett fält anges som okänt/saknas i sökresultatet, skriv exempelvis "Ingen hemsida hittades i den tillgängliga datan" istället för att gissa eller hävda att företaget saknar det i verkligheten.
+- Du har INGEN egen tillgång till internet och ingen information utöver det som anges nedan.
+- Du får ALDRIG påstå fakta som inte finns i den angivna informationen - gissa aldrig om antal anställda, omsättning, hur hemsidan faktiskt ser ut, sociala medier, eller om verksamheten är ny/nyligen förändrad.
+- Du får ALDRIG hitta på nya anledningar/reason codes - använd bara de som redan listas nedan.
+- Du får ALDRIG ändra eller ifrågasätta opportunity- eller buying signal-poängen - de är redan slutgiltiga och utanför din kontroll.
+- Du får ALDRIG påstå att ägaren "vill köpa" eller är redo att köpa - bara att företaget verkar relevant utifrån de givna signalerna.
 - Var kortfattad, konkret och saklig. Undvik säljjargong och överdrifter.
-- Användaren kan bifoga en kort fritextbeskrivning av vad de letar efter (t.ex. "restauranger utan befintlig hemsida"). Den beskrivningen är ENDAST ett urvalskriterium för hur du ska bedöma och prioritera företaget - den är aldrig en källa till fakta. Utgå alltid från de faktiska fälten nedan. Om beskrivningen t.ex. efterfrågar "utan hemsida" men fältet Hemsida faktiskt innehåller en adress, ska du utgå från den faktiska datan (hemsida finns) och istället notera i researchen att det inte matchar vad användaren efterfrågade - hitta aldrig på att ett fält saknas bara för att beskrivningen antyder det.
-
-Sätt ett leadScore 0-100 som uppskattar hur relevant/redo företaget verkar vara för Effexos tjänster - exempelvis om hemsida saknas eller finns, om branschen passar Effexos målgrupp (restauranger och små/medelstora företag), given tjänst, och (om angiven) hur väl företaget matchar användarens fritextbeskrivning. Om informationen är knapphändig ska scoret vara lågt/medel och osäkerheten nämnas i researchen.
 
 Svara ENDAST med ett JSON-objekt, ingen text utanför JSON, med exakt dessa nycklar:
 {
-  "leadScore": <heltal 0-100>,
-  "research": "<kort saklig bedömning på svenska, 1-3 meningar, baserad enbart på given data>",
-  "pitch": "<kort idé på svenska för varför Effexo kan vara relevant för just detta företag, 1-2 meningar>",
-  "recommendedService": "<en av: Hemsida, StaffGuide, Annat>"
+  "suggestedPitchAngle": "<kort, konkret säljvinkel på svenska, 1-2 meningar, baserad enbart på de givna signalerna>",
+  "aiFitAdjustment": <heltal mellan -15 och 15, 0 om ingen motiverad justering>
 }`;
 
-function buildCandidatePrompt(candidate: CompanyCandidate, query: LeadSearchQuery): string {
+function buildCandidatePrompt(candidate: CompanyCandidate, query: LeadSearchQuery, base: BaseLeadScore): string {
   const field = (label: string, value: string | null, unknownText = "(okänt/saknas i sökresultatet)") =>
     `${label}: ${value || unknownText}`;
 
   const lines = [
-    "Bedöm följande företag, hittat via extern företagssökning:",
+    "Bedöm följande företag utifrån redan beräknade signaler:",
     field("Företagsnamn", candidate.companyName),
     field("Stad", candidate.city),
-    field("Hemsida", candidate.website, "Ingen webbplats registrerad i Google Places"),
     field("Adress", candidate.address),
+    field("Hemsida", candidate.website, "Ingen webbplats registrerad i Google Places"),
     field("Telefon", candidate.phone),
+    field("Google-betyg", candidate.rating !== null ? String(candidate.rating) : null, "(ingen betygsdata)"),
+    field("Antal Google-recensioner", candidate.userRatingCount !== null ? String(candidate.userRatingCount) : null, "(ingen recensionsdata)"),
+    field("Typ av verksamhet", candidate.primaryType, "(okänd typ)"),
     `Bransch som söktes: ${query.industry}`,
-    `Tjänst av primärt intresse: ${query.service}`
+    `Tjänst av primärt intresse: ${query.service}`,
+    "",
+    `Opportunity score (redan beräknad, 0-100, EJ att ändra): ${base.opportunityScore}`,
+    `Buying signal score (redan beräknad, 0-100, EJ att ändra, "okänd" betyder att ingen sådan data fanns): ${base.buyingSignalScore ?? "okänd"}`,
+    `Effexo fit score (redan beräknad grund, 0-100, du får bara föreslå en liten justering av DENNA): ${base.effexoFitScore}`,
+    "Redan verifierade anledningar till poängen (reason texts):",
+    ...(base.reasonTexts.length > 0 ? base.reasonTexts.map((t) => `- ${t}`) : ["(inga specifika anledningar identifierade)"])
   ];
 
   if (query.description) {
     lines.push(
       "",
-      "Användarens fritextbeskrivning av vad de letar efter (urvalskriterium, inte fakta om företaget):",
+      "Användarens fritextbeskrivning av vad de letar efter (kontext för din pitch, inte fakta om företaget):",
       query.description
     );
   }
@@ -122,29 +142,29 @@ async function analyzeCandidate(
   candidate: CompanyCandidate,
   query: LeadSearchQuery
 ): Promise<GeneratedLead | null> {
+  const base = computeBaseLeadScore(candidate);
+
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     response_format: { type: "json_object" },
     temperature: 0.4,
-    max_tokens: 400,
+    max_tokens: 300,
     messages: [
       { role: "system", content: CANDIDATE_SYSTEM_PROMPT },
-      { role: "user", content: buildCandidatePrompt(candidate, query) }
+      { role: "user", content: buildCandidatePrompt(candidate, query, base) }
     ]
   });
 
   const p = parseJsonObject(completion.choices?.[0]?.message?.content);
   if (!p) return null;
 
-  const leadScore = clampLeadScore(p.leadScore);
-  const research = asBoundedString(p.research, 800);
-  const pitch = asBoundedString(p.pitch, 500);
-  if (leadScore === null || !research || !pitch) return null;
+  const suggestedPitchAngle = asBoundedString(p.suggestedPitchAngle, 500);
+  if (!suggestedPitchAngle) return null;
 
-  const recommendedServiceRaw = asBoundedString(p.recommendedService, 50);
-  const recommendedService: ServiceType = SERVICE_TYPES.includes(recommendedServiceRaw as ServiceType)
-    ? (recommendedServiceRaw as ServiceType)
-    : query.service;
+  const rawAdjustment = typeof p.aiFitAdjustment === "number" ? p.aiFitAdjustment : Number(p.aiFitAdjustment);
+  const aiFitAdjustment = Number.isFinite(rawAdjustment) ? clampAiFitAdjustment(rawAdjustment) : 0;
+
+  const final = applyAiFitAdjustment(base, aiFitAdjustment);
 
   return {
     companyName: candidate.companyName,
@@ -153,11 +173,38 @@ async function analyzeCandidate(
     phone: candidate.phone,
     address: candidate.address,
     placesId: candidate.placesId,
-    leadScore,
-    research,
-    pitch,
-    recommendedService
+    // The v1 search form already scopes the whole query to one service
+    // ("Tjänst av primärt intresse"), so the recommendation is exactly
+    // what was searched for - deterministic, not an AI guess.
+    recommendedService: query.service,
+
+    opportunityScore: final.opportunityScore,
+    buyingSignalScore: final.buyingSignalScore,
+    effexoFitScore: final.effexoFitScore,
+    aiFitAdjustment: final.aiFitAdjustment,
+    adjustedEffexoFitScore: final.adjustedEffexoFitScore,
+    totalScore: final.totalScore,
+    reasonCodes: final.reasonCodes,
+    reasonTexts: final.reasonTexts,
+    suggestedPitchAngle,
+
+    // Compatibility mirror for generatedLeadToCompanyDraft / already-saved
+    // CRM companies from before Lead Scoring 2.0 (see lib/crm/types.ts).
+    leadScore: final.totalScore,
+    research: final.reasonTexts.join(" "),
+    pitch: suggestedPitchAngle
   };
+}
+
+// Sort order per Lead Scoring 2.0: totalScore desc, then buyingSignalScore
+// desc (a lead with unknown buying signal - null - ranks behind one with
+// a known, even zero, buying signal in a tie), then opportunityScore desc.
+function compareLeads(a: GeneratedLead, b: GeneratedLead): number {
+  if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+  const bBuying = b.buyingSignalScore ?? -1;
+  const aBuying = a.buyingSignalScore ?? -1;
+  if (bBuying !== aBuying) return bBuying - aBuying;
+  return b.opportunityScore - a.opportunityScore;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<FindLeadsResponse>) {
@@ -209,14 +256,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     const results = await Promise.all(candidates.map((candidate) => analyzeCandidate(openai, candidate, query)));
     const scoredLeads = results.filter((lead): lead is GeneratedLead => lead !== null);
+    const sortedLeads = [...scoredLeads].sort(compareLeads);
     // Search expansion can legitimately gather more qualified candidates
     // than requestedCount in one go (see leadSearch.ts) - when it does,
-    // the AI's own leadScore picks the best `count`, never a truncation
-    // that silently drops nothing at random.
-    const leads =
-      scoredLeads.length > query.count
-        ? [...scoredLeads].sort((a, b) => b.leadScore - a.leadScore).slice(0, query.count)
-        : scoredLeads;
+    // only the best-ranked `count` leads are returned, never a
+    // truncation that silently drops nothing at random.
+    const leads = sortedLeads.length > query.count ? sortedLeads.slice(0, query.count) : sortedLeads;
     res.status(200).json({ leads });
   } catch (err) {
     console.error("AI lead generation error:", err);

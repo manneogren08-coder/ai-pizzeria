@@ -19,10 +19,10 @@ interface LeadGeneratorModalProps {
   onLeadAdded: (company: Company) => void;
 }
 
-function scoreEmoji(score: number): string {
-  if (score >= 70) return "🔥";
-  if (score >= 40) return "🟢";
-  return "⚪";
+function scoreColor(score: number): string {
+  if (score >= 70) return "var(--success-text)";
+  if (score >= 40) return "var(--warning-text)";
+  return "var(--text-muted)";
 }
 
 const MAX_COUNT = 20;
@@ -227,33 +227,42 @@ export default function LeadGeneratorModal({ companies, onClose, onLeadAdded }: 
             {visibleLeads.map(({ lead, index }) => (
               <div key={index} style={styles.leadCard}>
                 <div style={styles.leadCardHeader}>
-                  <span style={styles.leadScore}>{scoreEmoji(lead.leadScore)} {lead.leadScore}</span>
                   <span style={styles.leadName}>{lead.companyName}</span>
+                  <span style={{ ...styles.totalScoreBadge, color: scoreColor(lead.totalScore) }}>{lead.totalScore}</span>
                   {added.has(index) && <span style={styles.addedBadge}>Tillagd ✓</span>}
                 </div>
                 <p style={styles.leadMeta}>{submittedQuery.industry} · {lead.city}{lead.website ? ` · ${lead.website}` : ""}</p>
-                <p style={styles.leadPitch}>{lead.pitch}</p>
 
-                {expanded.has(index) && (
+                <div style={styles.subScoreRow}>
+                  <span style={styles.subScore}>Opportunity <b>{lead.opportunityScore}</b></span>
+                  <span style={styles.subScore}>Buying signal <b>{lead.buyingSignalScore ?? "–"}</b></span>
+                  <span style={styles.subScore}>Effexo fit <b>{lead.adjustedEffexoFitScore}</b></span>
+                </div>
+
+                {lead.reasonTexts.length > 0 && (
+                  <ul style={styles.reasonList}>
+                    {lead.reasonTexts.map((text, textIndex) => (
+                      <li key={textIndex} style={styles.reasonItem}>{text}</li>
+                    ))}
+                  </ul>
+                )}
+
+                <p style={styles.leadPitch}>{lead.suggestedPitchAngle}</p>
+
+                {expanded.has(index) && (lead.phone || lead.address) && (
                   <div style={styles.leadDetails}>
-                    <div style={styles.leadDetailLabel}>Research</div>
-                    <p style={styles.leadDetailText}>{lead.research}</p>
-                    <div style={styles.leadDetailLabel}>Rekommenderad tjänst</div>
-                    <p style={styles.leadDetailText}>{lead.recommendedService}</p>
-                    {(lead.phone || lead.address) && (
-                      <>
-                        <div style={styles.leadDetailLabel}>Kontaktinformation</div>
-                        <p style={styles.leadDetailText}>{[lead.phone, lead.address].filter(Boolean).join(" · ")}</p>
-                      </>
-                    )}
+                    <div style={styles.leadDetailLabel}>Kontaktinformation</div>
+                    <p style={styles.leadDetailText}>{[lead.phone, lead.address].filter(Boolean).join(" · ")}</p>
                   </div>
                 )}
 
                 {!added.has(index) && (
                   <div style={styles.leadActionsRow}>
-                    <button type="button" style={styles.secondaryButton} onClick={() => toggleExpanded(index)}>
-                      {expanded.has(index) ? "Dölj" : "Visa"}
-                    </button>
+                    {(lead.phone || lead.address) && (
+                      <button type="button" style={styles.secondaryButton} onClick={() => toggleExpanded(index)}>
+                        {expanded.has(index) ? "Dölj kontakt" : "Visa kontakt"}
+                      </button>
+                    )}
                     <button type="button" style={styles.secondaryButton} onClick={() => handleDismiss(index)}>
                       Avvisa
                     </button>
@@ -423,18 +432,17 @@ const styles: Record<string, CSSProperties> = {
     gap: 10,
     marginBottom: 4
   },
-  leadScore: {
-    fontSize: 14,
-    fontWeight: 800,
-    color: "var(--text)"
-  },
   leadName: {
     fontSize: 14.5,
     fontWeight: 700,
     color: "var(--text)"
   },
-  addedBadge: {
+  totalScoreBadge: {
     marginLeft: "auto",
+    fontSize: 15,
+    fontWeight: 800
+  },
+  addedBadge: {
     fontSize: 12,
     fontWeight: 700,
     color: "var(--success-text)"
@@ -443,6 +451,28 @@ const styles: Record<string, CSSProperties> = {
     margin: "0 0 8px",
     fontSize: 12.5,
     color: "var(--text-muted)"
+  },
+  subScoreRow: {
+    display: "flex",
+    gap: 14,
+    flexWrap: "wrap",
+    margin: "0 0 8px"
+  },
+  subScore: {
+    fontSize: 12,
+    color: "var(--text-muted)"
+  },
+  reasonList: {
+    margin: "0 0 8px",
+    paddingLeft: 18,
+    display: "flex",
+    flexDirection: "column",
+    gap: 2
+  },
+  reasonItem: {
+    fontSize: 12.5,
+    lineHeight: 1.4,
+    color: "var(--text-secondary)"
   },
   leadPitch: {
     margin: 0,

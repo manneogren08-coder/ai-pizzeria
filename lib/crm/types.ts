@@ -2,6 +2,8 @@
 // framework-agnostic so it can later be persisted to a real database
 // (e.g. Supabase) without changing the shape consumers rely on.
 
+import type { ReasonCode } from "./reasonCodes";
+
 export type ServiceType = "Hemsida" | "StaffGuide" | "Annat";
 
 export type LeadStatus =
@@ -200,9 +202,31 @@ export interface LeadSearchQuery {
   existingKeys?: string[];
 }
 
+// Google Places (New) businessStatus/priceLevel enum values we actually
+// care about - verified against the official REST reference, never
+// guessed. BUSINESS_STATUS_UNSPECIFIED / PRICE_LEVEL_UNSPECIFIED (and a
+// field Places simply omits) are both normalized to null upstream (see
+// lib/crm/leadSearch.ts) rather than kept as a separate "unspecified"
+// value, since scoring treats both cases identically: unknown.
+export type PlacesBusinessStatus = "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | "FUTURE_OPENING";
+
+export type PlacesPriceLevel =
+  | "PRICE_LEVEL_FREE"
+  | "PRICE_LEVEL_INEXPENSIVE"
+  | "PRICE_LEVEL_MODERATE"
+  | "PRICE_LEVEL_EXPENSIVE"
+  | "PRICE_LEVEL_VERY_EXPENSIVE";
+
 // A raw match from the external search/data provider. Only fields a
 // real provider can actually supply - never fabricated. Unknown fields
 // are null, not guessed.
+//
+// The Lead Scoring 2.0 fields (rating through openingHoursWeekdayText)
+// are read once here and then flow untouched through the rest of the
+// pipeline (see lib/crm/leadScoring.ts, which is the only place that
+// interprets them). openingHoursWeekdayText is captured per the Lead
+// Scoring 2.0 field-mask expansion but not yet used by any scoring
+// signal in this v1 - reserved for a future buying-signal addition.
 export interface CompanyCandidate {
   companyName: string;
   city: string;
@@ -210,12 +234,28 @@ export interface CompanyCandidate {
   phone: string | null;
   address: string | null;
   placesId: string | null;
+  rating: number | null;
+  userRatingCount: number | null;
+  businessStatus: PlacesBusinessStatus | null;
+  googleMapsUri: string | null;
+  primaryType: string | null;
+  types: string[] | null;
+  priceLevel: PlacesPriceLevel | null;
+  openingHoursWeekdayText: string[] | null;
 }
 
-// The AI's assessment of one candidate, built with the same
-// no-hallucination rules as LeadAnalysisResult. No email draft here by
-// design - that's what "Analysera med AI" is for once a lead is
-// actually in the CRM.
+// The result of scoring + AI-assisted pitch generation for one
+// candidate. The three sub-scores, reasonCodes and reasonTexts come
+// entirely from the deterministic lib/crm/leadScoring.ts - only
+// suggestedPitchAngle and aiFitAdjustment are AI output (see
+// pages/api/admin/ai/find-leads.ts).
+//
+// leadScore/research/pitch are kept as a deliberate compatibility
+// mirror (leadScore === totalScore, research === reasonTexts.join(" "),
+// pitch === suggestedPitchAngle) so generatedLeadToCompanyDraft below,
+// the Company type's existing leadScore/aiResearch/aiPitch fields, and
+// any already-saved CRM companies from before Lead Scoring 2.0 keep
+// working unchanged.
 export interface GeneratedLead {
   companyName: string;
   city: string;
@@ -223,10 +263,22 @@ export interface GeneratedLead {
   phone: string | null;
   address: string | null;
   placesId: string | null;
+  recommendedService: ServiceType;
+
+  opportunityScore: number;
+  buyingSignalScore: number | null;
+  effexoFitScore: number;
+  aiFitAdjustment: number;
+  adjustedEffexoFitScore: number;
+  totalScore: number;
+  reasonCodes: ReasonCode[];
+  reasonTexts: string[];
+  suggestedPitchAngle: string;
+
+  // Compatibility mirror - see comment above.
   leadScore: number;
   research: string;
   pitch: string;
-  recommendedService: ServiceType;
 }
 
 export type LeadGeneratorErrorCode =

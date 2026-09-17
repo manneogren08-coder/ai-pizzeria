@@ -17,6 +17,14 @@
 // HERE - server-side, before any candidate ever reaches the AI.
 // Companies with a websiteUri are dropped and never sent to OpenAI.
 //
+// LEAD SCORING 2.0: candidates with a confirmed CLOSED_PERMANENTLY or
+// CLOSED_TEMPORARILY businessStatus are also dropped here, unconditionally
+// - a closed business should never become a lead (see
+// isClosedBusinessStatus in ./leadScoring). Every candidate that survives
+// also now carries the raw signals lib/crm/leadScoring.ts needs (rating,
+// userRatingCount, businessStatus, primaryType/types, priceLevel,
+// googleMapsUri, opening hours) - see CompanyCandidate in ./types.
+//
 // SEARCH EXPANSION: a single broad query (e.g. "Restauranger i
 // Stockholm") ranks by relevance/popularity, which means it can be
 // dominated by well-established, already-online businesses for many
@@ -27,10 +35,11 @@
 // and this module combines + deduplicates their results, reaching a
 // much wider slice of real businesses without ever inventing anything.
 
-import type { LeadSearchQuery, CompanyCandidate } from "./types";
+import type { LeadSearchQuery, CompanyCandidate, PlacesBusinessStatus, PlacesPriceLevel } from "./types";
 import { requiresNoWebsite } from "./leadFilters";
 import { buildDedupeKeys } from "./leadDedupe";
 import { buildSearchQueries } from "./searchExpansion";
+import { isClosedBusinessStatus } from "./leadScoring";
 
 export class SearchProviderNotConfiguredError extends Error {}
 
@@ -57,8 +66,42 @@ interface PlacesTextSearchResponse {
     formattedAddress?: string;
     websiteUri?: string;
     internationalPhoneNumber?: string;
+    // Lead Scoring 2.0 fields - all already Enterprise-tier billed today
+    // via websiteUri/internationalPhoneNumber above (verified against
+    // Google's Place Data Fields SKU table during the Lead Scoring 2.0
+    // audit), so requesting these adds no new billing tier.
+    rating?: number;
+    userRatingCount?: number;
+    businessStatus?: string;
+    googleMapsUri?: string;
+    primaryType?: string;
+    types?: string[];
+    priceLevel?: string;
+    regularOpeningHours?: { weekdayDescriptions?: string[] };
   }>;
   nextPageToken?: string;
+}
+
+// Places returns businessStatus/priceLevel as string enums that include
+// an explicit "*_UNSPECIFIED" value, and can also omit the field
+// entirely - both are normalized to null here (never guessed at, never
+// kept as a separate "unspecified" case) since lib/crm/leadScoring.ts
+// treats "Google doesn't know" and "field wasn't returned" identically.
+const KNOWN_BUSINESS_STATUSES: ReadonlySet<string> = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY", "FUTURE_OPENING"]);
+const KNOWN_PRICE_LEVELS: ReadonlySet<string> = new Set([
+  "PRICE_LEVEL_FREE",
+  "PRICE_LEVEL_INEXPENSIVE",
+  "PRICE_LEVEL_MODERATE",
+  "PRICE_LEVEL_EXPENSIVE",
+  "PRICE_LEVEL_VERY_EXPENSIVE"
+]);
+
+function normalizeBusinessStatus(raw: string | undefined): PlacesBusinessStatus | null {
+  return raw && KNOWN_BUSINESS_STATUSES.has(raw) ? (raw as PlacesBusinessStatus) : null;
+}
+
+function normalizePriceLevel(raw: string | undefined): PlacesPriceLevel | null {
+  return raw && KNOWN_PRICE_LEVELS.has(raw) ? (raw as PlacesPriceLevel) : null;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -81,7 +124,7 @@ async function fetchPlacesPage(
       // omits anything not named in the field mask, including this.
       // places.id is required to save a stable exclusion key when a
       // result is added to the CRM (see lib/crm/leadDedupe.ts).
-      "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.websiteUri,places.internationalPhoneNumber,nextPageToken"
+      "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.websiteUri,places.internationalPhoneNumber,places.rating,places.userRatingCount,places.businessStatus,places.googleMapsUri,places.primaryType,places.types,places.priceLevel,places.regularOpeningHours,nextPageToken"
     },
     body: JSON.stringify({
       textQuery: `${searchPhrase} i ${city}`,
@@ -99,14 +142,25 @@ async function fetchPlacesPage(
   const data = (await response.json()) as PlacesTextSearchResponse;
 
   const candidates = (data.places || [])
-    .map((place) => ({
-      companyName: place.displayName?.text?.trim() || "",
-      city,
-      website: place.websiteUri?.trim() || null,
-      phone: place.internationalPhoneNumber?.trim() || null,
-      address: place.formattedAddress?.trim() || null,
-      placesId: place.id?.trim() || null
-    }))
+    .map((place) => {
+      const weekdayDescriptions = place.regularOpeningHours?.weekdayDescriptions;
+      return {
+        companyName: place.displayName?.text?.trim() || "",
+        city,
+        website: place.websiteUri?.trim() || null,
+        phone: place.internationalPhoneNumber?.trim() || null,
+        address: place.formattedAddress?.trim() || null,
+        placesId: place.id?.trim() || null,
+        rating: typeof place.rating === "number" ? place.rating : null,
+        userRatingCount: typeof place.userRatingCount === "number" ? place.userRatingCount : null,
+        businessStatus: normalizeBusinessStatus(place.businessStatus),
+        googleMapsUri: place.googleMapsUri?.trim() || null,
+        primaryType: place.primaryType?.trim() || null,
+        types: Array.isArray(place.types) && place.types.length > 0 ? place.types : null,
+        priceLevel: normalizePriceLevel(place.priceLevel),
+        openingHoursWeekdayText: Array.isArray(weekdayDescriptions) && weekdayDescriptions.length > 0 ? weekdayDescriptions : null
+      };
+    })
     .filter((candidate) => candidate.companyName.length > 0);
 
   return { candidates, nextPageToken: data.nextPageToken };
@@ -177,6 +231,11 @@ export async function searchCompanies(query: LeadSearchQuery): Promise<CompanyCa
       // and returns only the best targetCount leads.
       for (const candidate of candidates) {
         if (wantsNoWebsite && candidate.website !== null) continue;
+        // Deterministic, unconditional: a business Google marks as
+        // closed never becomes a lead, regardless of any other signal.
+        // Missing/unknown businessStatus does NOT get filtered here -
+        // only a confirmed CLOSED_* status does (see leadScoring.ts).
+        if (isClosedBusinessStatus(candidate.businessStatus)) continue;
 
         const keys = buildDedupeKeys({
           placesId: candidate.placesId,
