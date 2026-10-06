@@ -1,7 +1,8 @@
 import { useRouter } from "next/router";
 import { useState } from "react";
+import NoIndex from "../components/NoIndex";
 
-export default function App() {
+function AppContent() {
   const router = useRouter();
   const { company } = router.query;
 
@@ -104,3 +105,13 @@ const styles = {
     fontWeight: 600
   }
 };
+
+// Publicly reachable but kept out of search results.
+export default function App() {
+  return (
+    <>
+      <NoIndex />
+      <AppContent />
+    </>
+  );
+}

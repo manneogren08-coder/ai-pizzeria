@@ -3,6 +3,30 @@ import Head from "next/head";
 import Link from "next/link";
 import LandingNav from "../components/LandingNav";
 
+// sameAs is intentionally omitted - only added once real profile URLs
+// exist, never guessed.
+const STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://www.effexo.se/#organization",
+      name: "Effexo",
+      url: "https://www.effexo.se/",
+      logo: "https://www.effexo.se/android-chrome-512x512.png",
+      email: "kontakt@effexo.se"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://www.effexo.se/#website",
+      name: "Effexo",
+      url: "https://www.effexo.se/",
+      inLanguage: "sv-SE",
+      publisher: { "@id": "https://www.effexo.se/#organization" }
+    }
+  ]
+};
+
 export default function Home() {
   const landingFaqs = [
     {
@@ -91,6 +115,12 @@ export default function Home() {
           <meta name="description" content="Effexo bygger digitala lösningar som StaffGuide och hemsidor för restauranger och småföretag." />
           <meta property="og:title" content="Effexo | Digitala lösningar för restauranger och småföretag" />
           <meta property="og:description" content="Effexo bygger digitala lösningar som StaffGuide och hemsidor för restauranger och småföretag." />
+          <link rel="canonical" href="https://www.effexo.se/" />
+          <script
+            key="ld-json-organization-website"
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
+          />
         </Head>
         <style jsx>{`
           .landingOrb {
@@ -710,7 +740,7 @@ export default function Home() {
 
             <div style={styles.footerBottom}>
               <a href="mailto:kontakt@effexo.se" style={styles.footerLink}>kontakt@effexo.se</a>
-              <a href="https://effexo.se" style={styles.footerLink}>effexo.se</a>
+              <a href="https://www.effexo.se/" style={styles.footerLink}>effexo.se</a>
             </div>
             <p style={styles.footerText}>© 2026 Effexo. Alla rättigheter reserverade.</p>
           </footer>

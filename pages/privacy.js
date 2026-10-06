@@ -9,6 +9,7 @@ export default function PrivacyPolicy() {
     }}>
       <Head>
         <title>Integritetspolicy | Effexo</title>
+        <link rel="canonical" href="https://www.effexo.se/privacy" />
       </Head>
       <div style={{
         maxWidth: '800px',

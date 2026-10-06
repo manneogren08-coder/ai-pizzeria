@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import CompanySetup from '../components/CompanySetup';
+import NoIndex from '../components/NoIndex';
 
-export default function SetupPage() {
+function SetupPageContent() {
   const [showSetup, setShowSetup] = useState(true);
   const [setupData, setSetupData] = useState(null);
 
@@ -185,5 +186,15 @@ export default function SetupPage() {
     }}>
       <CompanySetup onSetupComplete={handleSetupComplete} />
     </div>
+  );
+}
+
+// Publicly reachable but kept out of search results.
+export default function SetupPage() {
+  return (
+    <>
+      <NoIndex />
+      <SetupPageContent />
+    </>
   );
 }

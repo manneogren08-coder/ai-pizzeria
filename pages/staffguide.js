@@ -77,6 +77,7 @@ export default function StaffGuidePage() {
           name="description"
           content="StaffGuide från Effexo samlar rutiner, recept, allergener och personalinformation på ett ställe – med en AI-assistent som hjälper personalen hitta rätt svar."
         />
+        <link rel="canonical" href="https://www.effexo.se/staffguide" />
         <meta property="og:title" content="StaffGuide | Effexo" />
         <meta
           property="og:description"
@@ -404,7 +405,7 @@ export default function StaffGuidePage() {
           </div>
           <div style={styles.footerBottom}>
             <a href="mailto:kontakt@effexo.se" style={styles.footerLink}>kontakt@effexo.se</a>
-            <a href="https://effexo.se" style={styles.footerLink}>effexo.se</a>
+            <a href="https://www.effexo.se/" style={styles.footerLink}>effexo.se</a>
           </div>
           <p style={styles.footerText}>© 2026 Effexo. Alla rättigheter reserverade.</p>
         </footer>

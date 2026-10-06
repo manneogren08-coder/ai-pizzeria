@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import NoIndex from "../components/NoIndex";
 
 
-export default function Demo() {
+function DemoContent() {
   const [token, setToken] = useState("");
   const [password, setPassword] = useState("");
   const [company, setCompany] = useState(null);
@@ -337,3 +338,13 @@ const styles = {
     opacity: 0.9
   }
 };
+
+// Publicly reachable but kept out of search results.
+export default function Demo() {
+  return (
+    <>
+      <NoIndex />
+      <DemoContent />
+    </>
+  );
+}

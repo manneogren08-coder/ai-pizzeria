@@ -258,3 +258,14 @@ function deleteButtonStyle(deleting) {
     cursor: deleting ? "not-allowed" : "pointer"
   };
 }
+
+
+// Local-only tool (see isLocalDev). In production this page returns a real
+// 404 instead of a thin, indexable stub - same pattern as pages/admin/index.tsx.
+// Development is unaffected: props are simply empty.
+export async function getServerSideProps() {
+  if (process.env.NODE_ENV === "production") {
+    return { notFound: true };
+  }
+  return { props: {} };
+}

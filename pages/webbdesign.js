@@ -40,6 +40,7 @@ export default function WebbdesignPage() {
           name="description"
           content="Effexo bygger moderna, mobilanpassade webbplatser för restauranger och små och medelstora företag – från design till drift."
         />
+        <link rel="canonical" href="https://www.effexo.se/webbdesign" />
         <meta property="og:title" content="Webbdesign | Effexo" />
         <meta
           property="og:description"
@@ -337,7 +338,7 @@ export default function WebbdesignPage() {
           </div>
           <div style={styles.footerBottom}>
             <a href="mailto:kontakt@effexo.se" style={styles.footerLink}>kontakt@effexo.se</a>
-            <a href="https://effexo.se" style={styles.footerLink}>effexo.se</a>
+            <a href="https://www.effexo.se/" style={styles.footerLink}>effexo.se</a>
           </div>
           <p style={styles.footerText}>© 2026 Effexo. Alla rättigheter reserverade.</p>
         </footer>

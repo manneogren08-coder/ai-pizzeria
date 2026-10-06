@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import StaffguideApp from "../../components/staffguide/StaffguideApp";
+import NoIndex from "../../components/NoIndex";
 import { restoreSession } from "../../lib/staffguide/session";
 
 export default function StaffguideDashboardPage() {
@@ -22,9 +23,12 @@ export default function StaffguideDashboardPage() {
 
   if (!session) {
     return (
-      <div style={styles.loadingScreen}>
-        <p style={styles.loadingText}>Laddar Staffguide...</p>
-      </div>
+      <>
+        <NoIndex />
+        <div style={styles.loadingScreen}>
+          <p style={styles.loadingText}>Laddar Staffguide...</p>
+        </div>
+      </>
     );
   }
 
@@ -32,7 +36,7 @@ export default function StaffguideDashboardPage() {
     <>
       <Head>
         <title>Staffguide</title>
-        <meta name="robots" content="noindex" />
+        <meta name="robots" content="noindex, nofollow" />
       </Head>
       <StaffguideApp
         initialToken={session.token}
