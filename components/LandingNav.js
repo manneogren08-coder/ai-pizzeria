@@ -26,7 +26,7 @@ function scrollToSectionOnHome(id) {
 // intercepts the click to scroll when a sectionId is actually present).
 const NAV_LINKS = [
   { href: "/webbdesign", label: "Hemsidor" },
-  { href: "/staffguide", label: "Staffguide" }
+  { href: "/staffguide", label: "StaffGuide" }
 ];
 
 // Same links as desktop, plus an explicit "Hem" entry since the mobile

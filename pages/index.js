@@ -2,6 +2,7 @@ import { useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import LandingNav from "../components/LandingNav";
+import PageSeo from "../components/PageSeo";
 
 // sameAs is intentionally omitted - only added once real profile URLs
 // exist, never guessed.
@@ -14,7 +15,8 @@ const STRUCTURED_DATA = {
       name: "Effexo",
       url: "https://www.effexo.se/",
       logo: "https://www.effexo.se/android-chrome-512x512.png",
-      email: "kontakt@effexo.se"
+      email: "kontakt@effexo.se",
+      description: "Effexo bygger hemsidor och digitala verktyg, bland annat StaffGuide, för restauranger och småföretag."
     },
     {
       "@type": "WebSite",
@@ -31,14 +33,14 @@ export default function Home() {
   const landingFaqs = [
     {
       question: "Vad är Effexo?",
-      answer: "Effexo är företaget bakom StaffGuide och hemsidor för restauranger och småföretag."
+      answer: "Effexo är ett svenskt företag som bygger hemsidor och digitala verktyg för restauranger och småföretag – bland annat moderna webbplatser och StaffGuide, en AI-assistent för restaurangpersonal."
     },
     {
       question: "Vad är StaffGuide?",
-      answer: "StaffGuide är Effexos interna verktyg som hjälper restauranger och företag att samla rutiner, recept och information på ett ställe."
+      answer: "StaffGuide är Effexos tjänst för restauranger: ett ställe där personalen hittar rutiner, recept, allergeninformation och annan intern information, och kan fråga en AI-assistent som svarar utifrån restaurangens egen information."
     },
     {
-      question: "Hur snabbt kommer vi igång?",
+      question: "Hur snabbt kommer vi igång med StaffGuide?",
       answer: "Vanligtvis kan ni börja använda systemet inom några dagar efter onboarding."
     },
     {
@@ -46,7 +48,7 @@ export default function Home() {
       answer: "Nej, vi sätter upp allt åt er."
     },
     {
-      question: "Kan vi anpassa innehållet?",
+      question: "Kan vi anpassa innehållet i StaffGuide?",
       answer: "Ja, all information är helt anpassningsbar för ert företag."
     }
   ];
@@ -110,12 +112,12 @@ export default function Home() {
 
     return (
       <div style={styles.landingPage} className="landingPage">
+        <PageSeo
+          title="Effexo – Hemsidor och StaffGuide för restauranger och småföretag"
+          description="Effexo bygger moderna hemsidor för restauranger och småföretag, samt StaffGuide – en AI-assistent som samlar rutiner, recept och allergener för personalen."
+          path="/"
+        />
         <Head>
-          <title>Effexo | Digitala lösningar för restauranger och småföretag</title>
-          <meta name="description" content="Effexo bygger digitala lösningar som StaffGuide och hemsidor för restauranger och småföretag." />
-          <meta property="og:title" content="Effexo | Digitala lösningar för restauranger och småföretag" />
-          <meta property="og:description" content="Effexo bygger digitala lösningar som StaffGuide och hemsidor för restauranger och småföretag." />
-          <link rel="canonical" href="https://www.effexo.se/" />
           <script
             key="ld-json-organization-website"
             type="application/ld+json"
@@ -479,10 +481,10 @@ export default function Home() {
             <section style={styles.heroPanel} className="heroPanel fadeInSection">
               <span style={styles.heroBadge}>EFFEXO</span>
               <h1 className="heroTitle" style={styles.heroTitle}>
-                Digitala lösningar som sparar tid och hjälper företag att växa.
+                Effexo bygger hemsidor och digitala verktyg för restauranger och småföretag
               </h1>
               <p className="heroLead" style={styles.heroLead}>
-                Vi bygger smarta digitala verktyg, hemsidor och synlighet för småföretag och restauranger – så att ni kan lägga tiden på det ni gör bäst.
+                Moderna, mobilanpassade hemsidor och StaffGuide – en AI-assistent som hjälper restaurangpersonal att hitta rätt svar – så att ni kan lägga tiden på det ni gör bäst.
               </p>
 
               <div style={styles.heroCtaRow} className="heroCtaRow">
@@ -505,9 +507,9 @@ export default function Home() {
               </div>
 
               <div style={styles.heroMetaRow}>
-                <span style={styles.heroMetaChip}>Meny + recept i realtid</span>
-                <span style={styles.heroMetaChip}>Säkrare svar om allergener</span>
-                <span style={styles.heroMetaChip}>Byggt för iPad och mobil</span>
+                <span style={styles.heroMetaChip}>Hemsidor för restauranger och företag</span>
+                <span style={styles.heroMetaChip}>AI-assistent för personal</span>
+                <span style={styles.heroMetaChip}>Byggt för mobil och iPad</span>
               </div>
             </section>
 
@@ -561,23 +563,6 @@ export default function Home() {
             <div style={styles.servicesGrid} className="servicesGrid">
               <div style={styles.serviceCard} className="serviceCard">
                 <div style={styles.serviceIconWrap}>
-                  <span style={styles.serviceIcon}>🤖</span>
-                </div>
-                <h3 style={styles.serviceCardTitle}>StaffGuide</h3>
-                <p style={styles.serviceCardDesc}>
-                  Effexo erbjuder StaffGuide för restauranger – en AI-assistent som hjälper personalen att hitta svar på rutiner, allergener, recept, arbetsuppgifter och intern information på några sekunder.
-                </p>
-                <div style={styles.serviceBadgeRow}>
-                  <span style={styles.serviceBadge}>AI</span>
-                  <span style={styles.serviceBadge}>Personal</span>
-                  <span style={styles.serviceBadge}>Kunskap</span>
-                  <span style={styles.serviceBadge}>Mise en place</span>
-                </div>
-                <Link href="/staffguide" style={styles.serviceCardButton} className="serviceCardButton">Läs mer</Link>
-              </div>
-
-              <div style={styles.serviceCard} className="serviceCard">
-                <div style={styles.serviceIconWrap}>
                   <span style={styles.serviceIcon}>🌐</span>
                 </div>
                 <h3 style={styles.serviceCardTitle}>Hemsidor</h3>
@@ -590,15 +575,42 @@ export default function Home() {
                   <span style={styles.serviceBadge}>Modern Design</span>
                   <span style={styles.serviceBadge}>Snabb</span>
                 </div>
-                <Link href="/webbdesign" style={styles.serviceCardButton} className="serviceCardButton">Läs mer</Link>
+                <Link href="/webbdesign" style={styles.serviceCardButton} className="serviceCardButton">Läs mer om hemsidor</Link>
+              </div>
+
+              <div style={styles.serviceCard} className="serviceCard">
+                <div style={styles.serviceIconWrap}>
+                  <span style={styles.serviceIcon}>🤖</span>
+                </div>
+                <h3 style={styles.serviceCardTitle}>StaffGuide</h3>
+                <p style={styles.serviceCardDesc}>
+                  Effexo erbjuder StaffGuide för restauranger – en AI-assistent som hjälper personalen att hitta svar på rutiner, allergener, recept, arbetsuppgifter och intern information på några sekunder.
+                </p>
+                <div style={styles.serviceBadgeRow}>
+                  <span style={styles.serviceBadge}>AI</span>
+                  <span style={styles.serviceBadge}>Personal</span>
+                  <span style={styles.serviceBadge}>Kunskap</span>
+                  <span style={styles.serviceBadge}>Mise en place</span>
+                </div>
+                <Link href="/staffguide" style={styles.serviceCardButton} className="serviceCardButton">Läs mer om StaffGuide</Link>
               </div>
             </div>
           </section>
 
           <div style={styles.sectionDivider} />
 
+          <section id="om-effexo" style={styles.aboutSection}>
+            <h2 style={styles.aboutTitle}>Om Effexo</h2>
+            <p style={styles.aboutText}>
+              Effexo är ett svenskt företag som bygger hemsidor och digitala verktyg för restauranger och småföretag. Vi hjälper er hela vägen – från första samtal och design till lansering och, vid behov, drift och underhåll – så att ni slipper krångla med tekniken.
+            </p>
+            <p style={styles.aboutText}>
+              Vi erbjuder <Link href="/webbdesign" style={styles.aboutLink}>moderna, mobilanpassade hemsidor</Link> och <Link href="/staffguide" style={styles.aboutLink}>StaffGuide</Link>, en AI-assistent som hjälper restaurangpersonal att hitta rutiner, recept och allergeninformation. Vill ni veta mer är ni välkomna att höra av er på <a href="mailto:kontakt@effexo.se" style={styles.aboutLink}>kontakt@effexo.se</a> eller via formuläret nedan.
+            </p>
+          </section>
+
           <section style={styles.faqSection} className="faqSection">
-            <h3 style={styles.faqTitle}>Vanliga frågor</h3>
+            <h2 style={styles.faqTitle}>Vanliga frågor</h2>
             <div className="faqGrid" style={styles.faqGrid}>
               {landingFaqs.map((item, index) => (
                 <details key={item.question} style={styles.faqItem} className="faqItem">
@@ -658,6 +670,9 @@ export default function Home() {
                   {contactMessage}
                 </p>
               )}
+              <p style={styles.contactPrivacyNote}>
+                Vi använder dina uppgifter för att svara på ditt meddelande. Läs mer i vår <Link href="/privacy" style={styles.aboutLink}>integritetspolicy</Link>.
+              </p>
               <button
                 style={styles.contactSubmitButton}
                 className="contactSubmitButton"
@@ -727,14 +742,14 @@ export default function Home() {
 
               <div style={styles.footerColumn} className="footerColumn">
                 <h4 style={styles.footerHeading}>Företag</h4>
-                <a href="#" className="footerColLink" style={styles.footerColLink} onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Om oss</a>
+                <Link href="/#om-effexo" className="footerColLink" style={styles.footerColLink}>Om oss</Link>
                 <a href="#contact-section" className="footerColLink" style={styles.footerColLink} onClick={(e) => { e.preventDefault(); scrollToSection("contact-section"); }}>Kontakt</a>
               </div>
 
               <div style={styles.footerColumn} className="footerColumn">
                 <h4 style={styles.footerHeading}>Juridik</h4>
-                <a href="/privacy" className="footerColLink" style={styles.footerColLink}>Integritetspolicy</a>
-                <a href="/privacy" className="footerColLink" style={styles.footerColLink}>GDPR</a>
+                <Link href="/privacy" className="footerColLink" style={styles.footerColLink}>Integritetspolicy</Link>
+                <Link href="/privacy" className="footerColLink" style={styles.footerColLink}>GDPR</Link>
               </div>
             </div>
 
@@ -1239,6 +1254,43 @@ const styles = {
     borderRadius: 20,
     padding: "28px 24px",
     boxShadow: "0 12px 30px rgba(0, 0, 0, 0.25)"
+  },
+
+  aboutSection: {
+    marginTop: 64,
+    maxWidth: 760,
+    marginLeft: "auto",
+    marginRight: "auto"
+  },
+
+  aboutTitle: {
+    margin: "0 0 16px",
+    fontSize: "1.6rem",
+    color: "#f8fafc",
+    letterSpacing: "-0.01em",
+    fontWeight: 800
+  },
+
+  aboutText: {
+    margin: "0 0 14px",
+    fontSize: "1.02rem",
+    lineHeight: 1.7,
+    color: "#94a3b8"
+  },
+
+  aboutLink: {
+    color: "#60a5fa",
+    fontWeight: 600,
+    textDecoration: "underline",
+    textUnderlineOffset: 3
+  },
+
+  contactPrivacyNote: {
+    margin: "0 0 4px",
+    fontSize: 12.5,
+    lineHeight: 1.5,
+    color: "#94a3b8",
+    textAlign: "center"
   },
 
   faqTitle: {

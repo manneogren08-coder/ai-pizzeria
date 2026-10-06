@@ -1,4 +1,4 @@
-import Head from 'next/head';
+import PageSeo from '../components/PageSeo';
 
 export default function PrivacyPolicy() {
   return (
@@ -7,10 +7,7 @@ export default function PrivacyPolicy() {
       background: 'linear-gradient(145deg, #ffffff 0%, #f8fbff 52%, #eff6ff 100%)',
       padding: '40px 20px'
     }}>
-      <Head>
-        <title>Integritetspolicy | Effexo</title>
-        <link rel="canonical" href="https://www.effexo.se/privacy" />
-      </Head>
+      <PageSeo title="Integritetspolicy | Effexo" path="/privacy" />
       <div style={{
         maxWidth: '800px',
         margin: '0 auto',

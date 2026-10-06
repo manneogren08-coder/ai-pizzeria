@@ -1,6 +1,6 @@
-import Head from "next/head";
 import Link from "next/link";
 import LandingNav from "../components/LandingNav";
+import PageSeo from "../components/PageSeo";
 
 const problems = [
   {
@@ -71,19 +71,11 @@ export default function StaffGuidePage() {
 
   return (
     <div style={styles.landingPage} className="landingPage">
-      <Head>
-        <title>StaffGuide | Effexo – AI-assistent för restaurangpersonal</title>
-        <meta
-          name="description"
-          content="StaffGuide från Effexo samlar rutiner, recept, allergener och personalinformation på ett ställe – med en AI-assistent som hjälper personalen hitta rätt svar."
-        />
-        <link rel="canonical" href="https://www.effexo.se/staffguide" />
-        <meta property="og:title" content="StaffGuide | Effexo" />
-        <meta
-          property="og:description"
-          content="StaffGuide från Effexo samlar rutiner, recept, allergener och personalinformation på ett ställe – med en AI-assistent som hjälper personalen hitta rätt svar."
-        />
-      </Head>
+      <PageSeo
+        title="StaffGuide | Effexo – AI-assistent för restaurangpersonal"
+        description="StaffGuide från Effexo samlar rutiner, recept, allergener och personalinformation på ett ställe – med en AI-assistent som hjälper personalen hitta rätt svar."
+        path="/staffguide"
+      />
 
       <style jsx>{`
         :global(body) {
@@ -268,7 +260,7 @@ export default function StaffGuidePage() {
       <div style={styles.landingContentWrap} className="landingContentWrap">
         <section style={styles.heroSection} className="fadeInSection">
           <span style={styles.heroBadge}>EFFEXO</span>
-          <h1 className="heroTitle" style={styles.heroTitle}>All personalinformation. På ett ställe.</h1>
+          <h1 className="heroTitle" style={styles.heroTitle}>StaffGuide – all personalinformation på ett ställe</h1>
           <p className="heroLead" style={styles.heroLead}>
             StaffGuide hjälper restauranger att samla rutiner, information och kunskap på ett ställe – så att personalen snabbt kan hitta rätt svar, utan att behöva fråga runt.
           </p>
@@ -379,6 +371,9 @@ export default function StaffGuidePage() {
               Logga in
             </Link>
           </div>
+          <p style={styles.ctaCrossLink}>
+            Behöver ni också en ny hemsida? Läs om våra <Link href="/webbdesign" style={styles.inlineLink}>hemsidor och webbdesign</Link>.
+          </p>
         </section>
 
         <footer style={styles.footer}>
@@ -394,7 +389,7 @@ export default function StaffGuidePage() {
             </div>
             <div style={styles.footerColumn} className="footerColumn">
               <h4 style={styles.footerHeading}>Företag</h4>
-              <Link href="/" className="footerColLink" style={styles.footerColLink}>Om oss</Link>
+              <Link href="/#om-effexo" className="footerColLink" style={styles.footerColLink}>Om oss</Link>
               <Link href="/#contact-section" className="footerColLink" style={styles.footerColLink}>Kontakt</Link>
             </div>
             <div style={styles.footerColumn} className="footerColumn">
@@ -448,6 +443,9 @@ const styles = {
   section: { marginTop: 64, maxWidth: 980, marginLeft: "auto", marginRight: "auto" },
   sectionTitle: { margin: "0 0 14px", fontSize: "2rem", fontWeight: 800, letterSpacing: "-0.01em", color: "#f8fafc", textAlign: "center" },
   sectionLead: { margin: "0 auto 32px", fontSize: "1.05rem", lineHeight: 1.6, color: "#94a3b8", textAlign: "center", maxWidth: "60ch" },
+
+  inlineLink: { color: "#60a5fa", fontWeight: 600, textDecoration: "underline", textUnderlineOffset: 3 },
+  ctaCrossLink: { margin: "22px 0 0", fontSize: 14, lineHeight: 1.6, color: "#94a3b8", textAlign: "center" },
 
   featuresGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 },
   featureCard: {

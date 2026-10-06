@@ -1,6 +1,6 @@
-import Head from "next/head";
 import Link from "next/link";
 import LandingNav from "../components/LandingNav";
+import PageSeo from "../components/PageSeo";
 import WebsiteAdvisor from "../components/WebsiteAdvisor";
 
 const values = [
@@ -10,6 +10,26 @@ const values = [
   { icon: "🕒", title: "Hitta öppettider", text: "Aktuella öppettider utan att behöva ringa och fråga." },
   { icon: "📋", title: "Hitta meny/information", text: "Rätt information samlad och lätt att bläddra i, även på mobilen." },
   { icon: "➡️", title: "Ta nästa steg", text: "Boka, ringa eller höra av sig – utan onödiga klick." }
+];
+
+// The same three tiers the "Vilken hemsida passar er?" advisor below
+// recommends from (see pages/api/website-advisor.js) - surfaced here as
+// plain page content so visitors (and search engines) can read what each
+// tier is without opening the widget. No prices or delivery times: none
+// are defined anywhere in the project.
+const tiers = [
+  {
+    name: "Start",
+    text: "En ren, professionell och enkel hemsida med det viktigaste – för företag som vill komma igång utan krångel."
+  },
+  {
+    name: "Modern",
+    text: "En mer genomtänkt och personlig hemsida med fler sektioner och mer fokus på företagets varumärke."
+  },
+  {
+    name: "Signature",
+    text: "En unik och visuellt stark hemsida med avancerad design, animationer och detaljer – med en mer skräddarsydd känsla."
+  }
 ];
 
 const process = [
@@ -34,19 +54,11 @@ export default function WebbdesignPage() {
 
   return (
     <div style={styles.landingPage} className="landingPage">
-      <Head>
-        <title>Webbdesign | Effexo – Webbplatser för restauranger och småföretag</title>
-        <meta
-          name="description"
-          content="Effexo bygger moderna, mobilanpassade webbplatser för restauranger och små och medelstora företag – från design till drift."
-        />
-        <link rel="canonical" href="https://www.effexo.se/webbdesign" />
-        <meta property="og:title" content="Webbdesign | Effexo" />
-        <meta
-          property="og:description"
-          content="Effexo bygger moderna, mobilanpassade webbplatser för restauranger och små och medelstora företag – från design till drift."
-        />
-      </Head>
+      <PageSeo
+        title="Webbdesign och hemsidor för restauranger och småföretag | Effexo"
+        description="Moderna, mobilanpassade hemsidor för restauranger och småföretag – från design och lansering till drift. Välj mellan tre nivåer: Start, Modern och Signature."
+        path="/webbdesign"
+      />
 
       <style jsx>{`
         :global(body) {
@@ -182,7 +194,8 @@ export default function WebbdesignPage() {
             width: 100%;
           }
 
-          .featuresGrid {
+          .featuresGrid,
+          .tiersGrid {
             grid-template-columns: 1fr !important;
           }
 
@@ -230,9 +243,9 @@ export default function WebbdesignPage() {
       <div style={styles.landingContentWrap} className="landingContentWrap">
         <section style={styles.heroSection} className="fadeInSection">
           <span style={styles.heroBadge}>EFFEXO</span>
-          <h1 className="heroTitle" style={styles.heroTitle}>Webbplatser som gör jobbet.</h1>
+          <h1 className="heroTitle" style={styles.heroTitle}>Hemsidor och webbdesign för restauranger och småföretag</h1>
           <p className="heroLead" style={styles.heroLead}>
-            Effexo bygger moderna, mobilanpassade webbplatser för företag – med särskilt fokus på restauranger och små och medelstora företag.
+            Effexo bygger moderna, mobilanpassade webbplatser som gör jobbet – med särskilt fokus på restauranger och små och medelstora företag.
           </p>
           <div style={styles.heroCtaRow} className="heroCtaRow">
             <button type="button" style={styles.heroCtaPrimary} className="heroCtaBtn heroCtaPrimaryBtn" onClick={() => scrollToSection("process-section")}>
@@ -260,6 +273,21 @@ export default function WebbdesignPage() {
                 <div style={styles.featureIconWrap}><span style={styles.featureIcon}>{item.icon}</span></div>
                 <h3 style={styles.featureTitle}>{item.title}</h3>
                 <p style={styles.featureText}>{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="tiers-section" style={styles.section}>
+          <h2 className="sectionTitle" style={styles.sectionTitle}>Tre nivåer – välj efter ert behov</h2>
+          <p style={styles.sectionLead}>
+            Vilken nivå som passar beror på vad hemsidan ska göra, inte bara på hur många sidor ni behöver. Osäker? <a href="#website-advisor-section" style={styles.inlineLink}>Prova vår rådgivare</a> längre ner på sidan.
+          </p>
+          <div style={styles.featuresGrid} className="tiersGrid">
+            {tiers.map((tier) => (
+              <div key={tier.name} style={styles.featureCard} className="featureCard">
+                <h3 style={styles.featureTitle}>{tier.name}</h3>
+                <p style={styles.featureText}>{tier.text}</p>
               </div>
             ))}
           </div>
@@ -312,6 +340,9 @@ export default function WebbdesignPage() {
               Kontakta Effexo
             </Link>
           </div>
+          <p style={styles.ctaCrossLink}>
+            Driver ni restaurang? Läs även om <Link href="/staffguide" style={styles.inlineLink}>StaffGuide</Link>, vår AI-assistent för personalen.
+          </p>
         </section>
 
         <footer style={styles.footer}>
@@ -327,7 +358,7 @@ export default function WebbdesignPage() {
             </div>
             <div style={styles.footerColumn} className="footerColumn">
               <h4 style={styles.footerHeading}>Företag</h4>
-              <Link href="/" className="footerColLink" style={styles.footerColLink}>Om oss</Link>
+              <Link href="/#om-effexo" className="footerColLink" style={styles.footerColLink}>Om oss</Link>
               <Link href="/#contact-section" className="footerColLink" style={styles.footerColLink}>Kontakt</Link>
             </div>
             <div style={styles.footerColumn} className="footerColumn">
@@ -381,6 +412,9 @@ const styles = {
   section: { marginTop: 64, maxWidth: 980, marginLeft: "auto", marginRight: "auto" },
   sectionTitle: { margin: "0 0 14px", fontSize: "2rem", fontWeight: 800, letterSpacing: "-0.01em", color: "#f8fafc", textAlign: "center" },
   sectionLead: { margin: "0 auto 32px", fontSize: "1.05rem", lineHeight: 1.6, color: "#94a3b8", textAlign: "center", maxWidth: "60ch" },
+
+  inlineLink: { color: "#60a5fa", fontWeight: 600, textDecoration: "underline", textUnderlineOffset: 3 },
+  ctaCrossLink: { margin: "22px 0 0", fontSize: 14, lineHeight: 1.6, color: "#94a3b8", textAlign: "center" },
 
   featuresGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 },
   featureCard: {
